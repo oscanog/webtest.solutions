@@ -1,0 +1,12 @@
+*.php text eol=lf
+*.css text eol=lf
+*.sql text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+
+setup.php export-ignore
+bug_catcher.sql export-ignore
+SQL-inserts.txt export-ignore
+database/demo.sql export-ignore
+uploads export-ignore

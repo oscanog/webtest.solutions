@@ -1,5 +1,7 @@
-﻿<?php
-session_start();
+<?php
+require_once dirname(__DIR__) . '/app/bootstrap.php';
+
+bugcatcher_start_session();
 include "connection.php";
 
 if (isset($_SESSION['id'])) {

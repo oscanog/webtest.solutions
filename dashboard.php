@@ -226,23 +226,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
     $stmt->close();
 
-    // 2) Delete physical files safely
-    // Base folder = absolute path to /uploads/issues
-    $baseDir = realpath(__DIR__ . "/uploads/issues");
-    if ($baseDir !== false) {
-      foreach ($files as $rel) {
-        if ($rel === '')
-          continue;
+    // 2) Delete physical files safely from the configured shared uploads path
+    foreach ($files as $rel) {
+      if ($rel === '') {
+        continue;
+      }
 
-        // Convert stored relative path to absolute path
-        // If you store "uploads/issues/xxx.jpg", strip the prefix.
-        $relFile = preg_replace('#^uploads/issues/#', '', $rel);
-        $abs = realpath($baseDir . DIRECTORY_SEPARATOR . $relFile);
-
-        // Safety check: abs must exist and be inside baseDir
-        if ($abs && strpos($abs, $baseDir) === 0 && is_file($abs)) {
-          @unlink($abs);
-        }
+      $abs = bugcatcher_upload_absolute_path($rel);
+      if ($abs !== null) {
+        @unlink($abs);
       }
     }
 

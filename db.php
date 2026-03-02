@@ -1,17 +1,12 @@
-﻿<?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+<?php
+require_once __DIR__ . '/app/bootstrap.php';
 
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db = "bug_catcher";
+bugcatcher_start_session();
 
-$conn = new mysqli($host, $user, $pass, $db);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    $conn = bugcatcher_db_connection();
+} catch (RuntimeException $e) {
+    die($e->getMessage());
 }
 
 if (!isset($_SESSION['id'])) {

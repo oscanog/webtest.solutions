@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/app/bootstrap.php';
+
+bugcatcher_start_session();
 
 // If already logged in, go to dashboard
 if (isset($_SESSION['id'])) {

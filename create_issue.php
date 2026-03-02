@@ -67,11 +67,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $issueId = $conn->insert_id;
 
         // ---- Handle image uploads (optional) ----
-        $uploadDir = __DIR__ . "/uploads/issues"; // absolute path
-        $publicDir = "uploads/issues";            // URL path
+        $uploadDir = bugcatcher_uploads_dir();
 
         if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+            mkdir($uploadDir, 02775, true);
         }
 
         $allowed = [
@@ -122,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $newName = "issue_" . $issueId . "_" . bin2hex(random_bytes(8)) . "." . $ext;
 
                 $destAbs = $uploadDir . "/" . $newName;
-                $destRel = $publicDir . "/" . $newName;
+                $destRel = bugcatcher_upload_relative_path($newName);
 
                 if (!move_uploaded_file($tmp, $destAbs))
                     continue;

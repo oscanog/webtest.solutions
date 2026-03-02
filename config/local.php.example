@@ -1,0 +1,13 @@
+<?php
+
+return [
+    'APP_ENV' => 'development',
+    'APP_BASE_URL' => 'http://localhost',
+    'DB_HOST' => '127.0.0.1',
+    'DB_PORT' => 3306,
+    'DB_NAME' => 'bug_catcher',
+    'DB_USER' => 'root',
+    'DB_PASS' => '',
+    'UPLOADS_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'issues',
+    'UPLOADS_URL' => 'uploads/issues',
+];
