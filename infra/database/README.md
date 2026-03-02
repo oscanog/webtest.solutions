@@ -13,6 +13,8 @@ Optional demo data:
 
 `infra/database/seed_admin.sql` is intentionally a template. Replace the username, email, and password hash before you import it.
 
+Legacy SQL artifacts that are not part of the production bootstrap live under `infra/database/legacy/`.
+
 Generate a bcrypt hash with:
 
 ```bash
