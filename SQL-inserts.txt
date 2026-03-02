@@ -1,0 +1,105 @@
+CREATE TABLE IF NOT EXISTS organizations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  owner_id INT NOT NULL,
+  join_code VARCHAR(32) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_org_owner
+    FOREIGN KEY (owner_id) REFERENCES users(id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS org_members (
+  org_id INT NOT NULL,
+  user_id INT NOT NULL,
+  role ENUM('owner','member',
+  'Project Manager','QA Lead',
+  'Senior Developer','Senior QA',
+  'Junior Developer','QA Tester') NOT NULL DEFAULT 'member',
+  joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (org_id, user_id),
+
+  // A user can join many orgs but cannot join the SAME org twice
+  UNIQUE KEY uniq_org_user (org_id, user_id);
+
+  CONSTRAINT fk_org_members_org
+    FOREIGN KEY (org_id) REFERENCES organizations(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_org_members_user
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    ON DELETE CASCADE
+);
+
+ALTER TABLE issues
+  ADD COLUMN org_id INT NOT NULL AFTER author_id,
+  ADD COLUMN assigned_dev_id INT NULL AFTER org_id,
+  ADD COLUMN assign_status VARCHAR(20) NOT NULL DEFAULT 'unassigned' AFTER assigned_dev_id,
+  ADD COLUMN assigned_at DATETIME NULL AFTER assign_status;
+
+ALTER TABLE issues
+  ADD INDEX idx_issues_org (org_id),
+  ADD INDEX idx_issues_assigned_dev (assigned_dev_id);
+
+
+
+INSERT INTO organizations (name, owner_id)
+VALUES ('Default Org', 1);
+
+SET @default_org := LAST_INSERT_ID();
+
+UPDATE issues
+SET org_id = @default_org
+WHERE org_id NOT IN (SELECT id FROM organizations);
+
+ALTER TABLE issues
+  ADD CONSTRAINT fk_issues_org
+  FOREIGN KEY (org_id) REFERENCES organizations(id)
+  ON DELETE CASCADE;
+
+ALTER TABLE users ADD COLUMN last_active_org_id INT NULL;
+
+ALTER TABLE issues
+  ADD COLUMN assigned_junior_id INT NULL,
+  ADD COLUMN junior_assigned_at DATETIME NULL;
+
+
+
+UPDATE issues
+SET assign_status='unassigned'
+WHERE assign_status IS NULL OR assign_status='' OR assign_status='pending';
+
+ALTER TABLE issues
+  ADD COLUMN assigned_qa_id INT NULL AFTER assigned_junior_id,
+  ADD COLUMN qa_assigned_at DATETIME NULL AFTER junior_assigned_at,
+  ADD COLUMN junior_done_at DATETIME NULL AFTER qa_assigned_at;
+
+CREATE INDEX idx_issues_assigned_qa_id ON issues (assigned_qa_id);
+CREATE INDEX idx_issues_assign_status ON issues (assign_status);
+
+ALTER TABLE issues
+  ADD COLUMN assigned_senior_qa_id INT NULL AFTER assigned_qa_id,
+  ADD COLUMN senior_qa_assigned_at DATETIME NULL AFTER qa_assigned_at;
+
+ALTER TABLE issues
+  ADD COLUMN assigned_qa_lead_id INT NULL AFTER assigned_senior_qa_id,
+  ADD COLUMN qa_lead_assigned_at DATETIME NULL AFTER senior_qa_assigned_at;
+
+ALTER TABLE issues
+  ADD COLUMN pm_id INT NULL;
+
+CREATE TABLE issue_attachments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  issue_id INT NOT NULL,
+  file_path VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size INT NOT NULL,
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX (issue_id),
+  CONSTRAINT fk_issue_attachments_issue
+    FOREIGN KEY (issue_id) REFERENCES issues(id)
+    ON DELETE CASCADE
+);

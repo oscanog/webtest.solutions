@@ -1,0 +1,765 @@
+:root {
+  --bg: #f6f8fa;
+  --panel: #24292f;
+  --text: #24292f;
+  --muted: #57606a;
+  --accent: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+/* ================= Sidebar ================= */
+
+.sidebar {
+  background: var(--panel);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.nav a {
+  text-decoration: none;
+  color: #c9d1d9;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  display: block;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.nav a:hover,
+.nav a.active {
+  background: #2d333b;
+  color: white;
+}
+
+/* ================= Main ================= */
+
+.main {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar h1 {
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.topbar span {
+  color: var(--muted);
+}
+
+/* ================= Issues ================= */
+
+.issue-container {
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+.issue-tabs {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid #d0d7de;
+  gap: 20px;
+}
+
+.issue-tabs a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.issue-tabs a.active {
+  color: var(--text);
+  border-bottom: 2px solid #fd8c73;
+  padding-bottom: 6px;
+}
+
+.issue {
+  padding: 16px;
+  border-bottom: 1px solid #d0d7de;
+}
+
+.issue:hover {
+  background: #f6f8fa;
+}
+
+.issue-title {
+  font-weight: 700;
+  color: #0969da;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.issue-meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Header row layout */
+.issue-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.issue-action {
+  margin-left: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* Keep select + button in one line */
+.assign-form {
+  width: 100%;
+}
+
+.assign-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Select */
+.assign-select {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #d0d7de;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #24292f;
+  outline: none;
+}
+
+.assign-select:focus {
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
+/* Base button style (so approve/reject match other buttons) */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.10);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: .3px;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+  line-height: 1;
+}
+
+.btn:active{
+  transform: translateY(1px);
+}
+
+/* Buttons */
+.btn-assign {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #2da44e;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(45, 164, 78, 0.25);
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.btn-assign:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 10px 22px rgba(45, 164, 78, 0.28);
+}
+
+.btn-assign:active {
+  transform: translateY(1px);
+}
+
+.btn-assign-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.95;
+}
+
+.btn-done {
+  background: #2da44e;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-done:hover {
+  filter: brightness(0.95);
+}
+
+/* Disabled visual buttons you use (No Senior Dev / No Junior Dev) */
+.btn-disabled {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f6f8fa;
+  color: #57606a;
+  border: 1px solid #d0d7de;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+/* Pending button */
+.btn-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #2d333b;
+  color: #c9d1d9;
+  border: 1px solid #444c56;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: not-allowed;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  opacity: 1;
+}
+
+.pending-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #58a6ff;
+  position: relative;
+}
+
+.pending-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #58a6ff;
+  opacity: 0.6;
+  animation: pendingPulse 1.6s infinite;
+}
+
+@keyframes pendingPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Badges (fix: visible border on white) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.badge-unassigned {
+  background: #2d333b;
+  color: #c9d1d9;
+  border-color: #444c56;
+}
+.badge-senior {
+  background: rgba(56, 139, 253, 0.15);
+  color: #0969da;
+  border-color: rgba(56, 139, 253, 0.35);
+}
+.badge-junior {
+  background: rgba(46, 160, 67, 0.15);
+  color: #1a7f37;
+  border-color: rgba(46, 160, 67, 0.35);
+}
+.badge-done {
+  background: #8250df;
+  color: #fff;
+}
+.badge-qa {
+  background: #0969da;
+  color: #fff;
+}
+
+/* ---- Badge colors (Approved / Rejected) ---- */
+.badge-approved{
+  background:#1f6f3d;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.badge-rejected{
+  background:#b42318;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+/* Optional: Closed (if you want a consistent red tone) */
+.badge-closed{
+  background:#8a1f17;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+/* ---- Buttons (Approved / Rejected) ---- */
+.btn-approve{
+  background:#238636;
+  color:#fff;
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 6px 16px rgba(35, 134, 54, .22);
+}
+
+.btn-approve:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 10px 22px rgba(35, 134, 54, .26);
+}
+
+.btn-reject{
+  background:#cf222e;
+  color:#fff;
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 6px 16px rgba(207, 34, 46, .22);
+}
+
+.btn-reject:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 10px 22px rgba(207, 34, 46, .26);
+}
+
+/* Make the two buttons look neat side-by-side */
+.assign-form.inline-actions{
+  width: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Labels */
+.label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2em;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 5px;
+  color: #fff;
+}
+
+/* Label pills (GitHub-style) */
+.label-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #d0d7de;
+  background: #fff;
+  color: #24292f;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    transform 80ms ease;
+}
+
+.pill:hover {
+  background: #f6f8fa;
+}
+
+.pill:active {
+  transform: scale(0.98);
+}
+
+/* Hide the actual checkbox, keep it accessible */
+.pill input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Selected state */
+.pill.selected {
+  border-color: #0969da;
+  background: #ddf4ff;
+  color: #0969da;
+}
+
+/* Small color dot like GitHub label dot */
+.pill .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #bbb;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+/* Close (X) button */
+.pill-close {
+  display: none;
+  font-size: 14px;
+  font-weight: bold;
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.pill-close:hover {
+  opacity: 1;
+}
+
+/* Show X only when selected */
+.pill.selected .pill-close {
+  display: inline;
+}
+
+#clearLabelsBtn {
+  background: red;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+#clearLabelsBtn:hover {
+  cursor: pointer;
+}
+
+/* New Issue button */
+.btn-green {
+  background: #2da44e;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.btn-green:hover {
+  cursor: pointer;
+}
+
+/* Don’t override special disabled buttons like PENDING / No Senior Dev */
+button:disabled:not(.btn-pending):not(.btn-disabled) {
+  background: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7;
+}
+
+.btn-delete {
+  background: #cf222e;
+  border: 1px solid #a40e26;
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-delete:hover {
+  filter: brightness(0.95);
+}
+
+/* Toolbar dropdown filters */
+.gh-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid #d0d7de;
+  background: #fff;
+}
+
+.gh-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gh-dd {
+  position: relative;
+}
+
+.gh-dd-btn {
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #24292f;
+}
+
+.gh-dd-btn:hover {
+  background: #eef1f4;
+}
+
+.caret {
+  margin-left: 6px;
+  color: #57606a;
+}
+
+.gh-dd-menu {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  width: 320px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+  display: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.gh-dd.open .gh-dd-menu {
+  display: block;
+}
+
+.gh-dd-header {
+  padding: 10px 12px;
+  font-weight: 800;
+  border-bottom: 1px solid #d0d7de;
+  color: #24292f;
+  background: #fff;
+}
+
+.gh-dd-search {
+  padding: 10px 12px;
+  border-bottom: 1px solid #d0d7de;
+  background: #fff;
+}
+
+.gh-dd-search input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  outline: none;
+}
+
+.gh-dd-list {
+  max-height: 280px;
+  overflow: auto;
+  background: #fff;
+}
+
+.gh-dd-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: #24292f;
+  border-bottom: 1px solid #f0f2f4;
+}
+
+.gh-dd-item:hover {
+  background: #f6f8fa;
+}
+
+.chk {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  margin-top: 2px;
+  background: #fff;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.chk.on {
+  background: #0969da;
+  border-color: #0969da;
+}
+
+.chk.on::after {
+  content: "✓";
+  position: absolute;
+  left: 3px;
+  top: -1px;
+  font-size: 12px;
+  color: #fff;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eaeef2;
+  color: #57606a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.gh-dd-item .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  flex: 0 0 auto;
+}
+
+.txt {
+  font-weight: 700;
+  line-height: 1.2;
+}
+.sub {
+  display: block;
+  font-weight: 400;
+  color: #57606a;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.gh-clear-btn {
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #24292f;
+}
+
+.gh-clear-btn:hover {
+  background: #eef1f4;
+}
+
+.issue-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issue-desc {
+  margin-top: 6px;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 920px;
+}
+
+/* Use class-based attachments instead of inline styles */
+.issue-attachments {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.issue-attachments a {
+  display: inline-block;
+}
+
+.issue-attachments img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+/* ================= Responsive ================= */
+
+@media (max-width: 900px) {
+  body {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .nav {
+    display: flex;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .assign-bar {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .assign-select {
+    flex: 1 1 180px;
+  }
+}
