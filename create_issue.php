@@ -178,7 +178,9 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
             <?php if ($current_role == 'admin'): ?>
                 <a href="#">Manage Users</a>
             <?php endif; ?>
-            <a href="organization.php" class="active">Organization</a>
+            <a href="organization.php">Organization</a>
+            <a href="project-passed-by-melvin/project_list.php">Projects</a>
+            <a href="checklist-passed-by-melvin/checklist_list.php">Checklist</a>
             <a href="register-passed-by-maglaque/logout.php" style="color:#ff7b72;">Logout</a>
         </nav>
         <div style="margin-top:auto; color:#8b949e; font-size:12px;">

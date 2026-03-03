@@ -581,6 +581,8 @@ if ($activeOrg) {
         <nav class="nav">
             <a href="dashboard.php?page=dashboard">Dashboard</a>
             <a href="organization.php" class="active">Organization</a>
+            <a href="project-passed-by-melvin/project_list.php">Projects</a>
+            <a href="checklist-passed-by-melvin/checklist_list.php">Checklist</a>
             <?php if ($current_role == 'admin'): ?>
                 <a href="#">Manage Users</a>
                 <a href="#">All Reports</a>

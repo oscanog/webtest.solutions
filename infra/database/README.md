@@ -15,6 +15,19 @@ Optional demo data:
 
 Legacy SQL artifacts that are not part of the production bootstrap live under `infra/database/legacy/`.
 
+New checklist/project foundations are included in `schema.sql`:
+
+- `projects`
+- `checklist_batches`
+- `checklist_items`
+- `checklist_attachments`
+
+New related runtime config keys:
+
+- `CHECKLIST_UPLOADS_DIR`
+- `CHECKLIST_UPLOADS_URL`
+- `CHECKLIST_BOT_SHARED_SECRET`
+
 Generate a bcrypt hash with:
 
 ```bash

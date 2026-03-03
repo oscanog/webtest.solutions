@@ -14,6 +14,9 @@ function bugcatcher_default_config(): array
         'DB_PASS' => '',
         'UPLOADS_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'issues',
         'UPLOADS_URL' => 'uploads/issues',
+        'CHECKLIST_UPLOADS_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'checklists',
+        'CHECKLIST_UPLOADS_URL' => 'uploads/checklists',
+        'CHECKLIST_BOT_SHARED_SECRET' => 'replace-me',
     ];
 }
 
@@ -58,6 +61,9 @@ function bugcatcher_load_config(): array
     $config['DB_PORT'] = (int) ($config['DB_PORT'] ?? 3306);
     $config['UPLOADS_URL'] = trim(str_replace('\\', '/', (string) ($config['UPLOADS_URL'] ?? 'uploads/issues')), '/');
     $config['UPLOADS_DIR'] = rtrim((string) ($config['UPLOADS_DIR'] ?? ''), "\\/");
+    $config['CHECKLIST_UPLOADS_URL'] = trim(str_replace('\\', '/', (string) ($config['CHECKLIST_UPLOADS_URL'] ?? 'uploads/checklists')), '/');
+    $config['CHECKLIST_UPLOADS_DIR'] = rtrim((string) ($config['CHECKLIST_UPLOADS_DIR'] ?? ''), "\\/");
+    $config['CHECKLIST_BOT_SHARED_SECRET'] = (string) ($config['CHECKLIST_BOT_SHARED_SECRET'] ?? '');
 
     return $config;
 }
@@ -155,6 +161,51 @@ function bugcatcher_upload_absolute_path(string $storedPath): ?string
 
     $normalized = str_replace('\\', '/', $storedPath);
     $prefix = bugcatcher_upload_path_prefix();
+    if (strpos($normalized, $prefix) === 0) {
+        $normalized = substr($normalized, strlen($prefix));
+    }
+
+    $candidate = realpath($baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalized));
+    if ($candidate === false) {
+        return null;
+    }
+
+    if (strpos($candidate, $baseDir) !== 0 || !is_file($candidate)) {
+        return null;
+    }
+
+    return $candidate;
+}
+
+function bugcatcher_checklist_uploads_dir(): string
+{
+    return (string) bugcatcher_config('CHECKLIST_UPLOADS_DIR');
+}
+
+function bugcatcher_checklist_uploads_url(): string
+{
+    return (string) bugcatcher_config('CHECKLIST_UPLOADS_URL', 'uploads/checklists');
+}
+
+function bugcatcher_checklist_upload_path_prefix(): string
+{
+    return bugcatcher_checklist_uploads_url() . '/';
+}
+
+function bugcatcher_checklist_upload_relative_path(string $fileName): string
+{
+    return bugcatcher_checklist_upload_path_prefix() . ltrim(str_replace('\\', '/', $fileName), '/');
+}
+
+function bugcatcher_checklist_upload_absolute_path(string $storedPath): ?string
+{
+    $baseDir = realpath(bugcatcher_checklist_uploads_dir());
+    if ($baseDir === false) {
+        return null;
+    }
+
+    $normalized = str_replace('\\', '/', $storedPath);
+    $prefix = bugcatcher_checklist_upload_path_prefix();
     if (strpos($normalized, $prefix) === 0) {
         $normalized = substr($normalized, strlen($prefix));
     }

@@ -10,4 +10,7 @@ return [
     'DB_PASS' => 'replace-with-a-strong-random-password',
     'UPLOADS_DIR' => '/var/www/bugcatcher/shared/uploads/issues',
     'UPLOADS_URL' => 'uploads/issues',
+    'CHECKLIST_UPLOADS_DIR' => '/var/www/bugcatcher/shared/uploads/checklists',
+    'CHECKLIST_UPLOADS_URL' => 'uploads/checklists',
+    'CHECKLIST_BOT_SHARED_SECRET' => 'replace-with-a-long-random-secret',
 ];

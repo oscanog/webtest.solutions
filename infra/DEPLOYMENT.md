@@ -6,6 +6,7 @@ This repo is prepared for release-based deployment on a Debian Google Compute En
 
 - Put your production config at `/var/www/bugcatcher/shared/config.php`
 - Keep uploads in `/var/www/bugcatcher/shared/uploads/issues`
+- Keep checklist uploads in `/var/www/bugcatcher/shared/uploads/checklists`
 - Import the database in this order:
   1. `infra/database/schema.sql`
   2. `infra/database/seed_reference_data.sql`
@@ -21,6 +22,7 @@ This repo is prepared for release-based deployment on a Debian Google Compute En
    - create user `bugcatcher_app`
    - grant privileges on that database only
 5. Copy `infra/config/shared-config.example.php` to `/var/www/bugcatcher/shared/config.php` and replace placeholders
+   - set `CHECKLIST_BOT_SHARED_SECRET` before exposing the bot ingest endpoint
 6. Import the SQL files listed above
 7. Enable the nginx site and test configuration
 8. Run `sudo bash infra/deploy/deploy_release.sh <git-tag-or-commit>`

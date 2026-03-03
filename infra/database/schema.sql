@@ -96,6 +96,155 @@ CREATE TABLE IF NOT EXISTS issues (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS projects (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  org_id INT(11) NOT NULL,
+  name VARCHAR(160) NOT NULL,
+  code VARCHAR(80) DEFAULT NULL,
+  description TEXT DEFAULT NULL,
+  status ENUM('active', 'archived') NOT NULL DEFAULT 'active',
+  created_by INT(11) NOT NULL,
+  updated_by INT(11) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_projects_org_name (org_id, name),
+  UNIQUE KEY uniq_projects_org_code (org_id, code),
+  KEY idx_projects_org_status (org_id, status),
+  KEY idx_projects_created_by (created_by),
+  KEY idx_projects_updated_by (updated_by),
+  CONSTRAINT fk_projects_org
+    FOREIGN KEY (org_id) REFERENCES organizations(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_projects_created_by
+    FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT fk_projects_updated_by
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS checklist_batches (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  org_id INT(11) NOT NULL,
+  project_id INT(11) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  module_name VARCHAR(160) NOT NULL,
+  submodule_name VARCHAR(160) DEFAULT NULL,
+  source_type ENUM('manual', 'bot') NOT NULL DEFAULT 'manual',
+  source_channel ENUM('web', 'telegram', 'discord', 'api') NOT NULL DEFAULT 'web',
+  source_reference VARCHAR(255) DEFAULT NULL,
+  status ENUM('draft', 'open', 'completed', 'archived') NOT NULL DEFAULT 'open',
+  created_by INT(11) NOT NULL,
+  updated_by INT(11) DEFAULT NULL,
+  assigned_qa_lead_id INT(11) DEFAULT NULL,
+  notes TEXT DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_checklist_batches_project_status (project_id, status),
+  KEY idx_checklist_batches_org_module (org_id, module_name),
+  KEY idx_checklist_batches_source (source_type, source_channel),
+  KEY idx_checklist_batches_created_by (created_by),
+  KEY idx_checklist_batches_updated_by (updated_by),
+  KEY idx_checklist_batches_qa_lead (assigned_qa_lead_id),
+  CONSTRAINT fk_checklist_batches_org
+    FOREIGN KEY (org_id) REFERENCES organizations(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_batches_project
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_batches_created_by
+    FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT fk_checklist_batches_updated_by
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_checklist_batches_qa_lead
+    FOREIGN KEY (assigned_qa_lead_id) REFERENCES users(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS checklist_items (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  batch_id INT(11) NOT NULL,
+  org_id INT(11) NOT NULL,
+  project_id INT(11) NOT NULL,
+  sequence_no INT(11) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  module_name VARCHAR(160) NOT NULL,
+  submodule_name VARCHAR(160) DEFAULT NULL,
+  full_title VARCHAR(255) NOT NULL,
+  description LONGTEXT DEFAULT NULL,
+  status ENUM('open', 'in_progress', 'passed', 'failed', 'blocked') NOT NULL DEFAULT 'open',
+  priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
+  required_role ENUM(
+    'QA Lead',
+    'Senior QA',
+    'QA Tester',
+    'Project Manager',
+    'Senior Developer',
+    'Junior Developer',
+    'member',
+    'owner'
+  ) NOT NULL DEFAULT 'QA Tester',
+  assigned_to_user_id INT(11) DEFAULT NULL,
+  created_by INT(11) NOT NULL,
+  updated_by INT(11) DEFAULT NULL,
+  issue_id INT(11) DEFAULT NULL,
+  started_at DATETIME DEFAULT NULL,
+  completed_at DATETIME DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_checklist_items_batch_sequence (batch_id, sequence_no),
+  KEY idx_checklist_items_project_status (project_id, status),
+  KEY idx_checklist_items_org_assignee_status (org_id, assigned_to_user_id, status),
+  KEY idx_checklist_items_required_role_status (required_role, status),
+  KEY idx_checklist_items_issue (issue_id),
+  KEY idx_checklist_items_created_by (created_by),
+  KEY idx_checklist_items_updated_by (updated_by),
+  CONSTRAINT fk_checklist_items_batch
+    FOREIGN KEY (batch_id) REFERENCES checklist_batches(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_items_org
+    FOREIGN KEY (org_id) REFERENCES organizations(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_items_project
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_items_assigned_to
+    FOREIGN KEY (assigned_to_user_id) REFERENCES users(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_checklist_items_created_by
+    FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT fk_checklist_items_updated_by
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_checklist_items_issue
+    FOREIGN KEY (issue_id) REFERENCES issues(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS checklist_attachments (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  checklist_item_id INT(11) NOT NULL,
+  file_path VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  file_size INT(11) NOT NULL,
+  uploaded_by INT(11) DEFAULT NULL,
+  source_type ENUM('manual', 'bot') NOT NULL DEFAULT 'manual',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_checklist_attachments_item (checklist_item_id),
+  KEY idx_checklist_attachments_uploaded_by (uploaded_by),
+  CONSTRAINT fk_checklist_attachments_item
+    FOREIGN KEY (checklist_item_id) REFERENCES checklist_items(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_checklist_attachments_uploaded_by
+    FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS issue_labels (
   issue_id INT(11) NOT NULL,
   label_id INT(11) NOT NULL,
