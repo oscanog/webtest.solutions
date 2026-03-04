@@ -34,6 +34,8 @@ Behavior:
 - the password is reset
 - the role is forced to `super_admin`
 - if no matching user exists, a new `super_admin` row is created
+- the script then verifies the stored password hash
+- the script then performs a live login check against the production login route
 
 ## Expected output
 
@@ -45,6 +47,8 @@ id=13
 username=your-admin
 email=you@example.com
 role=super_admin
+Password hash verification: OK
+Web login verification: OK (redirected to ../dashboard.php)
 ```
 
 or:
@@ -55,6 +59,8 @@ id=1
 username=admin
 email=admin@bugcatcher.local
 role=super_admin
+Password hash verification: OK
+Web login verification: OK (redirected to ../dashboard.php)
 ```
 
 ## Login route
@@ -98,3 +104,12 @@ git config --global --add safe.directory /var/www/bugcatcher
 ### Existing password unknown
 
 You do not need the old password. Running the script with the same email or username resets it.
+
+### Script says verification failed
+
+The script now stops if either of these checks fails:
+
+- the stored password hash does not match the password you entered
+- the live login request does not redirect to `../dashboard.php`
+
+If that happens, keep the script output. It includes a response preview from the login page to help diagnose the failure.

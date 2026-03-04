@@ -3,6 +3,7 @@ set -euo pipefail
 
 BUGCATCHER_ROOT="${BUGCATCHER_ROOT:-/var/www/bugcatcher}"
 CONFIG_PATH="${BUGCATCHER_CONFIG_PATH:-$BUGCATCHER_ROOT/config/local.php}"
+LOGIN_PATH="${LOGIN_PATH:-/register-passed-by-maglaque/login.php}"
 
 if [[ ! -f "$CONFIG_PATH" ]]; then
     echo "Config file not found: $CONFIG_PATH" >&2
@@ -145,5 +146,89 @@ echo "username={$username}\n";
 echo "email={$email}\n";
 echo "role=super_admin\n";
 PHP
+
+echo
+echo "Verifying stored password hash..."
+env \
+    CONFIG_PATH="$CONFIG_PATH" \
+    SUPER_ADMIN_EMAIL="$EMAIL" \
+    SUPER_ADMIN_PASSWORD="$PASSWORD" \
+    php <<'PHP'
+<?php
+$configPath = getenv('CONFIG_PATH') ?: '';
+$email = trim((string) getenv('SUPER_ADMIN_EMAIL'));
+$password = (string) getenv('SUPER_ADMIN_PASSWORD');
+$config = require $configPath;
+
+$conn = new mysqli(
+    (string) ($config['DB_HOST'] ?? '127.0.0.1'),
+    (string) ($config['DB_USER'] ?? 'root'),
+    (string) ($config['DB_PASS'] ?? ''),
+    (string) ($config['DB_NAME'] ?? 'bug_catcher'),
+    (int) ($config['DB_PORT'] ?? 3306)
+);
+
+if ($conn->connect_error) {
+    fwrite(STDERR, "Database connection failed during verification: {$conn->connect_error}\n");
+    exit(1);
+}
+
+$conn->set_charset('utf8mb4');
+$stmt = $conn->prepare("SELECT password FROM users WHERE email = ? LIMIT 1");
+$stmt->bind_param('s', $email);
+$stmt->execute();
+$row = $stmt->get_result()->fetch_assoc() ?: null;
+$stmt->close();
+
+if (!$row) {
+    fwrite(STDERR, "Verification failed: user row not found.\n");
+    exit(1);
+}
+
+if (!password_verify($password, (string) $row['password'])) {
+    fwrite(STDERR, "Verification failed: stored password hash does not match the entered password.\n");
+    exit(1);
+}
+
+echo "Password hash verification: OK\n";
+PHP
+
+APP_BASE_URL="$(php -r '$cfg = require "'"$CONFIG_PATH"'"; echo $cfg["APP_BASE_URL"] ?? "";')"
+if [[ -z "$APP_BASE_URL" ]]; then
+    echo "Skipping web login verification because APP_BASE_URL is not configured."
+    unset PASSWORD
+    exit 0
+fi
+
+LOGIN_URL="${APP_BASE_URL%/}${LOGIN_PATH}"
+COOKIE_JAR="$(mktemp)"
+HEADERS_FILE="$(mktemp)"
+BODY_FILE="$(mktemp)"
+cleanup_files() {
+    rm -f "$COOKIE_JAR" "$HEADERS_FILE" "$BODY_FILE"
+}
+trap cleanup_files EXIT
+
+echo "Running live login verification against $LOGIN_URL ..."
+curl -ksS \
+    -c "$COOKIE_JAR" \
+    -b "$COOKIE_JAR" \
+    -D "$HEADERS_FILE" \
+    -o "$BODY_FILE" \
+    --data-urlencode "email=$EMAIL" \
+    --data-urlencode "password=$PASSWORD" \
+    --data-urlencode "login=Login" \
+    "$LOGIN_URL" >/dev/null
+
+if grep -qi '^Location: ../dashboard.php' "$HEADERS_FILE"; then
+    echo "Web login verification: OK (redirected to ../dashboard.php)"
+else
+    echo "Web login verification failed." >&2
+    echo "Response headers:" >&2
+    sed -n '1,20p' "$HEADERS_FILE" >&2
+    echo "Response body preview:" >&2
+    sed -n '1,40p' "$BODY_FILE" >&2
+    exit 1
+fi
 
 unset PASSWORD
