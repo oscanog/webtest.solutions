@@ -128,6 +128,189 @@ function bugcatcher_openclaw_mask_secret(?string $value): string
     return substr($value, 0, 3) . str_repeat('*', max(4, strlen($value) - 6)) . substr($value, -3);
 }
 
+function bugcatcher_openclaw_mask_plain_secret(?string $value): string
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return 'Not set';
+    }
+    if (strlen($value) <= 6) {
+        return str_repeat('*', strlen($value));
+    }
+
+    return substr($value, 0, 3) . str_repeat('*', max(4, strlen($value) - 6)) . substr($value, -3);
+}
+
+function bugcatcher_openclaw_config_version_now(): string
+{
+    return gmdate('Y-m-d\TH:i:s\Z');
+}
+
+function bugcatcher_openclaw_optional_datetime(?string $value): ?string
+{
+    if (!is_string($value) || trim($value) === '') {
+        return null;
+    }
+
+    return date('Y-m-d H:i:s', strtotime($value));
+}
+
+function bugcatcher_openclaw_control_plane_ensure(mysqli $conn): void
+{
+    $version = bugcatcher_openclaw_config_version_now();
+    $stmt = $conn->prepare("
+        INSERT INTO openclaw_control_plane_state
+            (id, config_version, updated_at)
+        VALUES (1, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+            config_version = COALESCE(NULLIF(config_version, ''), VALUES(config_version))
+    ");
+    $stmt->bind_param('s', $version);
+    $stmt->execute();
+    $stmt->close();
+}
+
+function bugcatcher_openclaw_runtime_status_ensure(mysqli $conn): void
+{
+    $stmt = $conn->prepare("
+        INSERT INTO openclaw_runtime_status
+            (id, gateway_state, discord_state, updated_at)
+        VALUES (1, 'unknown', 'unknown', NOW())
+        ON DUPLICATE KEY UPDATE
+            id = id
+    ");
+    $stmt->execute();
+    $stmt->close();
+}
+
+function bugcatcher_openclaw_fetch_control_plane_state(mysqli $conn): array
+{
+    bugcatcher_openclaw_control_plane_ensure($conn);
+    $result = $conn->query("
+        SELECT cps.*,
+               u.username AS last_runtime_reload_requested_by_name
+        FROM openclaw_control_plane_state cps
+        LEFT JOIN users u ON u.id = cps.last_runtime_reload_requested_by
+        WHERE cps.id = 1
+        LIMIT 1
+    ");
+    $row = $result ? $result->fetch_assoc() : null;
+
+    return $row ?: [
+        'id' => 1,
+        'config_version' => bugcatcher_openclaw_config_version_now(),
+    ];
+}
+
+function bugcatcher_openclaw_fetch_runtime_status(mysqli $conn): array
+{
+    bugcatcher_openclaw_runtime_status_ensure($conn);
+    $result = $conn->query("
+        SELECT *
+        FROM openclaw_runtime_status
+        WHERE id = 1
+        LIMIT 1
+    ");
+    $row = $result ? $result->fetch_assoc() : null;
+
+    return $row ?: ['id' => 1];
+}
+
+function bugcatcher_openclaw_fetch_pending_reload_request(mysqli $conn): ?array
+{
+    $result = $conn->query("
+        SELECT orr.*,
+               u.username AS requested_by_username
+        FROM openclaw_reload_requests orr
+        LEFT JOIN users u ON u.id = orr.requested_by_user_id
+        WHERE orr.status IN ('pending', 'processing')
+        ORDER BY orr.id ASC
+        LIMIT 1
+    ");
+    $row = $result ? $result->fetch_assoc() : null;
+
+    return $row ?: null;
+}
+
+function bugcatcher_openclaw_queue_reload_request(mysqli $conn, ?int $actorUserId, string $reason): int
+{
+    bugcatcher_openclaw_control_plane_ensure($conn);
+    $reason = substr(trim($reason), 0, 120);
+    $requestedAt = date('Y-m-d H:i:s');
+    $requestedBy = max(0, (int) ($actorUserId ?? 0));
+
+    $stmt = $conn->prepare("
+        INSERT INTO openclaw_reload_requests
+            (requested_by_user_id, reason, status, requested_at)
+        VALUES (NULLIF(?, 0), NULLIF(?, ''), 'pending', ?)
+    ");
+    $stmt->bind_param('iss', $requestedBy, $reason, $requestedAt);
+    $stmt->execute();
+    $reloadRequestId = (int) $stmt->insert_id;
+    $stmt->close();
+
+    $stmt = $conn->prepare("
+        UPDATE openclaw_control_plane_state
+        SET last_runtime_reload_requested_at = ?,
+            last_runtime_reload_requested_by = NULLIF(?, 0),
+            last_runtime_reload_reason = NULLIF(?, ''),
+            updated_at = NOW()
+        WHERE id = 1
+    ");
+    $stmt->bind_param('sis', $requestedAt, $requestedBy, $reason);
+    $stmt->execute();
+    $stmt->close();
+
+    return $reloadRequestId;
+}
+
+function bugcatcher_openclaw_mark_config_changed(mysqli $conn, ?int $actorUserId, string $reason): int
+{
+    bugcatcher_openclaw_control_plane_ensure($conn);
+    $version = bugcatcher_openclaw_config_version_now();
+    $requestedAt = date('Y-m-d H:i:s');
+    $requestedBy = max(0, (int) ($actorUserId ?? 0));
+    $reason = substr(trim($reason), 0, 120);
+
+    $stmt = $conn->prepare("
+        UPDATE openclaw_control_plane_state
+        SET config_version = ?,
+            last_runtime_reload_requested_at = ?,
+            last_runtime_reload_requested_by = NULLIF(?, 0),
+            last_runtime_reload_reason = NULLIF(?, ''),
+            updated_at = NOW()
+        WHERE id = 1
+    ");
+    $stmt->bind_param('ssis', $version, $requestedAt, $requestedBy, $reason);
+    $stmt->execute();
+    $stmt->close();
+
+    return bugcatcher_openclaw_queue_reload_request($conn, $actorUserId, $reason);
+}
+
+function bugcatcher_openclaw_update_reload_request_status(
+    mysqli $conn,
+    int $reloadRequestId,
+    string $status,
+    ?string $errorMessage = null
+): void {
+    if ($reloadRequestId <= 0 || !in_array($status, ['pending', 'processing', 'completed', 'failed'], true)) {
+        return;
+    }
+
+    $processedAt = in_array($status, ['completed', 'failed'], true) ? date('Y-m-d H:i:s') : null;
+    $stmt = $conn->prepare("
+        UPDATE openclaw_reload_requests
+        SET status = ?,
+            processed_at = NULLIF(?, ''),
+            error_message = NULLIF(?, '')
+        WHERE id = ?
+    ");
+    $stmt->bind_param('sssi', $status, $processedAt, $errorMessage, $reloadRequestId);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function bugcatcher_openclaw_temp_dir_ensure(): string
 {
     $dir = bugcatcher_openclaw_temp_dir();
@@ -354,6 +537,48 @@ function bugcatcher_openclaw_fetch_runtime_config(mysqli $conn): ?array
     return $row ?: null;
 }
 
+function bugcatcher_openclaw_validate_provider_input(
+    mysqli $conn,
+    int $providerId,
+    string $providerKey,
+    string $displayName,
+    string $providerType,
+    string $baseUrl
+): void {
+    $providerKey = trim($providerKey);
+    $displayName = trim($displayName);
+    $providerType = trim($providerType);
+    $baseUrl = trim($baseUrl);
+
+    if ($providerKey === '' || !preg_match('/^[a-z0-9][a-z0-9._-]*$/i', $providerKey)) {
+        throw new RuntimeException('Provider key must use letters, numbers, dots, underscores, or dashes.');
+    }
+    if ($displayName === '') {
+        throw new RuntimeException('Display name is required.');
+    }
+    if ($providerType === '') {
+        throw new RuntimeException('Provider type is required.');
+    }
+    if ($baseUrl !== '' && filter_var($baseUrl, FILTER_VALIDATE_URL) === false) {
+        throw new RuntimeException('Base URL must be a valid URL.');
+    }
+
+    $stmt = $conn->prepare("
+        SELECT id
+        FROM ai_provider_configs
+        WHERE provider_key = ?
+          AND id <> ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('si', $providerKey, $providerId);
+    $stmt->execute();
+    $duplicate = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($duplicate) {
+        throw new RuntimeException('Provider key must be unique.');
+    }
+}
+
 function bugcatcher_openclaw_save_runtime_config(
     mysqli $conn,
     int $actorUserId,
@@ -386,6 +611,7 @@ function bugcatcher_openclaw_save_runtime_config(
         $stmt->bind_param('isiisii', $enabled, $encryptedToken, $defaultProviderId, $defaultModelId, $notes, $actorUserId, $runtimeId);
         $stmt->execute();
         $stmt->close();
+        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_saved');
         return;
     }
 
@@ -398,6 +624,7 @@ function bugcatcher_openclaw_save_runtime_config(
     $stmt->bind_param('isiisii', $enabled, $encryptedToken, $defaultProviderId, $defaultModelId, $notes, $actorUserId, $actorUserId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_created');
 }
 
 function bugcatcher_openclaw_fetch_providers(mysqli $conn): array
@@ -426,6 +653,8 @@ function bugcatcher_openclaw_save_provider(
     bool $isEnabled,
     bool $supportsModelSync
 ): void {
+    bugcatcher_openclaw_validate_provider_input($conn, $providerId, $providerKey, $displayName, $providerType, $baseUrl);
+
     $existing = null;
     if ($providerId > 0) {
         $stmt = $conn->prepare("SELECT * FROM ai_provider_configs WHERE id = ? LIMIT 1");
@@ -459,6 +688,7 @@ function bugcatcher_openclaw_save_provider(
         $stmt->bind_param('sssssiiii', $providerKey, $displayName, $providerType, $baseUrl, $encryptedKey, $enabled, $sync, $actorUserId, $providerId);
         $stmt->execute();
         $stmt->close();
+        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_saved');
         return;
     }
 
@@ -472,14 +702,16 @@ function bugcatcher_openclaw_save_provider(
     $stmt->bind_param('sssssiiii', $providerKey, $displayName, $providerType, $baseUrl, $encryptedKey, $enabled, $sync, $actorUserId, $actorUserId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_created');
 }
 
-function bugcatcher_openclaw_delete_provider(mysqli $conn, int $providerId): void
+function bugcatcher_openclaw_delete_provider(mysqli $conn, int $providerId, ?int $actorUserId = null): void
 {
     $stmt = $conn->prepare("DELETE FROM ai_provider_configs WHERE id = ?");
     $stmt->bind_param('i', $providerId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_deleted');
 }
 
 function bugcatcher_openclaw_fetch_models(mysqli $conn): array
@@ -502,10 +734,14 @@ function bugcatcher_openclaw_save_model(
     bool $supportsVision,
     bool $supportsJsonOutput,
     bool $isEnabled,
-    bool $isDefault
+    bool $isDefault,
+    ?int $actorUserId = null
 ): void {
     if ($providerConfigId <= 0) {
         throw new RuntimeException('A provider is required for the model.');
+    }
+    if (trim($remoteModelId) === '' || trim($displayName) === '') {
+        throw new RuntimeException('Model id and display name are required.');
     }
 
     if ($isDefault) {
@@ -534,6 +770,7 @@ function bugcatcher_openclaw_save_model(
         $stmt->bind_param('ssiiiii', $remoteModelId, $displayName, $vision, $json, $enabled, $default, $modelId);
         $stmt->execute();
         $stmt->close();
+        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_saved');
         return;
     }
 
@@ -549,14 +786,16 @@ function bugcatcher_openclaw_save_model(
     $stmt->bind_param('issiiii', $providerConfigId, $remoteModelId, $displayName, $vision, $json, $enabled, $default);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_created');
 }
 
-function bugcatcher_openclaw_delete_model(mysqli $conn, int $modelId): void
+function bugcatcher_openclaw_delete_model(mysqli $conn, int $modelId, ?int $actorUserId = null): void
 {
     $stmt = $conn->prepare("DELETE FROM ai_models WHERE id = ?");
     $stmt->bind_param('i', $modelId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_deleted');
 }
 
 function bugcatcher_openclaw_fetch_channel_bindings(mysqli $conn): array
@@ -584,6 +823,10 @@ function bugcatcher_openclaw_save_channel_binding(
     bool $isEnabled,
     bool $allowDmFollowup
 ): void {
+    if (trim($guildId) === '' || trim($channelId) === '') {
+        throw new RuntimeException('Guild ID and channel ID are required.');
+    }
+
     if ($bindingId > 0) {
         $stmt = $conn->prepare("
             UPDATE discord_channel_bindings
@@ -602,6 +845,7 @@ function bugcatcher_openclaw_save_channel_binding(
         $stmt->bind_param('ssssiiii', $guildId, $guildName, $channelId, $channelName, $enabled, $allowDm, $actorUserId, $bindingId);
         $stmt->execute();
         $stmt->close();
+        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'channel_binding_saved');
         return;
     }
 
@@ -615,14 +859,177 @@ function bugcatcher_openclaw_save_channel_binding(
     $stmt->bind_param('ssssiiii', $guildId, $guildName, $channelId, $channelName, $enabled, $allowDm, $actorUserId, $actorUserId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'channel_binding_created');
 }
 
-function bugcatcher_openclaw_delete_channel_binding(mysqli $conn, int $bindingId): void
+function bugcatcher_openclaw_delete_channel_binding(mysqli $conn, int $bindingId, ?int $actorUserId = null): void
 {
     $stmt = $conn->prepare("DELETE FROM discord_channel_bindings WHERE id = ?");
     $stmt->bind_param('i', $bindingId);
     $stmt->execute();
     $stmt->close();
+    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'channel_binding_deleted');
+}
+
+function bugcatcher_openclaw_effective_runtime_config(mysqli $conn): array
+{
+    $runtime = bugcatcher_openclaw_fetch_runtime_config($conn) ?: [];
+    $providers = array_values(array_filter(
+        bugcatcher_openclaw_fetch_providers($conn),
+        static function (array $provider): bool {
+            return (int) ($provider['is_enabled'] ?? 0) === 1;
+        }
+    ));
+    $models = array_values(array_filter(
+        bugcatcher_openclaw_fetch_models($conn),
+        static function (array $model): bool {
+            return (int) ($model['is_enabled'] ?? 0) === 1;
+        }
+    ));
+    $channels = array_values(array_filter(
+        bugcatcher_openclaw_fetch_channel_bindings($conn),
+        static function (array $channel): bool {
+            return (int) ($channel['is_enabled'] ?? 0) === 1;
+        }
+    ));
+    $control = bugcatcher_openclaw_fetch_control_plane_state($conn);
+    $pendingReload = bugcatcher_openclaw_fetch_pending_reload_request($conn);
+    $runtimeStatus = bugcatcher_openclaw_fetch_runtime_status($conn);
+
+    $serializedProviders = array_map(static function (array $provider): array {
+        return [
+            'id' => (int) $provider['id'],
+            'provider_key' => (string) $provider['provider_key'],
+            'display_name' => (string) $provider['display_name'],
+            'provider_type' => (string) $provider['provider_type'],
+            'base_url' => (string) ($provider['base_url'] ?? ''),
+            'api_key' => bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? ''),
+            'is_enabled' => true,
+            'supports_model_sync' => (bool) ($provider['supports_model_sync'] ?? false),
+        ];
+    }, $providers);
+
+    $serializedModels = array_map(static function (array $model): array {
+        return [
+            'id' => (int) $model['id'],
+            'provider_config_id' => (int) $model['provider_config_id'],
+            'model_id' => (string) $model['model_id'],
+            'display_name' => (string) $model['display_name'],
+            'supports_vision' => (bool) ($model['supports_vision'] ?? false),
+            'supports_json_output' => (bool) ($model['supports_json_output'] ?? false),
+            'is_enabled' => true,
+            'is_default' => (bool) ($model['is_default'] ?? false),
+        ];
+    }, $models);
+
+    $serializedChannels = array_map(static function (array $channel): array {
+        return [
+            'id' => (int) $channel['id'],
+            'guild_id' => (string) $channel['guild_id'],
+            'guild_name' => (string) ($channel['guild_name'] ?? ''),
+            'channel_id' => (string) $channel['channel_id'],
+            'channel_name' => (string) ($channel['channel_name'] ?? ''),
+            'is_enabled' => true,
+            'allow_dm_followup' => (bool) ($channel['allow_dm_followup'] ?? false),
+        ];
+    }, $channels);
+
+    return [
+        'config_version' => (string) ($control['config_version'] ?? bugcatcher_openclaw_config_version_now()),
+        'runtime' => [
+            'is_enabled' => (bool) ($runtime['is_enabled'] ?? false),
+            'default_provider_config_id' => isset($runtime['default_provider_config_id']) ? (int) $runtime['default_provider_config_id'] : null,
+            'default_model_id' => isset($runtime['default_model_id']) ? (int) $runtime['default_model_id'] : null,
+            'notes' => (string) ($runtime['notes'] ?? ''),
+            'discord_bot_token' => bugcatcher_openclaw_decrypt_secret($runtime['encrypted_discord_bot_token'] ?? ''),
+        ],
+        'providers' => $serializedProviders,
+        'models' => $serializedModels,
+        'channels' => $serializedChannels,
+        'pending_reload_request' => $pendingReload ? [
+            'id' => (int) $pendingReload['id'],
+            'reason' => (string) ($pendingReload['reason'] ?? ''),
+            'status' => (string) ($pendingReload['status'] ?? 'pending'),
+            'requested_at' => $pendingReload['requested_at'],
+            'requested_by_user_id' => isset($pendingReload['requested_by_user_id']) ? (int) $pendingReload['requested_by_user_id'] : null,
+            'requested_by_username' => (string) ($pendingReload['requested_by_username'] ?? ''),
+        ] : null,
+        'runtime_status' => [
+            'config_version_applied' => $runtimeStatus['config_version_applied'] ?? null,
+            'gateway_state' => $runtimeStatus['gateway_state'] ?? null,
+            'discord_state' => $runtimeStatus['discord_state'] ?? null,
+            'discord_application_id' => $runtimeStatus['discord_application_id'] ?? null,
+            'last_heartbeat_at' => $runtimeStatus['last_heartbeat_at'] ?? null,
+            'last_reload_at' => $runtimeStatus['last_reload_at'] ?? null,
+        ],
+    ];
+}
+
+function bugcatcher_openclaw_runtime_config_for_display(mysqli $conn): array
+{
+    $snapshot = bugcatcher_openclaw_effective_runtime_config($conn);
+    $snapshot['runtime']['discord_bot_token'] = bugcatcher_openclaw_mask_plain_secret($snapshot['runtime']['discord_bot_token'] ?? '');
+
+    foreach ($snapshot['providers'] as &$provider) {
+        $provider['api_key'] = bugcatcher_openclaw_mask_plain_secret($provider['api_key'] ?? '');
+    }
+    unset($provider);
+
+    return $snapshot;
+}
+
+function bugcatcher_openclaw_record_runtime_status(mysqli $conn, array $payload): array
+{
+    bugcatcher_openclaw_runtime_status_ensure($conn);
+
+    $heartbeatAt = bugcatcher_openclaw_optional_datetime($payload['heartbeat_at'] ?? null) ?? date('Y-m-d H:i:s');
+    $lastReloadAt = bugcatcher_openclaw_optional_datetime($payload['last_reload_at'] ?? null);
+    $configVersionApplied = trim((string) ($payload['config_version_applied'] ?? ''));
+    $gatewayState = substr(trim((string) ($payload['gateway_state'] ?? 'unknown')), 0, 30);
+    $discordState = substr(trim((string) ($payload['discord_state'] ?? 'unknown')), 0, 30);
+    $discordApplicationId = substr(trim((string) ($payload['discord_application_id'] ?? '')), 0, 64);
+    $lastProviderError = trim((string) ($payload['last_provider_error'] ?? ''));
+    $lastDiscordError = trim((string) ($payload['last_discord_error'] ?? ''));
+
+    $stmt = $conn->prepare("
+        UPDATE openclaw_runtime_status
+        SET config_version_applied = NULLIF(?, ''),
+            gateway_state = NULLIF(?, ''),
+            discord_state = NULLIF(?, ''),
+            discord_application_id = NULLIF(?, ''),
+            last_heartbeat_at = ?,
+            last_reload_at = NULLIF(?, ''),
+            last_provider_error = NULLIF(?, ''),
+            last_discord_error = NULLIF(?, ''),
+            updated_at = NOW()
+        WHERE id = 1
+    ");
+    $stmt->bind_param(
+        'ssssssss',
+        $configVersionApplied,
+        $gatewayState,
+        $discordState,
+        $discordApplicationId,
+        $heartbeatAt,
+        $lastReloadAt,
+        $lastProviderError,
+        $lastDiscordError
+    );
+    $stmt->execute();
+    $stmt->close();
+
+    $reloadRequestId = isset($payload['reload_request_id']) ? (int) $payload['reload_request_id'] : 0;
+    $reloadRequestStatus = trim((string) ($payload['reload_request_status'] ?? ''));
+    if ($reloadRequestId > 0 && $reloadRequestStatus !== '') {
+        bugcatcher_openclaw_update_reload_request_status(
+            $conn,
+            $reloadRequestId,
+            $reloadRequestStatus,
+            trim((string) ($payload['reload_request_error'] ?? '')) ?: null
+        );
+    }
+
+    return bugcatcher_openclaw_fetch_runtime_status($conn);
 }
 
 function bugcatcher_openclaw_fetch_recent_requests(mysqli $conn, int $limit = 25): array
@@ -1012,6 +1419,9 @@ function bugcatcher_openclaw_health_snapshot(mysqli $conn): array
     $providers = bugcatcher_openclaw_fetch_providers($conn);
     $channels = bugcatcher_openclaw_fetch_channel_bindings($conn);
     $requests = bugcatcher_openclaw_fetch_recent_requests($conn, 1);
+    $control = bugcatcher_openclaw_fetch_control_plane_state($conn);
+    $status = bugcatcher_openclaw_fetch_runtime_status($conn);
+    $pendingReload = bugcatcher_openclaw_fetch_pending_reload_request($conn);
 
     return [
         'runtime_configured' => $runtime !== null,
@@ -1026,6 +1436,16 @@ function bugcatcher_openclaw_health_snapshot(mysqli $conn): array
         })),
         'last_successful_request_at' => $requests ? ($requests[0]['updated_at'] ?: $requests[0]['created_at']) : null,
         'last_request_status' => $requests[0]['status'] ?? null,
+        'config_version' => $control['config_version'] ?? null,
+        'config_version_applied' => $status['config_version_applied'] ?? null,
+        'gateway_state' => $status['gateway_state'] ?? null,
+        'discord_state' => $status['discord_state'] ?? null,
+        'discord_application_id' => $status['discord_application_id'] ?? null,
+        'last_heartbeat_at' => $status['last_heartbeat_at'] ?? null,
+        'last_reload_at' => $status['last_reload_at'] ?? null,
+        'last_provider_error' => $status['last_provider_error'] ?? null,
+        'last_discord_error' => $status['last_discord_error'] ?? null,
+        'pending_reload_request_id' => $pendingReload['id'] ?? null,
     ];
 }
 

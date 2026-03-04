@@ -1,0 +1,46 @@
+{
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "mode": "token",
+      "token": "replace-with-a-long-random-gateway-token"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/opt/openclaw/workspace"
+    }
+  },
+  "tools": {
+    "allow": ["bugcatcher_create_bulk_checklist"]
+  },
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "DISCORD_BOT_TOKEN_IN_ENV_OR_CONFIG",
+      "dmPolicy": "pairing",
+      "allowBots": false
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "allow": ["bugcatcher-openclaw"],
+    "entries": {
+      "bugcatcher-openclaw": {
+        "enabled": true,
+        "config": {
+          "bugcatcherBaseUrl": "https://bugcatcher.online",
+          "bugcatcherSharedSecret": "replace-me",
+          "tempUploadDir": "/var/www/bugcatcher/uploads/openclaw-tmp",
+          "requestTimeoutMs": 30000,
+          "runtimeConfigPollMs": 60000,
+          "reloadPollMs": 10000,
+          "statusPollMs": 60000,
+          "maxAttachments": 10,
+          "maxAttachmentBytes": 20971520,
+          "cleanupMaxAgeMinutes": 240
+        }
+      }
+    }
+  }
+}

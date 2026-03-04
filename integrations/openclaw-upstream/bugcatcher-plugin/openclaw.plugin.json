@@ -1,0 +1,79 @@
+{
+  "id": "bugcatcher-openclaw",
+  "name": "BugCatcher OpenClaw",
+  "description": "BugCatcher checklist workflow tools for upstream OpenClaw.",
+  "version": "0.1.0",
+  "skills": [
+    "skills"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "bugcatcherBaseUrl",
+      "bugcatcherSharedSecret",
+      "tempUploadDir"
+    ],
+    "properties": {
+      "bugcatcherBaseUrl": {
+        "type": "string",
+        "minLength": 1
+      },
+      "bugcatcherSharedSecret": {
+        "type": "string",
+        "minLength": 1
+      },
+      "tempUploadDir": {
+        "type": "string",
+        "minLength": 1
+      },
+      "requestTimeoutMs": {
+        "type": "integer",
+        "minimum": 1000,
+        "default": 30000
+      },
+      "maxAttachments": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20,
+        "default": 10
+      },
+      "maxAttachmentBytes": {
+        "type": "integer",
+        "minimum": 1048576,
+        "default": 20971520
+      },
+      "cleanupMaxAgeMinutes": {
+        "type": "integer",
+        "minimum": 5,
+        "default": 240
+      }
+    }
+  },
+  "uiHints": {
+    "bugcatcherBaseUrl": {
+      "label": "BugCatcher Base URL",
+      "placeholder": "https://bugcatcher.online"
+    },
+    "bugcatcherSharedSecret": {
+      "label": "BugCatcher Shared Secret",
+      "sensitive": true
+    },
+    "tempUploadDir": {
+      "label": "Temp Upload Directory",
+      "placeholder": "/var/www/bugcatcher/uploads/openclaw-tmp"
+    },
+    "requestTimeoutMs": {
+      "label": "Request Timeout (ms)"
+    },
+    "maxAttachments": {
+      "label": "Max Attachments"
+    },
+    "maxAttachmentBytes": {
+      "label": "Max Attachment Bytes"
+    },
+    "cleanupMaxAgeMinutes": {
+      "label": "Cleanup Max Age (minutes)"
+    }
+  }
+}

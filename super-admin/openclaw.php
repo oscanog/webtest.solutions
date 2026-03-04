@@ -12,6 +12,12 @@ function openclaw_post_int(string $key): int
     return ctype_digit((string) $value) ? (int) $value : 0;
 }
 
+function openclaw_status_value(?string $value, string $fallback = 'unknown'): string
+{
+    $value = trim((string) $value);
+    return $value !== '' ? $value : $fallback;
+}
+
 $tab = $_GET['tab'] ?? 'overview';
 $allowedTabs = ['overview', 'discord', 'providers', 'models', 'channels', 'users', 'requests', 'documents'];
 if (!in_array($tab, $allowedTabs, true)) {
@@ -20,6 +26,7 @@ if (!in_array($tab, $allowedTabs, true)) {
 
 $flash = '';
 $error = '';
+$runtimeSnapshotPreview = null;
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -52,7 +59,7 @@ try {
             );
             $flash = 'Provider saved.';
         } elseif ($action === 'delete_provider') {
-            bugcatcher_openclaw_delete_provider($conn, openclaw_post_int('provider_id'));
+            bugcatcher_openclaw_delete_provider($conn, openclaw_post_int('provider_id'), $current_user_id);
             $flash = 'Provider deleted.';
         } elseif ($action === 'save_model') {
             bugcatcher_openclaw_save_model(
@@ -64,11 +71,12 @@ try {
                 isset($_POST['supports_vision']),
                 isset($_POST['supports_json_output']),
                 isset($_POST['is_enabled']),
-                isset($_POST['is_default'])
+                isset($_POST['is_default']),
+                $current_user_id
             );
             $flash = 'Model saved.';
         } elseif ($action === 'delete_model') {
-            bugcatcher_openclaw_delete_model($conn, openclaw_post_int('model_id'));
+            bugcatcher_openclaw_delete_model($conn, openclaw_post_int('model_id'), $current_user_id);
             $flash = 'Model deleted.';
         } elseif ($action === 'save_channel') {
             bugcatcher_openclaw_save_channel_binding(
@@ -84,8 +92,14 @@ try {
             );
             $flash = 'Channel binding saved.';
         } elseif ($action === 'delete_channel') {
-            bugcatcher_openclaw_delete_channel_binding($conn, openclaw_post_int('binding_id'));
+            bugcatcher_openclaw_delete_channel_binding($conn, openclaw_post_int('binding_id'), $current_user_id);
             $flash = 'Channel binding deleted.';
+        } elseif ($action === 'reload_runtime') {
+            $reloadRequestId = bugcatcher_openclaw_queue_reload_request($conn, $current_user_id, 'super_admin_manual_reload');
+            $flash = 'Runtime reload requested. Queue item #' . $reloadRequestId . ' is pending.';
+        } elseif ($action === 'test_snapshot') {
+            $runtimeSnapshotPreview = bugcatcher_openclaw_runtime_config_for_display($conn);
+            $flash = 'Runtime snapshot loaded from the control plane.';
         } else {
             $error = 'Unknown action.';
         }
@@ -103,6 +117,9 @@ $channels = bugcatcher_openclaw_fetch_channel_bindings($conn);
 $linkedUsers = bugcatcher_openclaw_fetch_linked_users($conn, 50);
 $requests = bugcatcher_openclaw_fetch_recent_requests($conn, 50);
 $health = bugcatcher_openclaw_health_snapshot($conn);
+$controlPlane = bugcatcher_openclaw_fetch_control_plane_state($conn);
+$runtimeStatus = bugcatcher_openclaw_fetch_runtime_status($conn);
+$pendingReload = bugcatcher_openclaw_fetch_pending_reload_request($conn);
 $docs = bugcatcher_openclaw_docs_files();
 $docFile = $_GET['doc'] ?? 'README.md';
 if (!isset($docs[$docFile])) {
@@ -147,36 +164,61 @@ bugcatcher_shell_start('OpenClaw Setup', 'super_admin', $context);
 </div>
 
 <?php if ($tab === 'overview'): ?>
+    <?php $configMismatch = ($controlPlane['config_version'] ?? '') !== ($runtimeStatus['config_version_applied'] ?? ''); ?>
     <div class="bc-grid cols-3">
         <div class="bc-stat"><span>Runtime enabled</span><strong><?= $health['runtime_enabled'] ? 'Yes' : 'No' ?></strong></div>
         <div class="bc-stat"><span>Providers</span><strong><?= (int) $health['enabled_provider_count'] ?>/<?= (int) $health['provider_count'] ?></strong></div>
         <div class="bc-stat"><span>Channels</span><strong><?= (int) $health['enabled_channel_count'] ?>/<?= (int) $health['channel_count'] ?></strong></div>
     </div>
+    <?php if ($configMismatch): ?>
+        <div class="bc-alert error">Desired config version <?= bugcatcher_html($controlPlane['config_version'] ?? 'n/a') ?> has not been applied yet. Runtime is still on <?= bugcatcher_html($runtimeStatus['config_version_applied'] ?? 'n/a') ?>.</div>
+    <?php endif; ?>
     <div class="bc-grid cols-2">
         <div class="bc-panel">
-            <h2>Runtime</h2>
+            <h2>Desired Config</h2>
             <div class="bc-kv">
                 <div class="bc-kv-row"><strong>Discord token</strong><span><?= bugcatcher_html(bugcatcher_openclaw_mask_secret($runtime['encrypted_discord_bot_token'] ?? '')) ?></span></div>
                 <div class="bc-kv-row"><strong>Default provider</strong><span><?= bugcatcher_html($runtime['default_provider_name'] ?? 'Not set') ?></span></div>
                 <div class="bc-kv-row"><strong>Default model</strong><span><?= bugcatcher_html($runtime['default_model_name'] ?? 'Not set') ?></span></div>
+                <div class="bc-kv-row"><strong>Desired config version</strong><span><?= bugcatcher_html($controlPlane['config_version'] ?? 'Not set') ?></span></div>
+                <div class="bc-kv-row"><strong>Pending reload</strong><span><?= bugcatcher_html($pendingReload ? '#' . $pendingReload['id'] . ' ' . ($pendingReload['status'] ?? 'pending') : 'None') ?></span></div>
                 <div class="bc-kv-row"><strong>Last request</strong><span><?= bugcatcher_html($health['last_successful_request_at'] ?? 'Never') ?></span></div>
             </div>
+            <form method="post" class="bc-inline-actions">
+                <input type="hidden" name="action" value="reload_runtime">
+                <input type="hidden" name="tab" value="overview">
+                <button type="submit" class="bc-btn">Reload OpenClaw Config</button>
+            </form>
         </div>
         <div class="bc-panel">
-            <h2>What this page controls</h2>
-            <ul>
-                <li>Discord bot token, provider credentials, and enabled channels.</li>
-                <li>The model that OpenClaw uses for image-based checklist drafting.</li>
-                <li>The audit trail of linked users and OpenClaw request activity.</li>
-                <li>The full Documents tab sourced from <span class="bc-code">docs/openclaw</span>.</li>
-            </ul>
+            <h2>Runtime Status</h2>
+            <div class="bc-kv">
+                <div class="bc-kv-row"><strong>Applied config version</strong><span><?= bugcatcher_html($runtimeStatus['config_version_applied'] ?? 'Not reported') ?></span></div>
+                <div class="bc-kv-row"><strong>Gateway state</strong><span><?= bugcatcher_html(openclaw_status_value($runtimeStatus['gateway_state'] ?? null)) ?></span></div>
+                <div class="bc-kv-row"><strong>Discord state</strong><span><?= bugcatcher_html(openclaw_status_value($runtimeStatus['discord_state'] ?? null)) ?></span></div>
+                <div class="bc-kv-row"><strong>Discord app id</strong><span><?= bugcatcher_html($runtimeStatus['discord_application_id'] ?? 'Not reported') ?></span></div>
+                <div class="bc-kv-row"><strong>Last heartbeat</strong><span><?= bugcatcher_html(bugcatcher_checklist_format_datetime($runtimeStatus['last_heartbeat_at'] ?? null)) ?></span></div>
+                <div class="bc-kv-row"><strong>Last reload</strong><span><?= bugcatcher_html(bugcatcher_checklist_format_datetime($runtimeStatus['last_reload_at'] ?? null)) ?></span></div>
+                <div class="bc-kv-row"><strong>Provider error</strong><span><?= bugcatcher_html(($runtimeStatus['last_provider_error'] ?? '') ?: 'None') ?></span></div>
+                <div class="bc-kv-row"><strong>Discord error</strong><span><?= bugcatcher_html(($runtimeStatus['last_discord_error'] ?? '') ?: 'None') ?></span></div>
+            </div>
+            <form method="post" class="bc-inline-actions">
+                <input type="hidden" name="action" value="test_snapshot">
+                <input type="hidden" name="tab" value="overview">
+                <button type="submit" class="bc-btn secondary">Test Runtime Snapshot</button>
+            </form>
         </div>
     </div>
+    <?php if ($runtimeSnapshotPreview !== null): ?>
+        <div class="bc-panel">
+            <h2>Snapshot Preview</h2>
+            <pre class="bc-code-block"><?= bugcatcher_html(json_encode($runtimeSnapshotPreview, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) ?></pre>
+        </div>
+    <?php endif; ?>
 <?php elseif ($tab === 'discord'): ?>
     <div class="bc-panel">
         <h2>Discord Runtime</h2>
         <form method="post" class="bc-form-grid">
-            <input type="hidden" name="action" value="save_runtime">
             <input type="hidden" name="tab" value="discord">
             <div class="bc-field">
                 <label><input type="checkbox" name="is_enabled" <?= !empty($runtime['is_enabled']) ? 'checked' : '' ?>> Enable OpenClaw</label>
@@ -184,6 +226,14 @@ bugcatcher_shell_start('OpenClaw Setup', 'super_admin', $context);
             <div class="bc-field">
                 <label for="discord_bot_token">Discord bot token</label>
                 <input class="bc-input" id="discord_bot_token" name="discord_bot_token" placeholder="Leave blank to keep current token">
+            </div>
+            <div class="bc-field">
+                <label>Runtime Discord state</label>
+                <div class="bc-input" style="display:flex;align-items:center;"><?= bugcatcher_html(openclaw_status_value($runtimeStatus['discord_state'] ?? null)) ?></div>
+            </div>
+            <div class="bc-field">
+                <label>Discord application id</label>
+                <div class="bc-input" style="display:flex;align-items:center;"><?= bugcatcher_html($runtimeStatus['discord_application_id'] ?? 'Not reported') ?></div>
             </div>
             <div class="bc-field">
                 <label for="default_provider_config_id">Default provider</label>
@@ -212,7 +262,8 @@ bugcatcher_shell_start('OpenClaw Setup', 'super_admin', $context);
                 <textarea class="bc-textarea" id="notes" name="notes" placeholder="Operational notes, rollout notes, or restart reminders."><?= bugcatcher_html($runtime['notes'] ?? '') ?></textarea>
             </div>
             <div class="bc-field full">
-                <button type="submit" class="bc-btn">Save Runtime</button>
+                <button type="submit" name="action" value="save_runtime" class="bc-btn">Save Runtime</button>
+                <button type="submit" name="action" value="reload_runtime" class="bc-btn secondary">Reload OpenClaw Config</button>
             </div>
         </form>
     </div>
@@ -291,7 +342,7 @@ bugcatcher_shell_start('OpenClaw Setup', 'super_admin', $context);
                 <?php foreach ($models as $model): ?>
                     <tr>
                         <td><?= bugcatcher_html($model['provider_name']) ?></td>
-                        <td><?= bugcatcher_html($model['display_name']) ?><br><span class="bc-meta"><?= bugcatcher_html($model['model_id']) ?></span></td>
+                        <td><?= bugcatcher_html($model['display_name']) ?><?= (int) $model['is_default'] === 1 ? ' (default)' : '' ?><br><span class="bc-meta"><?= bugcatcher_html($model['model_id']) ?></span></td>
                         <td><?= $model['supports_vision'] ? 'Vision ' : '' ?><?= $model['supports_json_output'] ? 'JSON' : '' ?></td>
                         <td>
                             <form method="post">
@@ -330,8 +381,8 @@ bugcatcher_shell_start('OpenClaw Setup', 'super_admin', $context);
                 <tbody>
                 <?php foreach ($channels as $channel): ?>
                     <tr>
-                        <td><?= bugcatcher_html($channel['guild_name'] ?: $channel['guild_id']) ?></td>
-                        <td><?= bugcatcher_html($channel['channel_name'] ?: $channel['channel_id']) ?></td>
+                        <td><?= bugcatcher_html($channel['guild_name'] ?: $channel['guild_id']) ?><br><span class="bc-meta"><?= bugcatcher_html($channel['guild_id']) ?></span></td>
+                        <td><?= bugcatcher_html($channel['channel_name'] ?: $channel['channel_id']) ?><br><span class="bc-meta"><?= bugcatcher_html($channel['channel_id']) ?></span></td>
                         <td><?= (int) $channel['is_enabled'] === 1 ? 'Enabled' : 'Disabled' ?> / <?= (int) $channel['allow_dm_followup'] === 1 ? 'DM allowed' : 'Channel only' ?></td>
                         <td>
                             <form method="post">
