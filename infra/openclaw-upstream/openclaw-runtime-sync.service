@@ -1,0 +1,13 @@
+[Unit]
+Description=Sync OpenClaw runtime config from BugCatcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/openclaw/openclaw.env
+ExecStart=/usr/bin/python3 /opt/openclaw/bin/sync_openclaw_runtime.py --config /opt/openclaw/config/openclaw.json --restart-service openclaw-gateway.service
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/opt/openclaw

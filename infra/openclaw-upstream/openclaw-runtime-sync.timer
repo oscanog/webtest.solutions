@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic OpenClaw runtime sync from BugCatcher
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+Unit=openclaw-runtime-sync.service
+
+[Install]
+WantedBy=timers.target

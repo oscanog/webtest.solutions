@@ -12,6 +12,8 @@ BUGCATCHER_REPO_ROOT="${BUGCATCHER_REPO_ROOT:-/var/www/bugcatcher}"
 BUGCATCHER_TEMP_DIR="${BUGCATCHER_TEMP_DIR:-/var/www/bugcatcher/uploads/openclaw-tmp}"
 ENV_FILE="${ENV_FILE:-/etc/openclaw/openclaw.env}"
 SERVICE_FILE="${SERVICE_FILE:-/etc/systemd/system/openclaw-gateway.service}"
+SYNC_SERVICE_FILE="${SYNC_SERVICE_FILE:-/etc/systemd/system/openclaw-runtime-sync.service}"
+SYNC_TIMER_FILE="${SYNC_TIMER_FILE:-/etc/systemd/system/openclaw-runtime-sync.timer}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -66,6 +68,10 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 install -m 0644 "$BUGCATCHER_REPO_ROOT/infra/openclaw-upstream/openclaw-gateway.service" "$SERVICE_FILE"
+install -m 0644 "$BUGCATCHER_REPO_ROOT/infra/openclaw-upstream/openclaw-runtime-sync.service" "$SYNC_SERVICE_FILE"
+install -m 0644 "$BUGCATCHER_REPO_ROOT/infra/openclaw-upstream/openclaw-runtime-sync.timer" "$SYNC_TIMER_FILE"
+install -m 0755 "$BUGCATCHER_REPO_ROOT/infra/openclaw-upstream/sync_openclaw_runtime.py" "$OPENCLAW_HOME/bin/sync_openclaw_runtime.py"
+chown "$OPENCLAW_USER:$OPENCLAW_GROUP" "$OPENCLAW_HOME/bin/sync_openclaw_runtime.py"
 
 if [ ! -f "$OPENCLAW_CONFIG_DIR/openclaw.json" ]; then
     install -m 0640 "$BUGCATCHER_REPO_ROOT/integrations/openclaw-upstream/openclaw.json.example" "$OPENCLAW_CONFIG_DIR/openclaw.json"
@@ -85,6 +91,7 @@ runuser -u "$OPENCLAW_USER" -- env \
 
 systemctl daemon-reload
 systemctl enable openclaw-gateway.service
+systemctl enable openclaw-runtime-sync.timer
 
 cat <<EOF
 OpenClaw host install complete.

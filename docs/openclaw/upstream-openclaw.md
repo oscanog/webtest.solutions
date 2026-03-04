@@ -74,3 +74,17 @@ Upstream OpenClaw should keep only bootstrap config locally:
 - plugin load path
 
 The upstream plugin now polls `runtime_config.php`, consumes queued reload requests, and reports heartbeat/runtime state back through `runtime_status.php`.
+
+## Runtime token sync
+
+The upstream gateway still needs a VM-local bootstrap config file at `/opt/openclaw/config/openclaw.json`.
+
+To keep `super-admin/openclaw.php` as the source of truth without manually editing that file:
+
+- `sync_openclaw_runtime.py` fetches `runtime_config.php`
+- it copies the desired Discord token and enabled state into `openclaw.json`
+- `openclaw-runtime-sync.timer` runs that sync periodically
+- `openclaw-gateway.service` also runs the sync once in `ExecStartPre`
+- if the timer detects a Discord token or enabled-state change, it restarts `openclaw-gateway.service`
+
+This keeps the gateway bootstrap file in sync with the BugCatcher control plane while avoiding direct browser-to-VM file edits.
