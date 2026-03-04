@@ -18,7 +18,7 @@ prompt_nonempty() {
         value="${value#"${value%%[![:space:]]*}"}"
         value="${value%"${value##*[![:space:]]}"}"
         if [[ -z "$value" ]]; then
-            echo "Value is required."
+            echo "Value is required." >&2
         fi
     done
     printf '%s' "$value"
@@ -29,16 +29,16 @@ prompt_password() {
     local confirm=""
     while true; do
         read -r -s -p "Super admin password: " password
-        echo
+        printf '\n' >&2
         read -r -s -p "Confirm password: " confirm
-        echo
+        printf '\n' >&2
 
         if [[ -z "$password" ]]; then
-            echo "Password is required."
+            echo "Password is required." >&2
             continue
         fi
         if [[ "$password" != "$confirm" ]]; then
-            echo "Passwords do not match."
+            echo "Passwords do not match." >&2
             continue
         fi
         printf '%s' "$password"
