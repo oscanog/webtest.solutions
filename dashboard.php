@@ -1,6 +1,12 @@
 <?php
 include 'db.php';
 
+if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) {
+  $_SESSION['org_error'] = "You haven't joined an organization to access this, please do it first.";
+  header("Location: organization.php");
+  exit;
+}
+
 // ---- Params ----
 $page = 'dashboard';
 $status = $_GET['status'] ?? 'open';             // open | closed
@@ -178,16 +184,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 
   // Allow: system admin OR org owner
   $allowed = false;
+
   if ($isSystemAdmin) {
     $allowed = true;
   } else {
-    // Re-check owner from DB for safety
-    $stmt = $conn->prepare("SELECT id FROM issues WHERE id=? AND org_id=? LIMIT 1");
+    // Re-check organization owner from DB for safety
+    $stmt = $conn->prepare("SELECT owner_id FROM organizations WHERE id=? LIMIT 1");
     $stmt->bind_param("i", $orgIdPost);
     $stmt->execute();
-    $r = $stmt->get_result()->fetch_assoc();
+    $orgRow = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $allowed = ((int) ($r['owner_id'] ?? 0) === (int) $current_user_id);
+
+    $allowed = ((int) ($orgRow['owner_id'] ?? 0) === (int) $current_user_id);
   }
 
   if (!$allowed) {
@@ -1143,7 +1151,10 @@ function issues_url_clear($status)
 
       <div class="topbar" style="margin-top:8px;">
         <h1 style="font-size:1.25rem;">Issues</h1>
-        <a href="create_issue.php" class="btn-green">New Issue</a>
+
+        <?php if ($isProjectManager): ?>
+          <a href="create_issue.php" class="btn-green">New Issue</a>
+        <?php endif; ?>
       </div>
     <?php else: ?>
       <div class="topbar">

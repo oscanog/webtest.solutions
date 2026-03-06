@@ -141,7 +141,9 @@ while ($r = $res->fetch_assoc()) {
 }
 $stmt->close();
 
-$error = '';
+$error = $_SESSION['org_error'] ?? '';
+unset($_SESSION['org_error']);
+
 $success = '';
 
 /* ---------------- Handle Create Organization ---------------- */

@@ -28,28 +28,18 @@ if (!$mem) {
     die("You are not a member of the active organization.");
 }
 
-// Only admin and users can create issues (both can create)
-// No restriction needed, both roles can create issues
-
-// Pre-select current user as author
-$default_author_id = $current_user_id;
-
-if ($orgId <= 0) {
-    die("Missing organization. Open Create Issue from a selected organization.");
+if ($mem['role'] !== 'Project Manager') {
+    die("Only Project Managers can create issues.");
 }
 
-$myMembership = require_membership($conn, $orgId, $current_user_id);
-if (!$myMembership) {
-    die("You are not a member of this organization.");
-}
+// Always use the logged-in Project Manager as author
+$author_id = (int) $current_user_id;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $title = $_POST['title'] ?? '';
     $description = $_POST['description'] ?? '';
-    $author_id = bugcatcher_is_system_admin_role($current_role)
-        ? (int) ($_POST['author'] ?? 0)
-        : $current_user_id;
+    $author_id = (int) $current_user_id;
 
     // ✅ REQUIRE AT LEAST ONE LABEL
     if (empty($_POST['labels']) || !is_array($_POST['labels'])) {
@@ -151,11 +141,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// GET request: show form data
-$users = null;
-if (bugcatcher_is_system_admin_role($current_role)) {
-    $users = $conn->query("SELECT id, username FROM users ORDER BY username ASC");
-}
 $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 ?>
 
@@ -233,21 +218,9 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 
                     <br><br>
 
-                    <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
-                        <label style="display:block; font-weight:600; margin-bottom:6px;">Author</label>
-                        <select name="author" required style="padding:10px; border:1px solid #d0d7de; border-radius:6px;">
-                            <?php while ($u = $users->fetch_assoc()): ?>
-                                <option value="<?= (int) $u['id'] ?>" <?= ($u['id'] == $default_author_id) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($u['username']) ?>
-                                    <?= ($u['id'] == $default_author_id) ? '(You)' : '' ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
-                    <?php else: ?>
-                        <label style="display:block; font-weight:600; margin-bottom:6px;">Author</label>
-                        <input type="text" value="<?= htmlspecialchars($current_username) ?> (You)" disabled
-                            style="padding:10px; border:1px solid #d0d7de; border-radius:6px; background:#f6f8fa;">
-                    <?php endif; ?>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Author</label>
+                    <input type="text" value="<?= htmlspecialchars($current_username) ?> (Project Manager)" disabled
+                        style="padding:10px; border:1px solid #d0d7de; border-radius:6px; background:#f6f8fa;">
 
                     <br><br>
 
