@@ -3,7 +3,7 @@
 -- One-shot import for local development.
 --
 -- Usage:
---   mysql -u root -p < infra/database/local_dev_full.sql
+--   mysql -u root -p < local_dev_full.sql
 --
 -- Default login users (all share password): DevPass123!
 --   superadmin@local.dev (super_admin)
