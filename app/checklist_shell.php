@@ -52,6 +52,7 @@ function bugcatcher_shell_end(): void
     ?>
         </section>
     </main>
+    <script src="/app/mobile_nav.js?v=1"></script>
     </body>
     </html>
     <?php

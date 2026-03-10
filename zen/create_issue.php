@@ -149,6 +149,7 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>New Issue · BugCatcher</title>
     <link rel="stylesheet" href="/zen/dashboard.css?v=8">
@@ -156,7 +157,15 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 
 <body>
 
-    <aside class="sidebar">
+    <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar-create-issue"
+        aria-controls="zen-sidebar-create-issue" aria-expanded="false" aria-label="Open navigation menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
+
+    <aside class="sidebar" id="zen-sidebar-create-issue" data-drawer data-drawer-breakpoint="900">
         <div class="logo">BugCatcher</div>
         <nav class="nav">
             <a href="/zen/dashboard.php?page=dashboard">Dashboard</a>
@@ -170,12 +179,12 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
             <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
                 <a href="/super-admin/openclaw.php">Super Admin</a>
             <?php endif; ?>
-            <a href="/rainier/logout.php" style="color:#ff7b72;">Logout</a>
+            <a href="/rainier/logout.php" class="nav-logout">Logout</a>
         </nav>
-        <div style="margin-top:auto; color:#8b949e; font-size:12px;">
+        <div class="sidebar-userbox">
             Logged in as<br>
             <strong><?= htmlspecialchars($current_username) ?></strong><br>
-            <span style="text-transform:uppercase; font-size:10px;">(<?= htmlspecialchars($current_role) ?>)</span>
+            <span class="sidebar-role">(<?= htmlspecialchars($current_role) ?>)</span>
         </div>
     </aside>
 
@@ -183,49 +192,46 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 
         <div class="topbar">
             <h1>New Issue</h1>
-            <a href="/zen/dashboard.php?page=dashboard" class="btn-green" style="background:#57606a;">Back</a>
+            <a href="/zen/dashboard.php?page=dashboard" class="btn-green create-issue-back-link">Back</a>
         </div>
 
         <div class="issue-container">
             <div class="issue">
                 <?php if (!empty($error)): ?>
-                    <div style="background:#ffebe9; color:#cf222e; padding:10px; border-radius:6px; margin-bottom:15px;">
+                    <div class="issue-form-alert">
                         <?= $error ?>
                     </div>
                 <?php endif; ?>
                 <form method="POST" enctype="multipart/form-data">
 
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Title</label>
-                    <input type="text" name="title" required
-                        style="width:100%; padding:10px; border:1px solid #d0d7de; border-radius:6px;">
+                    <label class="issue-form-label">Title</label>
+                    <input type="text" name="title" required class="issue-input">
 
                     <br><br>
 
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Description</label>
-                    <textarea name="description"
-                        style="width:100%; height:140px; padding:10px; border:1px solid #d0d7de; border-radius:6px;"></textarea>
+                    <label class="issue-form-label">Description</label>
+                    <textarea name="description" class="issue-textarea"></textarea>
 
                     <br><br>
 
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Attach Images</label>
-                    <input type="file" id="imagesInput" name="images[]" accept="image/*" multiple
-                        style="padding:10px; border:1px solid #d0d7de; border-radius:6px; background:#fff; width:100%;">
-                    <small style="color:#57606a; display:block; margin-top:6px;">
+                    <label class="issue-form-label">Attach Images</label>
+                    <input type="file" id="imagesInput" name="images[]" accept="image/*" multiple class="issue-file-input">
+                    <small class="issue-help">
                         You can upload JPG/PNG/GIF/WebP. Max 10 MB each.
                     </small>
 
-                    <div id="imgPreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>
+                    <div id="imgPreview" class="issue-preview"></div>
 
                     <br><br>
 
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">Author</label>
+                    <label class="issue-form-label">Author</label>
                     <input type="text" value="<?= htmlspecialchars($current_username) ?> (Project Manager)" disabled
-                        style="padding:10px; border:1px solid #d0d7de; border-radius:6px; background:#f6f8fa;">
+                        class="issue-author-input">
 
                     <br><br>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <span style="font-weight:600;">Labels</span>
+                    <div class="issue-label-row">
+                        <span class="issue-form-label">Labels</span>
 
                         <button type="button" id="clearLabelsBtn">Clear Labels</button>
                     </div>
@@ -312,6 +318,7 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
         updateSubmitState();
     </script>
 
+    <script src="/app/mobile_nav.js?v=1"></script>
     <script>
         const imagesInput = document.getElementById("imagesInput");
         const imgPreview = document.getElementById("imgPreview");
@@ -333,12 +340,7 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
                 oldUrls.push(url);
 
                 const wrap = document.createElement("div");
-                wrap.style.width = "120px";
-                wrap.style.height = "120px";
-                wrap.style.border = "1px solid #d0d7de";
-                wrap.style.borderRadius = "8px";
-                wrap.style.overflow = "hidden";
-                wrap.style.background = "#fff";
+                wrap.className = "issue-preview-card";
 
                 const link = document.createElement("a");
                 link.href = url;
@@ -347,10 +349,6 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
                 const img = document.createElement("img");
                 img.src = url;
                 img.alt = file.name;
-                img.style.width = "100%";
-                img.style.height = "100%";
-                img.style.objectFit = "cover";
-                img.style.cursor = "pointer";
 
                 link.appendChild(img);
                 wrap.appendChild(link);

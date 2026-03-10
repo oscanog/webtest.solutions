@@ -1113,7 +1113,15 @@ function issues_url_clear($status)
 
 <body>
 
-  <aside class="sidebar">
+  <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar"
+    aria-controls="zen-sidebar" aria-expanded="false" aria-label="Open navigation menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
+
+  <aside class="sidebar" id="zen-sidebar" data-drawer data-drawer-breakpoint="900">
     <div class="logo">BugCatcher</div>
     <nav class="nav">
       <a href="/zen/dashboard.php?page=dashboard" class="<?= $page === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
@@ -1128,12 +1136,12 @@ function issues_url_clear($status)
       <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
         <a href="/super-admin/openclaw.php">Super Admin</a>
       <?php endif; ?>
-      <a href="/rainier/logout.php" style="color:#ff7b72;">Logout</a>
+      <a href="/rainier/logout.php" class="nav-logout">Logout</a>
     </nav>
-    <div style="margin-top:auto; color:#8b949e; font-size:12px;">
+    <div class="sidebar-userbox">
       Logged in as<br>
       <strong><?= htmlspecialchars($current_username) ?></strong><br>
-      <span style="text-transform:uppercase; font-size:10px;">(<?= htmlspecialchars($current_role) ?>)</span>
+      <span class="sidebar-role">(<?= htmlspecialchars($current_role) ?>)</span>
     </div>
   </aside>
 
@@ -1142,15 +1150,14 @@ function issues_url_clear($status)
     <?php if ($page === 'dashboard'): ?>
       <div class="topbar">
         <h1>Dashboard</h1>
-        <div>
+        <div class="topbar-right">
           <span>Welcome, <?= htmlspecialchars($current_username) ?> (<?= htmlspecialchars($current_role) ?>)</span>
-          <a href="/rainier/logout.php"
-            style="margin-left:15px; color:#cf222e; text-decoration:none; font-weight:600;">Logout</a>
+          <a href="/rainier/logout.php" class="topbar-logout">Logout</a>
         </div>
       </div>
 
-      <div class="topbar" style="margin-top:8px;">
-        <h1 style="font-size:1.25rem;">Issues</h1>
+      <div class="topbar topbar-secondary">
+        <h1 class="topbar-subtitle">Issues</h1>
 
         <?php if ($isProjectManager): ?>
           <a href="/zen/create_issue.php" class="btn-green">New Issue</a>
@@ -1659,6 +1666,7 @@ function issues_url_clear($status)
     </div>
   </main>
 
+  <script src="/app/mobile_nav.js?v=1"></script>
   <script>
     // Toggle dropdown open/close
     document.querySelectorAll(".gh-dd-btn").forEach(btn => {

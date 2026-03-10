@@ -28,6 +28,7 @@ function bugcatcher_render_sidebar(
     ?string $orgRole = null,
     ?string $orgName = null
 ): void {
+    $sidebarId = 'bc-sidebar';
     $nav = [
         'dashboard' => ['label' => 'Dashboard', 'href' => '/zen/dashboard.php?page=dashboard'],
         'organization' => ['label' => 'Organization', 'href' => '/zen/organization.php'],
@@ -39,7 +40,26 @@ function bugcatcher_render_sidebar(
         $nav['super_admin'] = ['label' => 'Super Admin', 'href' => '/super-admin/openclaw.php'];
     }
     ?>
-    <aside class="bc-sidebar">
+    <button
+        type="button"
+        class="bc-mobile-toggle"
+        data-drawer-toggle
+        data-drawer-target="<?= htmlspecialchars($sidebarId) ?>"
+        aria-controls="<?= htmlspecialchars($sidebarId) ?>"
+        aria-expanded="false"
+        aria-label="Open navigation menu"
+    >
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <div class="bc-mobile-backdrop" data-drawer-backdrop hidden></div>
+    <aside
+        class="bc-sidebar"
+        id="<?= htmlspecialchars($sidebarId) ?>"
+        data-drawer
+        data-drawer-breakpoint="960"
+    >
         <div class="bc-logo">BugCatcher</div>
         <nav class="bc-nav">
             <?php foreach ($nav as $key => $item): ?>
@@ -60,4 +80,3 @@ function bugcatcher_render_sidebar(
     </aside>
     <?php
 }
-

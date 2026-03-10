@@ -578,7 +578,15 @@ if ($activeOrg) {
 </head>
 
 <body>
-    <aside class="sidebar">
+    <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar-org"
+        aria-controls="zen-sidebar-org" aria-expanded="false" aria-label="Open navigation menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+    <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
+
+    <aside class="sidebar" id="zen-sidebar-org" data-drawer data-drawer-breakpoint="900">
         <div class="logo">BugCatcher</div>
         <nav class="nav">
             <a href="/zen/dashboard.php?page=dashboard">Dashboard</a>
@@ -784,6 +792,7 @@ if ($activeOrg) {
 
             <div class="card">
                 <h3 class="members-title">Members</h3>
+                <div class="org-members-table-wrap">
                 <table>
                     <thead>
                         <tr>
@@ -854,6 +863,7 @@ if ($activeOrg) {
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             </div>
 
         <?php endif; ?>
@@ -937,7 +947,7 @@ if ($activeOrg) {
             });
         })();
     </script>
+    <script src="/app/mobile_nav.js?v=1"></script>
 </body>
 
 </html>
-
