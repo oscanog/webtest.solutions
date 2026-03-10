@@ -342,6 +342,40 @@ async function cleanupTokens(cfg, tokens) {
   return removed;
 }
 
+function normalizeSubmitPayload(params) {
+  if (params?.payload && typeof params.payload === "object" && !Array.isArray(params.payload)) {
+    return params.payload;
+  }
+
+  const legacyFields = [
+    "org_id",
+    "project_id",
+    "requested_by_user_id",
+    "discord_user_id",
+    "batch",
+    "items",
+    "batch_attachments",
+    "openclaw_request_id",
+  ];
+  const hasLegacyShape = legacyFields.some((field) =>
+    Object.prototype.hasOwnProperty.call(params ?? {}, field),
+  );
+
+  if (!hasLegacyShape) {
+    throw new Error(
+      "payload is required for submit_batch. You can pass payload or the legacy top-level submit fields.",
+    );
+  }
+
+  const payload = {};
+  legacyFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(params, field) && params[field] !== undefined) {
+      payload[field] = params[field];
+    }
+  });
+  return payload;
+}
+
 function statusPayload(overrides = {}) {
   const payload = {
     heartbeat_at: nowIso(),
@@ -528,19 +562,19 @@ async function executeAction(api, params) {
         ),
       };
     case "submit_batch":
-      if (!params.payload || typeof params.payload !== "object" || Array.isArray(params.payload)) {
-        throw new Error("payload is required for submit_batch.");
+      {
+        const submitPayload = normalizeSubmitPayload(params);
+        return {
+          action,
+          submission: await bugcatcherFetch(
+            api,
+            cfg,
+            "POST",
+            "/api/openclaw/checklist_batches.php",
+            submitPayload,
+          ),
+        };
       }
-      return {
-        action,
-        submission: await bugcatcherFetch(
-          api,
-          cfg,
-          "POST",
-          "/api/openclaw/checklist_batches.php",
-          params.payload,
-        ),
-      };
     default:
       throw new Error(
         `Unsupported action: ${action}. Expected health, load_runtime_config, reload_runtime_config, report_runtime_status, confirm_link, load_context, stage_attachments, cleanup_attachments, check_duplicates, or submit_batch.`,
@@ -609,6 +643,22 @@ export default function register(api) {
         payload: {
           type: "object",
           additionalProperties: true,
+        },
+        org_id: { type: "integer", minimum: 1 },
+        project_id: { type: "integer", minimum: 1 },
+        requested_by_user_id: { type: "integer", minimum: 1 },
+        discord_user_id: { type: "string" },
+        openclaw_request_id: { type: "integer", minimum: 1 },
+        batch: {
+          type: "object",
+          additionalProperties: true,
+        },
+        batch_attachments: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: true,
+          },
         },
         status: {
           type: "object",

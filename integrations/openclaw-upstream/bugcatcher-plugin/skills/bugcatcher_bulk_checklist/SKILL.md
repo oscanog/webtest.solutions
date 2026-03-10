@@ -39,7 +39,27 @@ Keep item titles short and concrete. Put the detail in the description.
 
 ## Input normalization
 
-When you call `submit_batch`, build the payload BugCatcher expects:
+Preferred `submit_batch` call shape:
+
+```json
+{
+  "action": "submit_batch",
+  "payload": {
+    "org_id": 12,
+    "project_id": 9,
+    "requested_by_user_id": 22,
+    "discord_user_id": "1010931769794642073",
+    "batch": {
+      "title": "Checkout QA",
+      "module_name": "Checkout"
+    },
+    "items": [],
+    "batch_attachments": []
+  }
+}
+```
+
+Inside `payload`, BugCatcher expects:
 
 - `org_id`
 - `project_id`
@@ -59,6 +79,8 @@ When you call `submit_batch`, build the payload BugCatcher expects:
   }
 ]
 ```
+
+Legacy top-level submit fields are still accepted temporarily for compatibility, but use `payload` for all new calls.
 
 ## Rejections
 

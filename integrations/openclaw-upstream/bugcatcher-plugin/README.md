@@ -82,3 +82,30 @@ BugCatcher must also have:
   }
 ]
 ```
+
+Preferred submit call shape:
+
+```json
+{
+  "action": "submit_batch",
+  "payload": {
+    "org_id": 12,
+    "project_id": 9,
+    "requested_by_user_id": 22,
+    "discord_user_id": "1010931769794642073",
+    "batch": {
+      "title": "Checkout QA",
+      "module_name": "Checkout"
+    },
+    "items": [],
+    "batch_attachments": [
+      {
+        "temp_file_token": "random-token",
+        "original_name": "screenshot.png"
+      }
+    ]
+  }
+}
+```
+
+For compatibility, the tool also accepts the same submit fields at the top level (legacy mode), but `payload` should be used going forward.
