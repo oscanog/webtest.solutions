@@ -49,8 +49,8 @@ function bugcatcher_candidate_config_paths(): array
     }
 
     $paths[] = BUGCATCHER_SHARED_CONFIG_PATH;
-    $paths[] = BUGCATCHER_INFRA_LOCAL_CONFIG_PATH;
     $paths[] = BUGCATCHER_LEGACY_LOCAL_CONFIG_PATH;
+    $paths[] = BUGCATCHER_INFRA_LOCAL_CONFIG_PATH;
 
     return array_values(array_unique($paths));
 }
