@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $batchId = (int) $conn->insert_id;
                 $stmt->close();
-                header('Location: /melvin/checklist_batch.php?id=' . $batchId);
+                header('Location: ' . bugcatcher_path('melvin/checklist_batch.php?id=' . $batchId));
                 exit;
             }
             $batch = bugcatcher_checklist_fetch_batch($conn, $context['org_id'], $batchId);
@@ -321,7 +321,7 @@ bugcatcher_shell_start($batch ? 'Checklist Batch' : 'New Checklist Batch', 'chec
                     <tr>
                         <td><?= (int) $item['sequence_no'] ?></td>
                         <td>
-                            <a href="/melvin/checklist_item.php?id=<?= (int) $item['id'] ?>">
+                            <a href="<?= bugcatcher_html(bugcatcher_path('melvin/checklist_item.php?id=' . (int) $item['id'])) ?>">
                                 <?= bugcatcher_html($item['full_title']) ?>
                             </a>
                         </td>
@@ -334,7 +334,7 @@ bugcatcher_shell_start($batch ? 'Checklist Batch' : 'New Checklist Batch', 'chec
                         <td><?= bugcatcher_html($item['assigned_to_name'] ?: 'Unassigned') ?></td>
                         <td>
                             <?php if (!empty($item['issue_id'])): ?>
-                                <a href="/zen/dashboard.php?page=dashboard&status=open">#<?= (int) $item['issue_id'] ?></a>
+                                <a href="<?= bugcatcher_html(bugcatcher_path('zen/dashboard.php?page=dashboard&status=open')) ?>">#<?= (int) $item['issue_id'] ?></a>
                             <?php else: ?>
                                 <span class="bc-meta">None</span>
                             <?php endif; ?>
@@ -377,9 +377,9 @@ bugcatcher_shell_start($batch ? 'Checklist Batch' : 'New Checklist Batch', 'chec
                             <div class="bc-meta"><?= bugcatcher_html($attachment['mime_type']) ?></div>
                             <div class="bc-meta">Uploaded by <?= bugcatcher_html($attachment['uploaded_by_name'] ?: 'Bot/System') ?></div>
                             <?php if (strpos((string) $attachment['mime_type'], 'image/') === 0): ?>
-                                <img src="/<?= bugcatcher_html($attachment['file_path']) ?>" alt="<?= bugcatcher_html($attachment['original_name']) ?>">
+                                <img src="<?= bugcatcher_html(bugcatcher_path((string) $attachment['file_path'])) ?>" alt="<?= bugcatcher_html($attachment['original_name']) ?>">
                             <?php endif; ?>
-                            <a href="/<?= bugcatcher_html($attachment['file_path']) ?>" target="_blank" rel="noopener">Open attachment</a>
+                            <a href="<?= bugcatcher_html(bugcatcher_path((string) $attachment['file_path'])) ?>" target="_blank" rel="noopener">Open attachment</a>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -389,5 +389,4 @@ bugcatcher_shell_start($batch ? 'Checklist Batch' : 'New Checklist Batch', 'chec
 <?php endif; ?>
 
 <?php bugcatcher_shell_end(); ?>
-
 

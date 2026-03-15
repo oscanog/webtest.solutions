@@ -5,12 +5,18 @@ bugcatcher_start_session();
 include "connection.php";
 
 if (isset($_SESSION['id'])) {
-  header("Location: /zen/organization.php");
+  header("Location: " . bugcatcher_path('zen/organization.php'));
   exit();
 }
 
 $error = "";
-$info = (($_GET['reason'] ?? '') === 'expired') ? "Your session expired. Please sign in again." : "";
+$infoMessages = [];
+if (($_GET['reason'] ?? '') === 'expired') {
+  $infoMessages[] = "Your session expired. Please sign in again.";
+}
+if (($_GET['reset'] ?? '') === 'success') {
+  $infoMessages[] = "Your password has been reset. Please sign in with your new password.";
+}
 
 if (isset($_POST['login'])) {
   $email = trim($_POST['email'] ?? '');
@@ -73,7 +79,7 @@ if (isset($_POST['login'])) {
           }
         }
 
-        header("Location: /zen/organization.php");
+        header("Location: " . bugcatcher_path('zen/organization.php'));
         exit();
       }
     }
@@ -89,8 +95,8 @@ if (isset($_POST['login'])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="css/style1.css">
+  <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
+  <link rel="stylesheet" href="css/style1.css?v=3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 
@@ -101,11 +107,11 @@ if (isset($_POST['login'])) {
       <hr>
       <p class="auth-subtitle">Sign in to continue to BugCatcher</p>
 
-      <?php if ($info !== ""): ?>
-        <div class='message'>
-          <p><?= htmlspecialchars($info) ?></p>
+      <?php foreach ($infoMessages as $infoMessage): ?>
+        <div class='message info'>
+          <p><?= htmlspecialchars($infoMessage) ?></p>
         </div><br>
-      <?php endif; ?>
+      <?php endforeach; ?>
 
       <?php if ($error !== ""): ?>
         <div class='message'>
@@ -128,6 +134,10 @@ if (isset($_POST['login'])) {
         </div>
 
         <input type="submit" name="login" id="submit" value="Login" class="button login-submit">
+
+        <div class="forgot-password">
+          <a href="forgot_password.php">Forgot Password?</a>
+        </div>
 
         <div class="links">
           Don't have an account? <a href="signup.php">Signup Now</a>
@@ -153,4 +163,3 @@ if (isset($_POST['login'])) {
 </body>
 
 </html>
-

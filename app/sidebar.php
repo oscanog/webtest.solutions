@@ -6,18 +6,18 @@ function bugcatcher_sidebar_href(string $activePage): string
 {
     switch ($activePage) {
         case 'discord_link':
-            return '/discord-link.php';
+            return bugcatcher_path('discord-link.php');
         case 'super_admin':
-            return '/super-admin/openclaw.php';
+            return bugcatcher_path('super-admin/openclaw.php');
         case 'projects':
-            return '/melvin/project_list.php';
+            return bugcatcher_path('melvin/project_list.php');
         case 'checklist':
-            return '/melvin/checklist_list.php';
+            return bugcatcher_path('melvin/checklist_list.php');
         case 'organization':
-            return '/zen/organization.php';
+            return bugcatcher_path('zen/organization.php');
         case 'dashboard':
         default:
-            return '/zen/dashboard.php?page=dashboard';
+            return bugcatcher_path('zen/dashboard.php?page=dashboard');
     }
 }
 
@@ -30,14 +30,14 @@ function bugcatcher_render_sidebar(
 ): void {
     $sidebarId = 'bc-sidebar';
     $nav = [
-        'dashboard' => ['label' => 'Dashboard', 'href' => '/zen/dashboard.php?page=dashboard'],
-        'organization' => ['label' => 'Organization', 'href' => '/zen/organization.php'],
-        'projects' => ['label' => 'Projects', 'href' => '/melvin/project_list.php'],
-        'checklist' => ['label' => 'Checklist', 'href' => '/melvin/checklist_list.php'],
-        'discord_link' => ['label' => 'Discord Link', 'href' => '/discord-link.php'],
+        'dashboard' => ['label' => 'Dashboard', 'href' => bugcatcher_path('zen/dashboard.php?page=dashboard')],
+        'organization' => ['label' => 'Organization', 'href' => bugcatcher_path('zen/organization.php')],
+        'projects' => ['label' => 'Projects', 'href' => bugcatcher_path('melvin/project_list.php')],
+        'checklist' => ['label' => 'Checklist', 'href' => bugcatcher_path('melvin/checklist_list.php')],
+        'discord_link' => ['label' => 'Discord Link', 'href' => bugcatcher_path('discord-link.php')],
     ];
     if (bugcatcher_is_super_admin_role($currentRole)) {
-        $nav['super_admin'] = ['label' => 'Super Admin', 'href' => '/super-admin/openclaw.php'];
+        $nav['super_admin'] = ['label' => 'Super Admin', 'href' => bugcatcher_path('super-admin/openclaw.php')];
     }
     ?>
     <button
@@ -67,7 +67,7 @@ function bugcatcher_render_sidebar(
                     <?= htmlspecialchars($item['label']) ?>
                 </a>
             <?php endforeach; ?>
-            <a href="/rainier/logout.php" class="logout">Logout</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="logout">Logout</a>
         </nav>
         <div class="bc-userbox">
             <div>Logged in as</div>

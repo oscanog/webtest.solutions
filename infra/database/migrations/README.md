@@ -6,6 +6,7 @@ This directory holds production-safe incremental SQL migrations.
 
 - [20260304_openclaw_rollout.sql](/C:/capstone2/bugcatcher/infra/database/migrations/20260304_openclaw_rollout.sql)
 - [20260305_openclaw_control_plane.sql](/C:/capstone2/bugcatcher/infra/database/migrations/20260305_openclaw_control_plane.sql)
+- [20260315_password_reset_requests.sql](/C:/xampp/htdocs/bugcatcher/infra/database/migrations/20260315_password_reset_requests.sql)
 
 Apply this migration to an existing BugCatcher production database instead of re-importing the full [schema.sql](/C:/capstone2/bugcatcher/infra/database/schema.sql).
 

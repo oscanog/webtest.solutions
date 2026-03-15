@@ -25,6 +25,7 @@ Stores application accounts, authentication data, the system-level role, and the
 ## Relationships
 
 - Referenced by `organizations.owner_id`
+- Referenced by `password_reset_requests.user_id`
 - Referenced by `org_members.user_id`
 - Referenced by `issues.author_id`
 - Used logically by several assignee columns in `issues`, but those columns do not currently have foreign keys

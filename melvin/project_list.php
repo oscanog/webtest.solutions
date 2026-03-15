@@ -79,9 +79,9 @@ bugcatcher_shell_start('Projects', 'projects', $context, [
                     <td><?= (int) $project['open_item_count'] ?></td>
                     <td>
                         <div class="bc-inline">
-                            <a href="/melvin/project_detail.php?id=<?= (int) $project['id'] ?>">View</a>
+                            <a href="<?= bugcatcher_html(bugcatcher_path('melvin/project_detail.php?id=' . (int) $project['id'])) ?>">View</a>
                             <?php if (bugcatcher_checklist_is_manager_role($context['org_role'])): ?>
-                                <a href="/melvin/project_form.php?id=<?= (int) $project['id'] ?>">Edit</a>
+                                <a href="<?= bugcatcher_html(bugcatcher_path('melvin/project_form.php?id=' . (int) $project['id'])) ?>">Edit</a>
                                 <form method="post">
                                     <input type="hidden" name="project_id" value="<?= (int) $project['id'] ?>">
                                     <input type="hidden" name="action" value="<?= $project['status'] === 'active' ? 'archive' : 'activate' ?>">
@@ -100,4 +100,3 @@ bugcatcher_shell_start('Projects', 'projects', $context, [
 </div>
 
 <?php bugcatcher_shell_end(); ?>
-

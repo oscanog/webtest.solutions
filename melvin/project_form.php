@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($ok) {
-            header('Location: /melvin/project_detail.php?id=' . $newId);
+            header('Location: ' . bugcatcher_path('melvin/project_detail.php?id=' . $newId));
             exit;
         }
     }

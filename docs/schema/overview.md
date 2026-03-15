@@ -13,6 +13,7 @@ Optional demo data is imported after those files with `infra/database/demo.sql`.
 ## Entity map
 
 - `users`: application accounts with a system-level role and an optional last active organization.
+- `password_reset_requests`: email OTP challenges for password recovery.
 - `organizations`: tenant-like grouping for issues and membership.
 - `org_members`: membership bridge between users and organizations, including organization-specific roles.
 - `labels`: global label catalog seeded from reference data.
@@ -30,6 +31,7 @@ Optional demo data is imported after those files with `infra/database/demo.sql`.
 ```mermaid
 erDiagram
     users ||--o{ organizations : owns
+    users ||--o{ password_reset_requests : receives
     users ||--o{ org_members : joins
     organizations ||--o{ org_members : has
     organizations ||--o{ projects : contains
@@ -47,6 +49,7 @@ erDiagram
 Compact relationship map:
 
 - `organizations.owner_id -> users.id`
+- `password_reset_requests.user_id -> users.id`
 - `org_members.org_id -> organizations.id`
 - `projects.org_id -> organizations.id`
 - `checklist_batches.project_id -> projects.id`
@@ -63,6 +66,7 @@ Compact relationship map:
 ## Current model notes
 
 - System role and organization role are separate concepts. `users.role` controls app-level access, while `org_members.role` controls organization workflow permissions.
+- Password recovery state is tracked in `password_reset_requests`, not on the `users` row itself.
 - Labels are global reference data. They are seeded once and are not scoped to an organization.
 - Issue workflow state is split across `issues.status` and `issues.assign_status`.
 - The issue workflow also depends on several nullable assignee columns in `issues` rather than a normalized workflow history model.

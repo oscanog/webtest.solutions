@@ -11,10 +11,12 @@
 }
 
 body {
-    background: linear-gradient(rgba(0, 0, 50, 0.7), rgba(0, 0, 50, 0.7)), url('../images/background.jpg');
+    background-color: #8ab7d9;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.08)), url('https://i.pinimg.com/1200x/b2/13/65/b21365c035ff1cfa52edc492affa885b.jpg');
     background-repeat: no-repeat;
-    background-position: center;
+    background-position: center center;
     background-size: cover;
+    min-height: 100vh;
 }
 
 .container {
@@ -142,13 +144,17 @@ body {
     background-color: #e8f0f8;
 }
 
-.icon.toggle {
+.icon.toggle,
+.icon.toggle-password,
+.icon.toggle-confirm {
     color: #666;
     font-size: 16px;
     border-left: 1px solid #e4eaf0;
 }
 
-.icon.toggle:hover {
+.icon.toggle:hover,
+.icon.toggle-password:hover,
+.icon.toggle-confirm:hover {
     color: #2B547E;
 }
 
@@ -204,7 +210,7 @@ body {
     font-weight: bold;
 }
 
-.btn, .button {
+.btn, .button, .button-link.btn, .button-link.button {
     height: 52px;
     width: 100%;
     background: linear-gradient(135deg, #2B547E 0%, #3d6a96 100%);
@@ -221,13 +227,13 @@ body {
     letter-spacing: 0.5px;
 }
 
-.btn:hover, .button:hover {
+.btn:hover, .button:hover, .button-link.btn:hover, .button-link.button:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(43, 84, 126, 0.4);
     background: linear-gradient(135deg, #36618f 0%, #4a7aac 100%);
 }
 
-.btn:active, .button:active {
+.btn:active, .button:active, .button-link.btn:active, .button-link.button:active {
     transform: translateY(0);
     box-shadow: 0 4px 15px rgba(43, 84, 126, 0.3);
 }
@@ -236,6 +242,40 @@ input[type="submit"].button {
     appearance: none;
     -webkit-appearance: none;
     display: block;
+}
+
+.auth-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.auth-actions form,
+.auth-actions a,
+.auth-actions button {
+    flex: 1 1 180px;
+}
+
+.auth-actions .btn,
+.auth-actions .button {
+    margin-top: 0;
+}
+
+.btn.btn-secondary,
+.button.btn-secondary,
+.button-link.btn-secondary {
+    background: #fff;
+    color: #2B547E;
+    border: 1px solid #c8d5e1;
+    box-shadow: none;
+}
+
+.btn.btn-secondary:hover,
+.button.btn-secondary:hover,
+.button-link.btn-secondary:hover {
+    background: #f3f7fb;
+    box-shadow: 0 8px 18px rgba(43, 84, 126, 0.12);
 }
 
 #submit.login-submit {
@@ -293,6 +333,61 @@ input[type="submit"].button {
 
 .links a:hover::after {
     width: 100%;
+}
+
+.button-link {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+
+.auth-meta {
+    text-align: center;
+    color: #5f6f81;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 18px;
+}
+
+.otp-code {
+    letter-spacing: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 20px;
+    text-transform: none;
+}
+
+.page-back-link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    color: #2B547E;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.page-back-link:hover {
+    text-decoration: underline;
+}
+
+.forgot-password{
+    text-align: right;
+    margin-top: 8px;
+    margin-bottom: 5px;
+}
+
+.forgot-password a{
+    font-size: 14px;
+    text-decoration: none;
+    color: #2B547E;
+    font-weight: 500;
+}
+
+.forgot-password a:hover{
+    text-decoration: underline;
 }
 
 
@@ -373,6 +468,27 @@ main {
     font-size: 14px;
     font-weight: 500;
     animation: shake 0.5s ease-in-out;
+}
+
+.message.success {
+    background: rgba(25, 135, 84, 0.12);
+    border-color: rgba(25, 135, 84, 0.25);
+    color: #146c43;
+    animation: none;
+}
+
+.message.info {
+    background: rgba(13, 110, 253, 0.1);
+    border-color: rgba(13, 110, 253, 0.2);
+    color: #0a58ca;
+    animation: none;
+}
+
+.message.warning {
+    background: rgba(255, 193, 7, 0.14);
+    border-color: rgba(255, 193, 7, 0.32);
+    color: #8a6d00;
+    animation: none;
 }
 
 @keyframes shake {

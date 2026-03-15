@@ -1,6 +1,8 @@
 /config/local.php
 /\.gcloud/
 /\.tmp/
+/composer.phar
+/vendor/
 /uploads/*
 !/uploads/.gitignore
 !/uploads/issues/

@@ -7,7 +7,7 @@ $isLoggedIn = isset($_SESSION['id']);
 $isKnownBrowser = bugcatcher_is_known_user_browser();
 
 if (!$isLoggedIn && $isKnownBrowser) {
-    header("Location: /rainier/login.php?reason=expired");
+    header("Location: " . bugcatcher_path('rainier/login.php?reason=expired'));
     exit();
 }
 ?>
@@ -17,7 +17,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BugCatcher - Issue Tracking System</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
     <style>
         * {
             margin: 0;
@@ -1206,9 +1206,9 @@ if (!$isLoggedIn && $isKnownBrowser) {
             BugCatcher
         </div>
         <div class="nav-links">
-            <a href="/rainier/login.php">Login</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>">Login</a>
             <?php if (!$isLoggedIn): ?>
-                <a href="/rainier/signup.php">Sign Up</a>
+                <a href="<?= htmlspecialchars(bugcatcher_path('rainier/signup.php')) ?>">Sign Up</a>
             <?php endif; ?>
         </div>
     </nav>
@@ -1273,7 +1273,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
             <h1>Track Bugs Like a <span>Pro</span></h1>
             <p>BugCatcher helps you manage and track issues in your projects. Simple, fast, and effective issue tracking for teams of all sizes.</p>
             <div class="hero-actions">
-                <a href="/rainier/login.php" class="btn">Get Started</a>
+                <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>" class="btn">Get Started</a>
                 <a href="#features" class="btn btn-secondary">Learn More</a>
             </div>
             

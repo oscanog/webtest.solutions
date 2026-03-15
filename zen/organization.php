@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 
                 $conn->commit();
 
-                header("Location: /zen/organization.php?org_id=" . $orgId);
+                header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
                 exit;
             } catch (mysqli_sql_exception $e) {
                 $conn->rollback();
@@ -227,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'join'
                 $mem->execute();
                 $mem->close();
 
-                header("Location: /zen/organization.php?org_id=" . $orgId);
+                header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
                 exit;
             } catch (mysqli_sql_exception $e) {
                 if ((int) $e->getCode() === 1062) {
@@ -265,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'leave
 
                     if ($del->execute()) {
                         $del->close();
-                        header("Location: /zen/organization.php");
+                        header("Location: " . bugcatcher_path('zen/organization.php'));
                         exit;
                     } else {
                         $error = "Failed to delete organization: " . h($del->error);
@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'leave
 
                 if ($del->execute()) {
                     $del->close();
-                    header("Location: /zen/organization.php");
+                    header("Location: " . bugcatcher_path('zen/organization.php'));
                     exit;
                 } else {
                     $error = "Failed to leave organization: " . h($del->error);
@@ -340,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'trans
 
                     $conn->commit();
 
-                    header("Location: /zen/organization.php?org_id=" . $orgId);
+                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } catch (Exception $e) {
                     $conn->rollback();
@@ -374,7 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 
             if ($del->execute()) {
                 $del->close();
-                header("Location: /zen/organization.php");
+                header("Location: " . bugcatcher_path('zen/organization.php'));
                 exit;
             } else {
                 $error = "Failed to delete organization: " . h($del->error);
@@ -420,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'kick_
 
                 if ($del->execute()) {
                     $del->close();
-                    header("Location: /zen/organization.php?org_id=" . $orgId);
+                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } else {
                     $error = "Failed to kick member: " . h($del->error);
@@ -473,7 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'chang
 
                 if ($upd->execute()) {
                     $upd->close();
-                    header("Location: /zen/organization.php?org_id=" . $orgId);
+                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } else {
                     $error = "Failed to change role: " . h($upd->error);
@@ -572,9 +572,9 @@ if ($activeOrg) {
     <meta charset="UTF-8">
     <title>BugCatcher - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="stylesheet" href="/zen/dashboard.css?v=5">
-    <link rel="stylesheet" href="/zen/organization.css?v=1">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=5')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=1')) ?>">
 </head>
 
 <body>
@@ -589,19 +589,19 @@ if ($activeOrg) {
     <aside class="sidebar" id="zen-sidebar-org" data-drawer data-drawer-breakpoint="900">
         <div class="logo">BugCatcher</div>
         <nav class="nav">
-            <a href="/zen/dashboard.php?page=dashboard">Dashboard</a>
-            <a href="/zen/organization.php" class="active">Organization</a>
-            <a href="/melvin/project_list.php">Projects</a>
-            <a href="/melvin/checklist_list.php">Checklist</a>
-            <a href="/discord-link.php">Discord Link</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>">Dashboard</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php')) ?>" class="active">Organization</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/project_list.php')) ?>">Projects</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/checklist_list.php')) ?>">Checklist</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('discord-link.php')) ?>">Discord Link</a>
             <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
                 <a href="#">Manage Users</a>
                 <a href="#">All Reports</a>
             <?php endif; ?>
             <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
-                <a href="/super-admin/openclaw.php">Super Admin</a>
+                <a href="<?= htmlspecialchars(bugcatcher_path('super-admin/openclaw.php')) ?>">Super Admin</a>
             <?php endif; ?>
-            <a href="/rainier/logout.php" class="nav-logout">Logout</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="nav-logout">Logout</a>
         </nav>
 
         <div class="sidebar-userbox">
@@ -614,7 +614,7 @@ if ($activeOrg) {
     <main class="main">
         <div class="topbar">
             <h1>Organization</h1>
-            <a href="/zen/dashboard.php?page=dashboard" class="btn">Back to Dashboard</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>" class="btn">Back to Dashboard</a>
         </div>
 
         <?php if ($error): ?>
@@ -711,7 +711,7 @@ if ($activeOrg) {
                     <div class="orgs-links">
                         <?php foreach ($userOrgs as $o): ?>
                             <a class="btn <?= ((int) $activeOrg['id'] === (int) $o['id']) ? 'org-link-active' : '' ?>"
-                                href="/zen/organization.php?org_id=<?= (int) $o['id'] ?>">
+                                href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php?org_id=' . (int) $o['id'])) ?>">
                                 <?= h($o['name']) ?>
                             </a>
                         <?php endforeach; ?>
@@ -947,7 +947,7 @@ if ($activeOrg) {
             });
         })();
     </script>
-    <script src="/app/mobile_nav.js?v=1"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
 </body>
 
 </html>

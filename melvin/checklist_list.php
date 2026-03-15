@@ -73,7 +73,7 @@ bugcatcher_shell_start('Checklist', 'checklist', $context, [
                             <?php endif; ?>
                         </div>
                     </div>
-                    <a href="/melvin/checklist_batch.php?id=<?= (int) $batch['id'] ?>">Open Batch</a>
+                    <a href="<?= bugcatcher_html(bugcatcher_path('melvin/checklist_batch.php?id=' . (int) $batch['id'])) ?>">Open Batch</a>
                 </div>
                 <div class="bc-inline">
                     <span class="bc-badge"><?= bugcatcher_html($batch['status']) ?></span>
@@ -92,4 +92,3 @@ bugcatcher_shell_start('Checklist', 'checklist', $context, [
 </div>
 
 <?php bugcatcher_shell_end(); ?>
-

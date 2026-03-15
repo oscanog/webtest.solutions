@@ -266,7 +266,7 @@ bugcatcher_shell_start('Checklist Item', 'checklist', $context, [
             <?php if ((int) $item['issue_id'] > 0): ?>
                 <div class="bc-alert warn">
                     Linked issue #<?= (int) $item['issue_id'] ?> exists. It remains open even if this checklist item later passes.
-                    <a href="/zen/dashboard.php?page=dashboard&status=open">Open dashboard</a>
+                    <a href="<?= bugcatcher_html(bugcatcher_path('zen/dashboard.php?page=dashboard&status=open')) ?>">Open dashboard</a>
                 </div>
             <?php endif; ?>
         </div>
@@ -309,7 +309,7 @@ bugcatcher_shell_start('Checklist Item', 'checklist', $context, [
                     <div class="bc-meta"><?= number_format(((int) $attachment['file_size']) / 1024, 1) ?> KB</div>
                     <div class="bc-meta">Uploaded by <?= bugcatcher_html($attachment['uploaded_by_name'] ?: 'Bot/System') ?></div>
                     <div class="bc-inline">
-                        <a href="/<?= bugcatcher_html($attachment['file_path']) ?>" target="_blank" rel="noopener">Open attachment</a>
+                        <a href="<?= bugcatcher_html(bugcatcher_path((string) $attachment['file_path'])) ?>" target="_blank" rel="noopener">Open attachment</a>
                         <form method="post">
                             <input type="hidden" name="action" value="delete_attachment">
                             <input type="hidden" name="attachment_id" value="<?= (int) $attachment['id'] ?>">
@@ -323,5 +323,4 @@ bugcatcher_shell_start('Checklist Item', 'checklist', $context, [
 </div>
 
 <?php bugcatcher_shell_end(); ?>
-
 

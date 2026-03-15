@@ -19,7 +19,7 @@ function require_membership(mysqli $conn, int $orgId, int $userId): ?array
 
 $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
 if ($orgId <= 0) {
-    header("Location: /zen/organization.php");
+    header("Location: " . bugcatcher_path('zen/organization.php'));
     exit;
 }
 
@@ -136,7 +136,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmtLabel->execute();
         }
 
-        header("Location: /zen/dashboard.php?page=dashboard");
+        header("Location: " . bugcatcher_path('zen/dashboard.php?page=dashboard'));
         exit();
     }
 }
@@ -150,9 +150,9 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
     <title>New Issue · BugCatcher</title>
-    <link rel="stylesheet" href="/zen/dashboard.css?v=8">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=8')) ?>">
 </head>
 
 <body>
@@ -168,18 +168,18 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
     <aside class="sidebar" id="zen-sidebar-create-issue" data-drawer data-drawer-breakpoint="900">
         <div class="logo">BugCatcher</div>
         <nav class="nav">
-            <a href="/zen/dashboard.php?page=dashboard">Dashboard</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>">Dashboard</a>
             <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
                 <a href="#">Manage Users</a>
             <?php endif; ?>
-            <a href="/zen/organization.php">Organization</a>
-            <a href="/melvin/project_list.php">Projects</a>
-            <a href="/melvin/checklist_list.php">Checklist</a>
-            <a href="/discord-link.php">Discord Link</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php')) ?>">Organization</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/project_list.php')) ?>">Projects</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/checklist_list.php')) ?>">Checklist</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('discord-link.php')) ?>">Discord Link</a>
             <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
-                <a href="/super-admin/openclaw.php">Super Admin</a>
+                <a href="<?= htmlspecialchars(bugcatcher_path('super-admin/openclaw.php')) ?>">Super Admin</a>
             <?php endif; ?>
-            <a href="/rainier/logout.php" class="nav-logout">Logout</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="nav-logout">Logout</a>
         </nav>
         <div class="sidebar-userbox">
             Logged in as<br>
@@ -192,7 +192,7 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
 
         <div class="topbar">
             <h1>New Issue</h1>
-            <a href="/zen/dashboard.php?page=dashboard" class="btn-green create-issue-back-link">Back</a>
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>" class="btn-green create-issue-back-link">Back</a>
         </div>
 
         <div class="issue-container">
@@ -318,7 +318,7 @@ $labels = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
         updateSubmitState();
     </script>
 
-    <script src="/app/mobile_nav.js?v=1"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
     <script>
         const imagesInput = document.getElementById("imagesInput");
         const imgPreview = document.getElementById("imgPreview");

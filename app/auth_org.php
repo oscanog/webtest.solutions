@@ -37,7 +37,7 @@ function bugcatcher_require_org_context(mysqli $conn): array
 
     $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
     if ($orgId <= 0) {
-        header("Location: /zen/organization.php");
+        header("Location: " . bugcatcher_path('zen/organization.php'));
         exit;
     }
 
@@ -57,4 +57,3 @@ function bugcatcher_require_org_context(mysqli $conn): array
         'current_role' => $current_role,
     ];
 }
-

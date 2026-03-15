@@ -1,0 +1,8 @@
+{
+    "name": "bugcatcher/bugcatcher",
+    "description": "BugCatcher authentication and issue tracking app",
+    "type": "project",
+    "require": {
+        "phpmailer/phpmailer": "^6.10"
+    }
+}

@@ -50,7 +50,7 @@ bugcatcher_shell_start('Project Detail', 'projects', $context, [
             <h2>Checklist batches</h2>
             <p class="bc-meta">Recent checklist runs under this project.</p>
         </div>
-        <a class="bc-btn" href="/melvin/checklist_batch.php?project_id=<?= $projectId ?>">New Batch</a>
+        <a class="bc-btn" href="<?= bugcatcher_html(bugcatcher_path('melvin/checklist_batch.php?project_id=' . $projectId)) ?>">New Batch</a>
     </div>
     <div class="bc-list">
         <?php if (!$batches): ?>
@@ -68,7 +68,7 @@ bugcatcher_shell_start('Project Detail', 'projects', $context, [
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <a href="/melvin/checklist_batch.php?id=<?= (int) $batch['id'] ?>">Open</a>
+                        <a href="<?= bugcatcher_html(bugcatcher_path('melvin/checklist_batch.php?id=' . (int) $batch['id'])) ?>">Open</a>
                     </div>
                     <div class="bc-inline">
                         <span class="bc-badge"><?= bugcatcher_html($batch['status']) ?></span>
@@ -82,4 +82,3 @@ bugcatcher_shell_start('Project Detail', 'projects', $context, [
 </div>
 
 <?php bugcatcher_shell_end(); ?>
-

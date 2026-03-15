@@ -24,6 +24,17 @@ function bugcatcher_default_config(): array
         'OPENCLAW_ENCRYPTION_KEY' => 'replace-with-32-byte-secret',
         'OPENCLAW_TEMP_UPLOAD_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'openclaw-tmp',
         'OPENCLAW_LOG_LEVEL' => 'info',
+        'MAIL_HOST' => 'smtp.gmail.com',
+        'MAIL_PORT' => 587,
+        'MAIL_USERNAME' => '',
+        'MAIL_PASSWORD' => '',
+        'MAIL_ENCRYPTION' => 'tls',
+        'MAIL_FROM_EMAIL' => 'm.viner001@gmail.com',
+        'MAIL_FROM_NAME' => 'BugCatcher',
+        'PASSWORD_RESET_OTP_TTL_SECONDS' => 600,
+        'PASSWORD_RESET_RESEND_COOLDOWN_SECONDS' => 60,
+        'PASSWORD_RESET_MAX_VERIFY_ATTEMPTS' => 5,
+        'PASSWORD_RESET_MAX_RESENDS' => 3,
     ];
 }
 
@@ -76,6 +87,17 @@ function bugcatcher_load_config(): array
     $config['OPENCLAW_ENCRYPTION_KEY'] = (string) ($config['OPENCLAW_ENCRYPTION_KEY'] ?? '');
     $config['OPENCLAW_TEMP_UPLOAD_DIR'] = rtrim((string) ($config['OPENCLAW_TEMP_UPLOAD_DIR'] ?? ''), "\\/");
     $config['OPENCLAW_LOG_LEVEL'] = (string) ($config['OPENCLAW_LOG_LEVEL'] ?? 'info');
+    $config['MAIL_HOST'] = trim((string) ($config['MAIL_HOST'] ?? ''));
+    $config['MAIL_PORT'] = (int) ($config['MAIL_PORT'] ?? 587);
+    $config['MAIL_USERNAME'] = trim((string) ($config['MAIL_USERNAME'] ?? ''));
+    $config['MAIL_PASSWORD'] = (string) ($config['MAIL_PASSWORD'] ?? '');
+    $config['MAIL_ENCRYPTION'] = strtolower(trim((string) ($config['MAIL_ENCRYPTION'] ?? 'tls')));
+    $config['MAIL_FROM_EMAIL'] = trim((string) ($config['MAIL_FROM_EMAIL'] ?? ''));
+    $config['MAIL_FROM_NAME'] = trim((string) ($config['MAIL_FROM_NAME'] ?? 'BugCatcher'));
+    $config['PASSWORD_RESET_OTP_TTL_SECONDS'] = max(60, (int) ($config['PASSWORD_RESET_OTP_TTL_SECONDS'] ?? 600));
+    $config['PASSWORD_RESET_RESEND_COOLDOWN_SECONDS'] = max(0, (int) ($config['PASSWORD_RESET_RESEND_COOLDOWN_SECONDS'] ?? 60));
+    $config['PASSWORD_RESET_MAX_VERIFY_ATTEMPTS'] = max(1, (int) ($config['PASSWORD_RESET_MAX_VERIFY_ATTEMPTS'] ?? 5));
+    $config['PASSWORD_RESET_MAX_RESENDS'] = max(0, (int) ($config['PASSWORD_RESET_MAX_RESENDS'] ?? 3));
 
     return $config;
 }
@@ -90,6 +112,55 @@ function bugcatcher_config(?string $key = null, $default = null)
     return $config[$key] ?? $default;
 }
 
+function bugcatcher_base_url(): string
+{
+    return rtrim((string) bugcatcher_config('APP_BASE_URL', ''), '/');
+}
+
+function bugcatcher_base_path(): string
+{
+    $path = parse_url(bugcatcher_base_url(), PHP_URL_PATH);
+    if (!is_string($path)) {
+        return '';
+    }
+
+    $path = trim($path, '/');
+    return ($path === '') ? '' : '/' . $path;
+}
+
+function bugcatcher_path(string $path = ''): string
+{
+    $basePath = bugcatcher_base_path();
+    $normalized = ltrim($path, '/');
+
+    if ($normalized === '') {
+        return ($basePath !== '') ? $basePath : '/';
+    }
+
+    return ($basePath !== '' ? $basePath : '') . '/' . $normalized;
+}
+
+function bugcatcher_href(string $href): string
+{
+    if ($href === '') {
+        return bugcatcher_path();
+    }
+
+    if (preg_match('#^(?:[a-z][a-z0-9+.-]*:)?//#i', $href)) {
+        return $href;
+    }
+
+    if ($href[0] === '#' || $href[0] === '?') {
+        return $href;
+    }
+
+    if (str_starts_with($href, '/')) {
+        return bugcatcher_path(ltrim($href, '/'));
+    }
+
+    return $href;
+}
+
 function bugcatcher_is_https(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
@@ -100,7 +171,7 @@ function bugcatcher_is_https(): bool
         return true;
     }
 
-    $baseUrl = (string) bugcatcher_config('APP_BASE_URL', '');
+    $baseUrl = bugcatcher_base_url();
     return stripos($baseUrl, 'https://') === 0;
 }
 
