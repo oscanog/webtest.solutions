@@ -10,6 +10,7 @@ OPENCLAW_WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$OPENCLAW_HOME/workspace}"
 OPENCLAW_PLUGIN_SOURCE="${OPENCLAW_PLUGIN_SOURCE:-$OPENCLAW_HOME/bugcatcher-plugin}"
 BUGCATCHER_REPO_ROOT="${BUGCATCHER_REPO_ROOT:-/var/www/bugcatcher}"
 BUGCATCHER_TEMP_DIR="${BUGCATCHER_TEMP_DIR:-/var/www/bugcatcher/uploads/openclaw-tmp}"
+BUGCATCHER_CHECKLIST_DIR="${BUGCATCHER_CHECKLIST_DIR:-/var/www/bugcatcher/uploads/checklists}"
 ENV_FILE="${ENV_FILE:-/etc/openclaw/openclaw.env}"
 SERVICE_FILE="${SERVICE_FILE:-/etc/systemd/system/openclaw-gateway.service}"
 SYNC_SERVICE_FILE="${SYNC_SERVICE_FILE:-/etc/systemd/system/openclaw-runtime-sync.service}"
@@ -42,8 +43,10 @@ if getent group www-data >/dev/null 2>&1; then
 fi
 
 install -d -m 2775 "$BUGCATCHER_TEMP_DIR"
+install -d -m 2775 "$BUGCATCHER_CHECKLIST_DIR"
 if getent group www-data >/dev/null 2>&1; then
     chgrp www-data "$BUGCATCHER_TEMP_DIR"
+    chgrp www-data "$BUGCATCHER_CHECKLIST_DIR"
 fi
 
 if ! command -v node >/dev/null 2>&1 || ! node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 22 ? 0 : 1)"; then

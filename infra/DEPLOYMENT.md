@@ -8,6 +8,7 @@ This repo is prepared for release-based deployment on a Debian Google Compute En
 - Keep uploads in `/var/www/bugcatcher/shared/uploads/issues`
 - Keep checklist uploads in `/var/www/bugcatcher/shared/uploads/checklists`
 - Keep OpenClaw temp uploads in `/var/www/bugcatcher/shared/uploads/openclaw-tmp`
+- Ensure the web server group can write to both checklist uploads and OpenClaw temp uploads
 - Import the database in this order:
   1. `infra/database/schema.sql`
   2. `infra/database/seed_reference_data.sql`

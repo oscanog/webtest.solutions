@@ -4,6 +4,7 @@ set -euo pipefail
 BUGCATCHER_ROOT="${BUGCATCHER_ROOT:-/var/www/bugcatcher}"
 CONFIG_PATH="${CONFIG_PATH:-}"
 TEMP_DIR="${TEMP_DIR:-$BUGCATCHER_ROOT/uploads/openclaw-tmp}"
+CHECKLIST_DIR="${CHECKLIST_DIR:-$BUGCATCHER_ROOT/uploads/checklists}"
 LOG_LEVEL="${LOG_LEVEL:-info}"
 MIGRATION_PATH="${MIGRATION_PATH:-$BUGCATCHER_ROOT/infra/database/migrations/20260304_openclaw_rollout.sql}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/bugcatcher}"
@@ -94,8 +95,10 @@ if (file_put_contents($configPath, $export) === false) {
 PHP
 
 install -d -m 2770 "$TEMP_DIR"
+install -d -m 2775 "$CHECKLIST_DIR"
 if getent group www-data >/dev/null 2>&1; then
     chgrp www-data "$TEMP_DIR"
+    chgrp www-data "$CHECKLIST_DIR"
 fi
 if id -u openclaw >/dev/null 2>&1 && getent group www-data >/dev/null 2>&1; then
     usermod -a -G www-data openclaw

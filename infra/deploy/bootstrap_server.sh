@@ -40,7 +40,11 @@ if ! id -u "${APP_USER}" >/dev/null 2>&1; then
 fi
 
 install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0755 "${APP_ROOT}" "${RELEASES_DIR}" "${SHARED_DIR}"
-install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 2775 "${SHARED_DIR}/uploads" "${SHARED_DIR}/uploads/issues"
+install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 2775 \
+  "${SHARED_DIR}/uploads" \
+  "${SHARED_DIR}/uploads/issues" \
+  "${SHARED_DIR}/uploads/checklists" \
+  "${SHARED_DIR}/uploads/openclaw-tmp"
 
 if [[ ! -f "${SHARED_DIR}/config.php" ]]; then
   install -o "${APP_USER}" -g "${APP_GROUP}" -m 0640 "${CONFIG_TEMPLATE}" "${SHARED_DIR}/config.php"

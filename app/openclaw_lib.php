@@ -1120,7 +1120,7 @@ function bugcatcher_openclaw_store_batch_attachment(
     $destAbs = $uploadDir . DIRECTORY_SEPARATOR . $newName;
     $destRel = bugcatcher_checklist_upload_relative_path($newName);
 
-    if (!rename($tmpPath, $destAbs)) {
+    if (!bugcatcher_checklist_move_server_file($tmpPath, $destAbs)) {
         return false;
     }
 

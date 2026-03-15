@@ -413,6 +413,26 @@ function bugcatcher_checklist_ensure_upload_dir(): string
     return $uploadDir;
 }
 
+function bugcatcher_checklist_move_server_file(string $sourcePath, string $destinationPath): bool
+{
+    if (@rename($sourcePath, $destinationPath)) {
+        @chmod($destinationPath, 0664);
+        return true;
+    }
+
+    if (!@copy($sourcePath, $destinationPath)) {
+        return false;
+    }
+
+    if (!@unlink($sourcePath)) {
+        @unlink($destinationPath);
+        return false;
+    }
+
+    @chmod($destinationPath, 0664);
+    return true;
+}
+
 function bugcatcher_checklist_allowed_mime_map(): array
 {
     return [
@@ -466,7 +486,9 @@ function bugcatcher_checklist_store_uploaded_file(
     $destAbs = $uploadDir . DIRECTORY_SEPARATOR . $newName;
     $destRel = bugcatcher_checklist_upload_relative_path($newName);
 
-    $moved = $isUploadedFile ? move_uploaded_file($tmpPath, $destAbs) : rename($tmpPath, $destAbs);
+    $moved = $isUploadedFile
+        ? move_uploaded_file($tmpPath, $destAbs)
+        : bugcatcher_checklist_move_server_file($tmpPath, $destAbs);
     if (!$moved) {
         return false;
     }
