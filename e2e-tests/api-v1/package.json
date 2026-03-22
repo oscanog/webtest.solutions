@@ -1,0 +1,22 @@
+﻿{
+  "name": "bugcatcher-api-v1-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright API E2E suite for BugCatcher modular /api/v1 surface",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "test:local": "cross-env E2E_ENV=local playwright test",
+    "test:prod": "cross-env E2E_ENV=production playwright test",
+    "test:local:headed": "cross-env E2E_ENV=local playwright test --headed",
+    "test:prod:headed": "cross-env E2E_ENV=production playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^22.18.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.6.1",
+    "typescript": "^5.9.3",
+    "zod": "^3.25.76"
+  }
+}
