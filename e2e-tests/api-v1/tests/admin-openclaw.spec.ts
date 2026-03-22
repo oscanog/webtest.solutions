@@ -23,6 +23,11 @@ let createdChannelId = 0;
 
 let controlPlaneReady = true;
 
+function toInt(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function controlPlaneMissing(body: ApiEnvelope<unknown>): boolean {
   if (body.ok) {
     return false;
@@ -148,7 +153,7 @@ test("admin openclaw full modular surface", async () => {
   expect(snapshot.res.status()).toBe(200);
   expectApiSuccess(snapshot.body);
 
-  const providersBefore = await apiGet<ApiEnvelope<{ providers: Array<{ id: number; provider_key: string }> }>>(
+  const providersBefore = await apiGet<ApiEnvelope<{ providers: Array<{ id: number | string; provider_key: string }> }>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/providers`,
     authHeaders(superAdmin)
@@ -159,7 +164,7 @@ test("admin openclaw full modular surface", async () => {
   const marker = Date.now();
   const providerKey = `e2e_${marker}`;
 
-  const saveProvider = await apiPostJson<ApiEnvelope<{ saved: boolean; providers: Array<{ id: number; provider_key: string }> }>>(
+  const saveProvider = await apiPostJson<ApiEnvelope<{ saved: boolean; providers: Array<{ id: number | string; provider_key: string }> }>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/providers`,
     {
@@ -179,16 +184,17 @@ test("admin openclaw full modular surface", async () => {
 
   const provider = saveProvider.body.data.providers.find((row) => row.provider_key === providerKey);
   expect(provider).toBeTruthy();
-  createdProviderId = provider?.id ?? 0;
+  createdProviderId = toInt(provider?.id);
   expect(createdProviderId).toBeGreaterThan(0);
 
-  const saveModel = await apiPostJson<ApiEnvelope<{ saved: boolean; models: Array<{ id: number; remote_model_id: string }> }>>(
+  const remoteModelId = `e2e-model-${marker}`;
+  const saveModel = await apiPostJson<ApiEnvelope<{ saved: boolean; models: Array<{ id: number | string; model_id: string }> }>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/models`,
     {
       provider_config_id: createdProviderId,
       model_id: 0,
-      remote_model_id: `e2e-model-${marker}`,
+      remote_model_id: remoteModelId,
       display_name: `E2E Model ${marker}`,
       supports_vision: false,
       supports_json_output: true,
@@ -200,12 +206,12 @@ test("admin openclaw full modular surface", async () => {
   expect(saveModel.res.status()).toBe(200);
   expectApiSuccess(saveModel.body);
 
-  const model = saveModel.body.data.models.find((row) => row.remote_model_id === `e2e-model-${marker}`);
+  const model = saveModel.body.data.models.find((row) => String(row.model_id) === remoteModelId);
   expect(model).toBeTruthy();
-  createdModelId = model?.id ?? 0;
+  createdModelId = toInt(model?.id);
   expect(createdModelId).toBeGreaterThan(0);
 
-  const saveChannel = await apiPostJson<ApiEnvelope<{ saved: boolean; channels: Array<{ id: number; channel_id: string }> }>>(
+  const saveChannel = await apiPostJson<ApiEnvelope<{ saved: boolean; channels: Array<{ id: number | string; channel_id: string }> }>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/channels`,
     {
@@ -224,7 +230,7 @@ test("admin openclaw full modular surface", async () => {
 
   const channel = saveChannel.body.data.channels.find((row) => row.channel_id === `c-${marker}`);
   expect(channel).toBeTruthy();
-  createdChannelId = channel?.id ?? 0;
+  createdChannelId = toInt(channel?.id);
   expect(createdChannelId).toBeGreaterThan(0);
 
   const users = await apiGet<ApiEnvelope<{ users: unknown[] }>>(
