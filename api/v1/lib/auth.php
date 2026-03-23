@@ -10,8 +10,14 @@ function bc_v1_auth_login(mysqli $conn, array $params): void
     $password = (string) ($payload['password'] ?? '');
     $requestedOrgId = bc_v1_get_int($payload, 'active_org_id', 0);
 
-    if ($email === '' || $password === '') {
-        bc_v1_json_error(422, 'validation_error', 'email and password are required.');
+    if ($email === '' && $password === '') {
+        bc_v1_json_error(422, 'validation_error', 'Email and password are required.');
+    }
+    if ($email === '') {
+        bc_v1_json_error(422, 'email_required', 'Email is required.');
+    }
+    if ($password === '') {
+        bc_v1_json_error(422, 'password_required', 'Password is required.');
     }
 
     $stmt = $conn->prepare("SELECT id, username, email, password, role, last_active_org_id FROM users WHERE email = ? LIMIT 1");
@@ -20,8 +26,11 @@ function bc_v1_auth_login(mysqli $conn, array $params): void
     $user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    if (!$user || !password_verify($password, (string) $user['password'])) {
-        bc_v1_json_error(401, 'invalid_credentials', 'Wrong email or password.');
+    if (!$user) {
+        bc_v1_json_error(401, 'email_not_found', 'No account found for that email address.');
+    }
+    if (!password_verify($password, (string) $user['password'])) {
+        bc_v1_json_error(401, 'wrong_password', 'Incorrect password.');
     }
 
     $userId = (int) $user['id'];
