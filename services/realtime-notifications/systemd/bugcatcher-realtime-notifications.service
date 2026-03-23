@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=bugcatcher
 Group=www-data
-WorkingDirectory=/var/www/bugcatcher/current/services/realtime-notifications
+WorkingDirectory=/var/www/bugcatcher/services/realtime-notifications
 Environment=BUGCATCHER_CONFIG_PATH=/var/www/bugcatcher/shared/config.php
-ExecStart=/usr/bin/node /var/www/bugcatcher/current/services/realtime-notifications/server.cjs
+ExecStart=/usr/bin/node /var/www/bugcatcher/services/realtime-notifications/server.cjs
 Restart=always
 RestartSec=5
 
