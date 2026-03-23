@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=bugcatcher
+User=www-data
 Group=www-data
 WorkingDirectory=/var/www/bugcatcher/services/realtime-notifications
 Environment=BUGCATCHER_CONFIG_PATH=/var/www/bugcatcher/shared/config.php
