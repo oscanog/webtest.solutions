@@ -135,6 +135,11 @@ function checklist_api_batch_link_path(int $batchId): string
     return '/app/checklist/batches/' . $batchId;
 }
 
+function checklist_api_item_link_path(int $itemId): string
+{
+    return '/app/checklist/items/' . $itemId;
+}
+
 function checklist_api_notify_batch(mysqli $conn, array $batch, array $payload, array $recipientUserIds): void
 {
     bugcatcher_notifications_send($conn, $recipientUserIds, [
@@ -149,6 +154,24 @@ function checklist_api_notify_batch(mysqli $conn, array $batch, array $payload, 
         'project_id' => (int) ($batch['project_id'] ?? 0),
         'checklist_batch_id' => (int) ($batch['id'] ?? 0),
         'checklist_item_id' => max(0, (int) ($payload['checklist_item_id'] ?? 0)),
+        'meta' => $payload['meta'] ?? null,
+    ]);
+}
+
+function checklist_api_notify_item(mysqli $conn, array $item, array $payload, array $recipientUserIds): void
+{
+    bugcatcher_notifications_send($conn, $recipientUserIds, [
+        'type' => 'checklist',
+        'event_key' => (string) ($payload['event_key'] ?? 'checklist_item_updated'),
+        'title' => (string) ($payload['title'] ?? 'Checklist item updated'),
+        'body' => (string) ($payload['body'] ?? ''),
+        'severity' => (string) ($payload['severity'] ?? 'default'),
+        'link_path' => (string) ($payload['link_path'] ?? checklist_api_item_link_path((int) ($item['id'] ?? 0))),
+        'actor_user_id' => (int) ($payload['actor_user_id'] ?? 0),
+        'org_id' => (int) ($item['org_id'] ?? 0),
+        'project_id' => (int) ($item['project_id'] ?? 0),
+        'checklist_batch_id' => (int) ($item['batch_id'] ?? 0),
+        'checklist_item_id' => (int) ($item['id'] ?? 0),
         'meta' => $payload['meta'] ?? null,
     ]);
 }
@@ -232,6 +255,8 @@ function checklist_api_validate_batch_payload(mysqli $conn, array $context, arra
     );
     $assignedQaLeadId = checklist_api_get_int($payload, 'assigned_qa_lead_id');
     $notes = trim((string) ($payload['notes'] ?? ''));
+    $pageUrlInput = trim((string) ($payload['page_url'] ?? ''));
+    $pageUrl = bugcatcher_checklist_normalize_page_url($pageUrlInput);
 
     $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, (int) $context['org_id'], $projectId) : null;
     if (!$project) {
@@ -239,6 +264,9 @@ function checklist_api_validate_batch_payload(mysqli $conn, array $context, arra
     }
     if ($title === '' || $moduleName === '') {
         checklist_api_json_error(422, 'validation_error', 'title and module_name are required.');
+    }
+    if ($pageUrlInput !== '' && $pageUrl === '') {
+        checklist_api_json_error(422, 'invalid_page_url', 'page_url must be a valid http:// or https:// URL.');
     }
     if (
         $assignedQaLeadId > 0 &&
@@ -255,6 +283,7 @@ function checklist_api_validate_batch_payload(mysqli $conn, array $context, arra
         'status' => $status,
         'assigned_qa_lead_id' => $assignedQaLeadId,
         'notes' => $notes,
+        'page_url' => $pageUrl,
     ];
 }
 
@@ -264,11 +293,11 @@ function checklist_api_create_batch(mysqli $conn, array $context, array $payload
 
     $stmt = $conn->prepare("
         INSERT INTO checklist_batches
-            (org_id, project_id, title, module_name, submodule_name, status, created_by, updated_by, assigned_qa_lead_id, notes)
-        VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, NULLIF(?, 0), NULLIF(?, ''))
+            (org_id, project_id, title, module_name, submodule_name, status, created_by, updated_by, assigned_qa_lead_id, notes, page_url)
+        VALUES (?, ?, ?, ?, NULLIF(?, ''), ?, ?, ?, NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, ''))
     ");
     $stmt->bind_param(
-        'iissssiiis',
+        'iissssiiiss',
         $context['org_id'],
         $validated['project_id'],
         $validated['title'],
@@ -278,7 +307,8 @@ function checklist_api_create_batch(mysqli $conn, array $context, array $payload
         $context['current_user_id'],
         $context['current_user_id'],
         $validated['assigned_qa_lead_id'],
-        $validated['notes']
+        $validated['notes'],
+        $validated['page_url']
     );
     $stmt->execute();
     $batchId = (int) $conn->insert_id;
@@ -306,11 +336,11 @@ function checklist_api_update_batch(mysqli $conn, array $context, int $batchId, 
     $stmt = $conn->prepare("
         UPDATE checklist_batches
         SET project_id = ?, title = ?, module_name = ?, submodule_name = NULLIF(?, ''),
-            status = ?, assigned_qa_lead_id = NULLIF(?, 0), notes = NULLIF(?, ''), updated_by = ?
+            status = ?, assigned_qa_lead_id = NULLIF(?, 0), notes = NULLIF(?, ''), page_url = NULLIF(?, ''), updated_by = ?
         WHERE id = ? AND org_id = ?
     ");
     $stmt->bind_param(
-        'issssisiii',
+        'issssissiii',
         $validated['project_id'],
         $validated['title'],
         $validated['module_name'],
@@ -318,6 +348,7 @@ function checklist_api_update_batch(mysqli $conn, array $context, int $batchId, 
         $validated['status'],
         $validated['assigned_qa_lead_id'],
         $validated['notes'],
+        $validated['page_url'],
         $context['current_user_id'],
         $batchId,
         $context['org_id']
@@ -370,9 +401,9 @@ function checklist_api_validate_item_payload(mysqli $conn, array $context, array
     }
     if (
         $assignedToUserId > 0 &&
-        bugcatcher_checklist_fetch_member_role($conn, (int) $context['org_id'], $assignedToUserId) === null
+        !bugcatcher_checklist_member_has_role($conn, (int) $context['org_id'], $assignedToUserId, ['QA Tester'])
     ) {
-        checklist_api_json_error(422, 'invalid_assignee', 'assigned_to_user_id must belong to the active organization.');
+        checklist_api_json_error(422, 'invalid_assignee', 'assigned_to_user_id must belong to a QA Tester in the active organization.');
     }
 
     return [
@@ -433,24 +464,36 @@ function checklist_api_create_item(mysqli $conn, array $context, array $payload)
     }
 
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
-    $batch = checklist_api_find_batch_or_404($conn, (int) $context['org_id'], (int) $item['batch_id']);
-    checklist_api_notify_batch($conn, $batch, [
+    $managerRecipients = array_values(array_diff(
+        array_unique(bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id'])),
+        [(int) $context['current_user_id']]
+    ));
+    checklist_api_notify_item($conn, $item, [
         'event_key' => 'checklist_item_created',
         'title' => 'Checklist item created',
         'body' => (string) $item['title'],
         'severity' => 'default',
         'actor_user_id' => (int) $context['current_user_id'],
-        'checklist_item_id' => (int) $item['id'],
-    ], array_filter([
-        (int) ($item['assigned_to_user_id'] ?? 0),
-        ...bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
-    ]));
+    ], $managerRecipients);
+
+    $assignedToUserId = (int) ($item['assigned_to_user_id'] ?? 0);
+    if ($assignedToUserId > 0 && $assignedToUserId !== (int) $context['current_user_id']) {
+        checklist_api_notify_item($conn, $item, [
+            'event_key' => 'checklist_item_assigned',
+            'title' => 'Checklist item assigned',
+            'body' => 'You were assigned checklist item "' . (string) $item['title'] . '".',
+            'severity' => 'success',
+            'actor_user_id' => (int) $context['current_user_id'],
+            'meta' => ['assignment' => true],
+        ], [$assignedToUserId]);
+    }
     return $item;
 }
 
 function checklist_api_update_item(mysqli $conn, array $context, int $itemId, array $payload): array
 {
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
+    $previousAssignedToUserId = (int) ($item['assigned_to_user_id'] ?? 0);
     $batch = checklist_api_find_batch_or_404($conn, (int) $context['org_id'], (int) $item['batch_id']);
     $payload = array_merge([
         'sequence_no' => (int) $item['sequence_no'],
@@ -500,18 +543,33 @@ function checklist_api_update_item(mysqli $conn, array $context, int $itemId, ar
     $updated = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
     checklist_api_auto_create_issue_if_needed($conn, $context, $updated);
     $updated = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
-    $batch = checklist_api_find_batch_or_404($conn, (int) $context['org_id'], (int) $updated['batch_id']);
-    checklist_api_notify_batch($conn, $batch, [
+    $managerRecipients = array_values(array_diff(
+        array_unique(bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id'])),
+        [(int) $context['current_user_id']]
+    ));
+    checklist_api_notify_item($conn, $updated, [
         'event_key' => 'checklist_item_updated',
         'title' => 'Checklist item updated',
         'body' => (string) $updated['title'],
         'severity' => 'default',
         'actor_user_id' => (int) $context['current_user_id'],
-        'checklist_item_id' => (int) $updated['id'],
-    ], array_filter([
-        (int) ($updated['assigned_to_user_id'] ?? 0),
-        ...bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
-    ]));
+    ], $managerRecipients);
+
+    $assignedToUserId = (int) ($updated['assigned_to_user_id'] ?? 0);
+    if (
+        $assignedToUserId > 0 &&
+        $assignedToUserId !== $previousAssignedToUserId &&
+        $assignedToUserId !== (int) $context['current_user_id']
+    ) {
+        checklist_api_notify_item($conn, $updated, [
+            'event_key' => 'checklist_item_assigned',
+            'title' => 'Checklist item assigned',
+            'body' => 'You were assigned checklist item "' . (string) $updated['title'] . '".',
+            'severity' => 'success',
+            'actor_user_id' => (int) $context['current_user_id'],
+            'meta' => ['assignment' => true],
+        ], [$assignedToUserId]);
+    }
     return $updated;
 }
 
@@ -585,20 +643,19 @@ function checklist_api_change_item_status(mysqli $conn, array $context, int $ite
     $updated = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
     checklist_api_auto_create_issue_if_needed($conn, $context, $updated);
     $updated = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
-    $batch = checklist_api_find_batch_or_404($conn, (int) $context['org_id'], (int) $updated['batch_id']);
     $severity = in_array((string) $updated['status'], ['failed', 'blocked'], true) ? 'alert' : ((string) $updated['status'] === 'passed' ? 'success' : 'default');
-    checklist_api_notify_batch($conn, $batch, [
+    $recipients = array_values(array_diff(array_unique(array_filter([
+        (int) ($updated['assigned_to_user_id'] ?? 0),
+        ...bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
+    ])), [(int) $context['current_user_id']]));
+    checklist_api_notify_item($conn, $updated, [
         'event_key' => 'checklist_item_status_changed',
         'title' => 'Checklist item status updated',
         'body' => (string) $updated['title'] . ' is now ' . (string) $updated['status'] . '.',
         'severity' => $severity,
         'actor_user_id' => (int) $context['current_user_id'],
-        'checklist_item_id' => (int) $updated['id'],
         'meta' => ['status' => (string) $updated['status']],
-    ], array_filter([
-        (int) ($updated['assigned_to_user_id'] ?? 0),
-        ...bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
-    ]));
+    ], $recipients);
     return $updated;
 }
 

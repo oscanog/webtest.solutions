@@ -17,6 +17,20 @@ const BUGCATCHER_CHECKLIST_STATUSES = ['open', 'in_progress', 'passed', 'failed'
 const BUGCATCHER_BATCH_STATUSES = ['draft', 'open', 'completed', 'archived'];
 const BUGCATCHER_CHECKLIST_PRIORITIES = ['low', 'medium', 'high'];
 
+function bugcatcher_checklist_ensure_schema(mysqli $conn): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+
+    if (!bugcatcher_db_has_column($conn, 'checklist_batches', 'page_url')) {
+        $conn->query("ALTER TABLE checklist_batches ADD COLUMN page_url VARCHAR(2048) DEFAULT NULL AFTER notes");
+    }
+
+    $done = true;
+}
+
 function bugcatcher_html(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -49,6 +63,25 @@ function bugcatcher_checklist_require_manager(array $context): void
 function bugcatcher_checklist_normalize_enum(string $value, array $allowed, string $default): string
 {
     return in_array($value, $allowed, true) ? $value : $default;
+}
+
+function bugcatcher_checklist_normalize_page_url(?string $value): string
+{
+    $trimmed = trim((string) $value);
+    if ($trimmed === '') {
+        return '';
+    }
+
+    if (!filter_var($trimmed, FILTER_VALIDATE_URL)) {
+        return '';
+    }
+
+    $scheme = strtolower((string) parse_url($trimmed, PHP_URL_SCHEME));
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $trimmed;
 }
 
 function bugcatcher_checklist_full_title(string $moduleName, ?string $submoduleName, string $title): string
@@ -168,6 +201,8 @@ function bugcatcher_checklist_fetch_batches(
     string $status = '',
     string $search = ''
 ): array {
+    bugcatcher_checklist_ensure_schema($conn);
+
     $sql = "
         SELECT cb.*,
                p.name AS project_name,
@@ -221,6 +256,8 @@ function bugcatcher_checklist_fetch_batches(
 
 function bugcatcher_checklist_fetch_batch(mysqli $conn, int $orgId, int $batchId): ?array
 {
+    bugcatcher_checklist_ensure_schema($conn);
+
     $stmt = $conn->prepare("
         SELECT cb.*,
                p.name AS project_name,
@@ -250,6 +287,8 @@ function bugcatcher_checklist_find_batch_by_exact_target(
     string $moduleName,
     string $submoduleName = ''
 ): ?array {
+    bugcatcher_checklist_ensure_schema($conn);
+
     $normalize = static function (string $value): string {
         $trimmed = trim($value);
         return function_exists('mb_strtolower')
@@ -312,10 +351,13 @@ function bugcatcher_checklist_fetch_items_for_batch(mysqli $conn, int $batchId):
 
 function bugcatcher_checklist_fetch_item(mysqli $conn, int $orgId, int $itemId): ?array
 {
+    bugcatcher_checklist_ensure_schema($conn);
+
     $stmt = $conn->prepare("
         SELECT ci.*,
                cb.title AS batch_title,
                cb.status AS batch_status,
+               cb.page_url AS batch_page_url,
                p.name AS project_name,
                assignee.username AS assigned_to_name,
                creator.username AS created_by_name,

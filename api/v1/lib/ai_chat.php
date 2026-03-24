@@ -31,6 +31,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
         return;
     }
 
+    bugcatcher_checklist_ensure_schema($conn);
     bugcatcher_file_storage_ensure_schema($conn);
     bugcatcher_openclaw_seed_demo_ai_config($conn);
 
@@ -57,6 +58,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
         'checklist_batch_title' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_batch_title VARCHAR(160) DEFAULT NULL AFTER checklist_existing_batch_id",
         'checklist_module_name' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_module_name VARCHAR(160) DEFAULT NULL AFTER checklist_batch_title",
         'checklist_submodule_name' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_submodule_name VARCHAR(160) DEFAULT NULL AFTER checklist_module_name",
+        'checklist_page_url' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_page_url VARCHAR(2048) DEFAULT NULL AFTER checklist_submodule_name",
         'checklist_resolved_batch_id' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_resolved_batch_id INT(11) DEFAULT NULL AFTER checklist_submodule_name",
     ];
 
@@ -114,6 +116,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
             batch_title VARCHAR(160) NOT NULL,
             module_name VARCHAR(160) NOT NULL,
             submodule_name VARCHAR(160) DEFAULT NULL,
+            page_url VARCHAR(2048) DEFAULT NULL,
             sequence_no INT(11) NOT NULL DEFAULT 1,
             title VARCHAR(255) NOT NULL,
             description TEXT DEFAULT NULL,
@@ -138,6 +141,16 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
             CONSTRAINT fk_ai_chat_generated_items_thread FOREIGN KEY (thread_id) REFERENCES ai_chat_threads(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
+
+    $generatedItemColumns = [
+        'page_url' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN page_url VARCHAR(2048) DEFAULT NULL AFTER submodule_name",
+    ];
+
+    foreach ($generatedItemColumns as $column => $sql) {
+        if (!bugcatcher_db_has_column($conn, 'ai_chat_generated_checklist_items', $column)) {
+            $conn->query($sql);
+        }
+    }
 
     $done = true;
 }
@@ -230,6 +243,7 @@ function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistant
             'batch_title' => (string) $row['batch_title'],
             'module_name' => (string) $row['module_name'],
             'submodule_name' => (string) ($row['submodule_name'] ?? ''),
+            'page_url' => (string) ($row['page_url'] ?? ''),
             'sequence_no' => (int) $row['sequence_no'],
             'title' => (string) $row['title'],
             'description' => (string) ($row['description'] ?? ''),
@@ -259,11 +273,30 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
     $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, (int) $thread['org_id'], $projectId) : null;
     $existingBatch = $existingBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $existingBatchId) : null;
     $resolvedBatch = $resolvedBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $resolvedBatchId) : null;
+    $pageUrl = '';
+    if ($resolvedBatch) {
+        $pageUrl = trim((string) ($resolvedBatch['page_url'] ?? ''));
+    } elseif ($existingBatch) {
+        $pageUrl = trim((string) ($existingBatch['page_url'] ?? ''));
+    } else {
+        $pageUrl = trim((string) ($thread['checklist_page_url'] ?? ''));
+    }
+
+    $targetMode = (string) ($thread['checklist_target_mode'] ?? '');
+    $isReady = $projectId > 0 && in_array($targetMode, ['new', 'existing'], true);
+    if ($isReady && $targetMode === 'existing') {
+        $isReady = $existingBatchId > 0;
+    }
+    if ($isReady && $targetMode === 'new') {
+        $isReady = trim((string) ($thread['checklist_batch_title'] ?? '')) !== ''
+            && trim((string) ($thread['checklist_module_name'] ?? '')) !== ''
+            && $pageUrl !== '';
+    }
 
     return [
         'project_id' => $projectId,
         'project_name' => (string) ($project['name'] ?? ''),
-        'target_mode' => (string) ($thread['checklist_target_mode'] ?? ''),
+        'target_mode' => $targetMode,
         'existing_batch_id' => $existingBatchId > 0 ? $existingBatchId : null,
         'existing_batch_title' => (string) ($existingBatch['title'] ?? ''),
         'resolved_batch_id' => $resolvedBatchId > 0 ? $resolvedBatchId : null,
@@ -271,7 +304,8 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
         'batch_title' => (string) ($thread['checklist_batch_title'] ?? ''),
         'module_name' => (string) ($thread['checklist_module_name'] ?? ''),
         'submodule_name' => (string) ($thread['checklist_submodule_name'] ?? ''),
-        'is_ready' => $projectId > 0 && trim((string) ($thread['checklist_target_mode'] ?? '')) !== '',
+        'page_url' => $pageUrl,
+        'is_ready' => $isReady,
         'is_locked' => $resolvedBatchId > 0,
     ];
 }
@@ -401,6 +435,7 @@ function bugcatcher_ai_chat_context_from_thread(array $thread): array
         'batch_title' => trim((string) ($thread['checklist_batch_title'] ?? '')),
         'module_name' => trim((string) ($thread['checklist_module_name'] ?? '')),
         'submodule_name' => trim((string) ($thread['checklist_submodule_name'] ?? '')),
+        'page_url' => trim((string) ($thread['checklist_page_url'] ?? '')),
     ];
 }
 
@@ -415,7 +450,7 @@ function bugcatcher_ai_chat_thread_has_ready_context(array $thread): bool
         return $context['existing_batch_id'] > 0;
     }
 
-    return $context['batch_title'] !== '' && $context['module_name'] !== '';
+    return $context['batch_title'] !== '' && $context['module_name'] !== '' && $context['page_url'] !== '';
 }
 
 function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, array $payload): array
@@ -445,14 +480,20 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
             'batch_title' => trim((string) ($batch['title'] ?? '')),
             'module_name' => trim((string) ($batch['module_name'] ?? '')),
             'submodule_name' => trim((string) ($batch['submodule_name'] ?? '')),
+            'page_url' => trim((string) ($batch['page_url'] ?? '')),
         ];
     }
 
     $batchTitle = trim((string) ($payload['batch_title'] ?? ''));
     $moduleName = trim((string) ($payload['module_name'] ?? ''));
     $submoduleName = trim((string) ($payload['submodule_name'] ?? ''));
+    $pageUrlInput = trim((string) ($payload['page_url'] ?? ''));
+    $pageUrl = bugcatcher_checklist_normalize_page_url($pageUrlInput);
     if ($batchTitle === '' || $moduleName === '') {
         throw new RuntimeException('Batch title and module name are required for a new checklist batch target.');
+    }
+    if ($pageUrl === '') {
+        throw new RuntimeException('Link is required and must be a valid http:// or https:// URL for a new checklist batch target.');
     }
 
     return [
@@ -462,6 +503,7 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
         'batch_title' => $batchTitle,
         'module_name' => $moduleName,
         'submodule_name' => $submoduleName,
+        'page_url' => $pageUrl,
     ];
 }
 
@@ -472,7 +514,8 @@ function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context
         && (int) ($thread['checklist_existing_batch_id'] ?? 0) === (int) ($context['existing_batch_id'] ?? 0)
         && trim((string) ($thread['checklist_batch_title'] ?? '')) === trim((string) ($context['batch_title'] ?? ''))
         && trim((string) ($thread['checklist_module_name'] ?? '')) === trim((string) ($context['module_name'] ?? ''))
-        && trim((string) ($thread['checklist_submodule_name'] ?? '')) === trim((string) ($context['submodule_name'] ?? ''));
+        && trim((string) ($thread['checklist_submodule_name'] ?? '')) === trim((string) ($context['submodule_name'] ?? ''))
+        && trim((string) ($thread['checklist_page_url'] ?? '')) === trim((string) ($context['page_url'] ?? ''));
 }
 
 function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context): void
@@ -486,17 +529,19 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
             checklist_batch_title = ?,
             checklist_module_name = ?,
             checklist_submodule_name = NULLIF(?, ''),
+            checklist_page_url = NULLIF(?, ''),
             updated_at = NOW()
         WHERE id = ?
     ");
     $stmt->bind_param(
-        'isisssi',
+        'isissssi',
         $context['project_id'],
         $context['target_mode'],
         $existingBatchId,
         $context['batch_title'],
         $context['module_name'],
         $context['submodule_name'],
+        $context['page_url'],
         $threadId
     );
     $stmt->execute();
@@ -1000,9 +1045,9 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
     $stmt = $conn->prepare("
         INSERT INTO ai_chat_generated_checklist_items
             (assistant_message_id, thread_id, org_id, project_id, target_mode, target_batch_id, batch_title, module_name,
-             submodule_name, sequence_no, title, description, priority, required_role, review_status, duplicate_status,
+             submodule_name, page_url, sequence_no, title, description, priority, required_role, review_status, duplicate_status,
              duplicate_summary, duplicate_matches, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
     ");
 
     foreach ($items as $index => $item) {
@@ -1015,7 +1060,7 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $duplicateMatches = json_encode($duplicateMeta['matches'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $stmt->bind_param(
-            'iiiisisssisssssss',
+            'iiiisissssisssssss',
             $assistantMessageId,
             $thread['id'],
             $thread['org_id'],
@@ -1025,6 +1070,7 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
             $thread['checklist_batch_title'],
             $item['module_name'],
             $item['submodule_name'],
+            $thread['checklist_page_url'],
             $item['sequence_no'],
             $item['title'],
             $item['description'],
@@ -1196,6 +1242,7 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
         'batch_title' => (string) $row['batch_title'],
         'module_name' => (string) $row['module_name'],
         'submodule_name' => (string) ($row['submodule_name'] ?? ''),
+        'page_url' => (string) ($row['page_url'] ?? ''),
         'sequence_no' => (int) $row['sequence_no'],
         'title' => (string) $row['title'],
         'description' => (string) ($row['description'] ?? ''),
@@ -1253,19 +1300,21 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
 
     $stmt = $conn->prepare("
         INSERT INTO checklist_batches
-            (org_id, project_id, title, module_name, submodule_name, status, created_by, updated_by)
-        VALUES (?, ?, ?, ?, NULLIF(?, ''), 'open', ?, ?)
+            (org_id, project_id, title, module_name, submodule_name, status, created_by, updated_by, page_url)
+        VALUES (?, ?, ?, ?, NULLIF(?, ''), 'open', ?, ?, NULLIF(?, ''))
     ");
     $submoduleName = trim((string) ($item['submodule_name'] ?? ''));
+    $pageUrl = trim((string) ($item['page_url'] ?? ''));
     $stmt->bind_param(
-        'iisssii',
+        'iisssiis',
         $item['org_id'],
         $item['project_id'],
         $item['batch_title'],
         $item['module_name'],
         $submoduleName,
         $actorUserId,
-        $actorUserId
+        $actorUserId,
+        $pageUrl
     );
     $stmt->execute();
     $batchId = (int) $stmt->insert_id;

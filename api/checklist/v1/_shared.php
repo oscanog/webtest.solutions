@@ -14,5 +14,5 @@ try {
     checklist_api_json_error(500, 'db_connection_failed', $e->getMessage());
 }
 
+bugcatcher_checklist_ensure_schema($conn);
 $context = checklist_api_require_context($conn);
-
