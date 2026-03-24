@@ -664,14 +664,14 @@ function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
     bugcatcher_file_storage_ensure_schema($conn);
     $item = checklist_api_find_item_or_404($conn, $orgId, $itemId);
     $attachments = bugcatcher_checklist_fetch_item_attachments($conn, (int) $item['id']);
+    $remoteKeys = [];
+    $legacyPaths = [];
     foreach ($attachments as $attachment) {
         $storageKey = (string) ($attachment['storage_key'] ?? '');
         if ($storageKey !== '') {
-            bugcatcher_file_storage_delete($storageKey);
+            $remoteKeys[] = $storageKey;
         } else {
-            bugcatcher_file_storage_delete_legacy_local(
-                bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path'])
-            );
+            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']);
         }
     }
 
@@ -679,6 +679,13 @@ function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
     $stmt->bind_param('ii', $itemId, $orgId);
     $stmt->execute();
     $stmt->close();
+
+    foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
+        bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+    }
+    foreach ($legacyPaths as $legacyPath) {
+        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+    }
 }
 
 function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): void
@@ -687,14 +694,14 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
     checklist_api_find_batch_or_404($conn, $orgId, $batchId);
 
     $batchAttachments = bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId);
+    $remoteKeys = [];
+    $legacyPaths = [];
     foreach ($batchAttachments as $attachment) {
         $storageKey = (string) ($attachment['storage_key'] ?? '');
         if ($storageKey !== '') {
-            bugcatcher_file_storage_delete($storageKey);
+            $remoteKeys[] = $storageKey;
         } else {
-            bugcatcher_file_storage_delete_legacy_local(
-                bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path'])
-            );
+            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']);
         }
     }
 
@@ -712,11 +719,9 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
     foreach ($rows as $row) {
         $storageKey = (string) ($row['storage_key'] ?? '');
         if ($storageKey !== '') {
-            bugcatcher_file_storage_delete($storageKey);
+            $remoteKeys[] = $storageKey;
         } else {
-            bugcatcher_file_storage_delete_legacy_local(
-                bugcatcher_checklist_upload_absolute_path((string) ($row['file_path'] ?? ''))
-            );
+            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) ($row['file_path'] ?? ''));
         }
     }
 
@@ -729,6 +734,13 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
     $stmt->bind_param('ii', $batchId, $orgId);
     $stmt->execute();
     $stmt->close();
+
+    foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
+        bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+    }
+    foreach ($legacyPaths as $legacyPath) {
+        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+    }
 }
 
 function checklist_api_store_uploaded_batch_file(
@@ -785,17 +797,17 @@ function checklist_api_delete_batch_attachment(mysqli $conn, array $attachment):
 {
     bugcatcher_file_storage_ensure_schema($conn);
     $storageKey = (string) ($attachment['storage_key'] ?? '');
-    if ($storageKey !== '') {
-        bugcatcher_file_storage_delete($storageKey);
-    } else {
-        bugcatcher_file_storage_delete_legacy_local(
-            bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path'])
-        );
-    }
+    $legacyPath = $storageKey === '' ? bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']) : null;
 
     $attachmentId = (int) $attachment['id'];
     $stmt = $conn->prepare("DELETE FROM checklist_batch_attachments WHERE id = ?");
     $stmt->bind_param('i', $attachmentId);
     $stmt->execute();
     $stmt->close();
+
+    if ($storageKey !== '') {
+        bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+    } else {
+        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+    }
 }

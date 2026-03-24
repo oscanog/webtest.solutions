@@ -596,17 +596,19 @@ function bugcatcher_checklist_delete_attachment(mysqli $conn, array $attachment)
 {
     bugcatcher_file_storage_ensure_schema($conn);
     $storageKey = (string) ($attachment['storage_key'] ?? '');
-    if ($storageKey !== '') {
-        bugcatcher_file_storage_delete($storageKey);
-    } else {
-        bugcatcher_file_storage_delete_legacy_local(bugcatcher_checklist_upload_absolute_path($attachment['file_path']));
-    }
+    $legacyPath = $storageKey === '' ? bugcatcher_checklist_upload_absolute_path($attachment['file_path']) : null;
 
     $stmt = $conn->prepare("DELETE FROM checklist_attachments WHERE id = ?");
     $attachmentId = (int) $attachment['id'];
     $stmt->bind_param("i", $attachmentId);
     $stmt->execute();
     $stmt->close();
+
+    if ($storageKey !== '') {
+        bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+    } else {
+        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+    }
 }
 
 function bugcatcher_checklist_status_badge_class(string $status): string

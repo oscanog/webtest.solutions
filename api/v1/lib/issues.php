@@ -600,14 +600,16 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
         $files = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
+        $remoteKeys = [];
+        $legacyPaths = [];
         foreach ($files as $file) {
             $storageKey = (string) ($file['storage_key'] ?? '');
             $storedPath = (string) ($file['file_path'] ?? '');
             if ($storageKey !== '') {
-                bugcatcher_file_storage_delete($storageKey);
+                $remoteKeys[] = $storageKey;
                 continue;
             }
-            bugcatcher_file_storage_delete_legacy_local(bugcatcher_upload_absolute_path($storedPath));
+            $legacyPaths[] = bugcatcher_upload_absolute_path($storedPath);
         }
 
         $stmt = $conn->prepare("DELETE FROM issue_attachments WHERE issue_id = ?");
@@ -630,6 +632,13 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
         }
 
         $conn->commit();
+
+        foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
+            bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+        }
+        foreach ($legacyPaths as $legacyPath) {
+            bugcatcher_file_storage_delete_legacy_local($legacyPath);
+        }
     } catch (Throwable $e) {
         $conn->rollback();
         bc_v1_json_error(500, 'issue_delete_failed', 'Failed to delete issue.', $e->getMessage());

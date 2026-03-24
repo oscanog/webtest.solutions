@@ -108,6 +108,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
         CREATE TABLE IF NOT EXISTS ai_chat_generated_checklist_items (
             id INT(11) NOT NULL AUTO_INCREMENT,
             assistant_message_id INT(11) NOT NULL,
+            source_user_message_id INT(11) DEFAULT NULL,
             thread_id INT(11) NOT NULL,
             org_id INT(11) NOT NULL,
             project_id INT(11) NOT NULL,
@@ -144,6 +145,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
 
     $generatedItemColumns = [
         'page_url' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN page_url VARCHAR(2048) DEFAULT NULL AFTER submodule_name",
+        'source_user_message_id' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN source_user_message_id INT(11) DEFAULT NULL AFTER assistant_message_id",
     ];
 
     foreach ($generatedItemColumns as $column => $sql) {
@@ -237,6 +239,7 @@ function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistant
 
         $map[$assistantMessageId][] = [
             'id' => (int) $row['id'],
+            'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
             'project_id' => (int) $row['project_id'],
             'target_mode' => (string) $row['target_mode'],
             'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
@@ -1044,10 +1047,10 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
     $duplicates = bugcatcher_openclaw_find_duplicates($conn, (int) $thread['checklist_project_id'], $items);
     $stmt = $conn->prepare("
         INSERT INTO ai_chat_generated_checklist_items
-            (assistant_message_id, thread_id, org_id, project_id, target_mode, target_batch_id, batch_title, module_name,
+            (assistant_message_id, source_user_message_id, thread_id, org_id, project_id, target_mode, target_batch_id, batch_title, module_name,
              submodule_name, page_url, sequence_no, title, description, priority, required_role, review_status, duplicate_status,
              duplicate_summary, duplicate_matches, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
+        VALUES (?, NULLIF(?, 0), ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
     ");
 
     foreach ($items as $index => $item) {
@@ -1060,8 +1063,9 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $duplicateMatches = json_encode($duplicateMeta['matches'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $stmt->bind_param(
-            'iiiisissssisssssss',
+            'iiiiisissssisssssss',
             $assistantMessageId,
+            $thread['source_user_message_id'] ?? 0,
             $thread['id'],
             $thread['org_id'],
             $thread['checklist_project_id'],
@@ -1165,6 +1169,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
             $assistantReply = trim($rawAssistantContent);
         }
         $items = is_array($parsed['items'] ?? null) ? $parsed['items'] : [];
+        $thread['source_user_message_id'] = $userMessageId;
 
         $conn->begin_transaction();
         $stmt = $conn->prepare("
@@ -1236,6 +1241,7 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
 
     return [
         'id' => (int) $row['id'],
+        'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
         'project_id' => (int) $row['project_id'],
         'target_mode' => (string) $row['target_mode'],
         'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
@@ -1363,6 +1369,82 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     $stmt->close();
 
     return $itemId;
+}
+
+function bugcatcher_ai_chat_fetch_message_attachments_for_message(mysqli $conn, int $messageId): array
+{
+    if ($messageId <= 0) {
+        return [];
+    }
+
+    $map = bugcatcher_ai_chat_fetch_message_attachments($conn, [$messageId]);
+    return $map[$messageId] ?? [];
+}
+
+function bugcatcher_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, array $attachment): bool
+{
+    $storageKey = trim((string) ($attachment['storage_key'] ?? ''));
+    $filePath = trim((string) ($attachment['file_path'] ?? ''));
+
+    if ($storageKey !== '') {
+        $stmt = $conn->prepare("
+            SELECT 1
+            FROM checklist_batch_attachments
+            WHERE checklist_batch_id = ?
+              AND storage_key = ?
+            LIMIT 1
+        ");
+        $stmt->bind_param('is', $batchId, $storageKey);
+    } else {
+        $stmt = $conn->prepare("
+            SELECT 1
+            FROM checklist_batch_attachments
+            WHERE checklist_batch_id = ?
+              AND file_path = ?
+            LIMIT 1
+        ");
+        $stmt->bind_param('is', $batchId, $filePath);
+    }
+
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return (bool) $row;
+}
+
+function bugcatcher_ai_chat_promote_message_attachments_to_batch(
+    mysqli $conn,
+    int $batchId,
+    int $sourceMessageId,
+    int $actorUserId
+): void {
+    $attachments = bugcatcher_ai_chat_fetch_message_attachments_for_message($conn, $sourceMessageId);
+    if (!$attachments) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        INSERT INTO checklist_batch_attachments
+            (checklist_batch_id, file_path, storage_key, original_name, mime_type, file_size, uploaded_by, source_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'bot')
+    ");
+
+    foreach ($attachments as $attachment) {
+        if (bugcatcher_ai_chat_batch_has_attachment($conn, $batchId, $attachment)) {
+            continue;
+        }
+
+        $filePath = (string) ($attachment['file_path'] ?? '');
+        $storageKey = (string) ($attachment['storage_key'] ?? '');
+        $originalName = (string) ($attachment['original_name'] ?? 'screenshot');
+        $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
+        $fileSize = (int) ($attachment['file_size'] ?? 0);
+        $stmt->bind_param('issssii', $batchId, $filePath, $storageKey, $originalName, $mimeType, $fileSize, $actorUserId);
+        $stmt->execute();
+    }
+
+    $stmt->close();
 }
 
 function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
@@ -1508,14 +1590,11 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
+    $remoteKeys = [];
     foreach ($rows as $row) {
         $storageKey = (string) ($row['storage_key'] ?? '');
         if ($storageKey !== '') {
-            try {
-                bugcatcher_file_storage_delete($storageKey);
-            } catch (Throwable $deleteError) {
-                // Ignore remote cleanup failures during thread deletion.
-            }
+            $remoteKeys[] = $storageKey;
         }
     }
 
@@ -1525,6 +1604,14 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
     $stmt->bind_param('iii', $threadId, $userId, $orgId);
     $stmt->execute();
     $stmt->close();
+
+    foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
+        try {
+            bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+        } catch (Throwable $deleteError) {
+            // Ignore remote cleanup failures during thread deletion.
+        }
+    }
 
     bc_v1_json_success([
         'deleted' => true,
@@ -1625,6 +1712,12 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
         $conn->begin_transaction();
         $batch = bugcatcher_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId);
         $itemId = bugcatcher_ai_chat_create_item_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
+        bugcatcher_ai_chat_promote_message_attachments_to_batch(
+            $conn,
+            (int) $batch['id'],
+            (int) ($generatedItem['source_user_message_id'] ?? 0),
+            $actorUserId
+        );
 
         $stmt = $conn->prepare("
             UPDATE ai_chat_generated_checklist_items

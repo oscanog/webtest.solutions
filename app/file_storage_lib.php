@@ -146,6 +146,78 @@ function bugcatcher_file_storage_delete(?string $storageKey): void
     bugcatcher_file_storage_parse_json_response($statusCode, $responseBody);
 }
 
+function bugcatcher_file_storage_has_reference(mysqli $conn, string $storageKey, ?string $ignoreTable = null, ?int $ignoreId = null): bool
+{
+    $storageKey = trim($storageKey);
+    if ($storageKey === '') {
+        return false;
+    }
+
+    $targets = [
+        ['table' => 'issue_attachments', 'id_column' => 'id'],
+        ['table' => 'checklist_attachments', 'id_column' => 'id'],
+        ['table' => 'checklist_batch_attachments', 'id_column' => 'id'],
+        ['table' => 'openclaw_request_attachments', 'id_column' => 'id'],
+        ['table' => 'ai_chat_message_attachments', 'id_column' => 'id'],
+    ];
+
+    foreach ($targets as $target) {
+        if (!bugcatcher_db_has_table($conn, $target['table'])) {
+            continue;
+        }
+
+        if (!bugcatcher_db_has_column($conn, $target['table'], 'storage_key')) {
+            continue;
+        }
+
+        if ($ignoreTable === $target['table'] && $ignoreId !== null && $ignoreId > 0) {
+            $stmt = $conn->prepare("
+                SELECT 1
+                FROM {$target['table']}
+                WHERE storage_key = ?
+                  AND {$target['id_column']} <> ?
+                LIMIT 1
+            ");
+            $stmt->bind_param('si', $storageKey, $ignoreId);
+        } else {
+            $stmt = $conn->prepare("
+                SELECT 1
+                FROM {$target['table']}
+                WHERE storage_key = ?
+                LIMIT 1
+            ");
+            $stmt->bind_param('s', $storageKey);
+        }
+
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($row) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function bugcatcher_file_storage_delete_if_unreferenced(
+    mysqli $conn,
+    ?string $storageKey,
+    ?string $ignoreTable = null,
+    ?int $ignoreId = null
+): void {
+    $storageKey = trim((string) $storageKey);
+    if ($storageKey === '' || !bugcatcher_file_storage_is_remote_enabled()) {
+        return;
+    }
+
+    if (bugcatcher_file_storage_has_reference($conn, $storageKey, $ignoreTable, $ignoreId)) {
+        return;
+    }
+
+    bugcatcher_file_storage_delete($storageKey);
+}
+
 function bugcatcher_file_storage_delete_legacy_local(?string $absolutePath): void
 {
     if ($absolutePath !== null && is_file($absolutePath)) {
@@ -171,6 +243,23 @@ function bugcatcher_db_has_column(mysqli $conn, string $table, string $column): 
     return (bool) $row;
 }
 
+function bugcatcher_db_has_table(mysqli $conn, string $table): bool
+{
+    $sql = "
+        SELECT 1
+        FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+        LIMIT 1
+    ";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $table);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return (bool) $row;
+}
+
 function bugcatcher_file_storage_ensure_schema(mysqli $conn): void
 {
     static $done = false;
@@ -183,9 +272,13 @@ function bugcatcher_file_storage_ensure_schema(mysqli $conn): void
         'checklist_attachments',
         'checklist_batch_attachments',
         'openclaw_request_attachments',
+        'ai_chat_message_attachments',
     ];
 
     foreach ($targets as $table) {
+        if (!bugcatcher_db_has_table($conn, $table)) {
+            continue;
+        }
         if (!bugcatcher_db_has_column($conn, $table, 'storage_key')) {
             $conn->query("ALTER TABLE {$table} ADD COLUMN storage_key VARCHAR(255) DEFAULT NULL AFTER file_path");
         }
