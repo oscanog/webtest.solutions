@@ -27,6 +27,17 @@ This matrix maps every currently discovered backend function to its `/api/v1/*` 
 | `rainier/forgot_password.php?action=reset_password` | reset password | `/api/v1/auth/forgot/reset-password` | `POST` | none | live |
 | `zen/organization.php?org_id=...` + session | switch active org | `/api/v1/session/active-org` | `PUT` | Bearer/Session | live |
 
+## Dashboard
+| Legacy source | Legacy flow | v1 route | Method | Auth | Status |
+|---|---|---|---|---|---|
+| `zen/dashboard.php` | dashboard summary | `/api/v1/dashboard/summary` | `GET` | Bearer/Session | live |
+
+Dashboard summary notes:
+- `GET /api/v1/dashboard/summary` keeps the existing `org`, `scope`, `summary`, `trend`, and `recent_issues` fields.
+- QA Leads additionally receive `qa_lead_checklist` with organization-wide QA Tester checklist workload totals and an active-project breakdown.
+- Non-QA Lead roles receive `qa_lead_checklist: null`.
+- In this workload summary, "not tested" means checklist items with `status = 'open'`.
+
 ## Organization
 | Legacy source | Legacy flow | v1 route | Method | Auth | Status |
 |---|---|---|---|---|---|

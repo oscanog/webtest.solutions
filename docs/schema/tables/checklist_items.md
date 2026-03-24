@@ -36,3 +36,11 @@ Stores individual checklist rows under a checklist batch, including assignment, 
 - `updated_by -> users.id ON DELETE SET NULL`
 - `issue_id -> issues.id ON DELETE SET NULL`
 - Referenced by `checklist_attachments.checklist_item_id`
+
+## Dashboard Usage
+
+- The QA Lead dashboard workload summary derives its tester counts from `project_id`, `required_role`, `assigned_to_user_id`, and `status`.
+- The summary only includes QA Tester workload:
+  - assigned rows require the assignee to be an org member with role `QA Tester`
+  - unassigned rows require `required_role = 'QA Tester'` and no current assignee
+- The dashboard's "open" workload count maps directly to `status = 'open'`.

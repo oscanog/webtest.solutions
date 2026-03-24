@@ -524,6 +524,12 @@ function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context
 function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context): void
 {
     $existingBatchId = (int) ($context['existing_batch_id'] ?? 0);
+    $projectId = (int) ($context['project_id'] ?? 0);
+    $targetMode = (string) ($context['target_mode'] ?? '');
+    $batchTitle = (string) ($context['batch_title'] ?? '');
+    $moduleName = (string) ($context['module_name'] ?? '');
+    $submoduleName = (string) ($context['submodule_name'] ?? '');
+    $pageUrl = (string) ($context['page_url'] ?? '');
     $stmt = $conn->prepare("
         UPDATE ai_chat_threads
         SET checklist_project_id = ?,
@@ -538,13 +544,13 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
     ");
     $stmt->bind_param(
         'isissssi',
-        $context['project_id'],
-        $context['target_mode'],
+        $projectId,
+        $targetMode,
         $existingBatchId,
-        $context['batch_title'],
-        $context['module_name'],
-        $context['submodule_name'],
-        $context['page_url'],
+        $batchTitle,
+        $moduleName,
+        $submoduleName,
+        $pageUrl,
         $threadId
     );
     $stmt->execute();
@@ -1055,9 +1061,23 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
 
     foreach ($items as $index => $item) {
         $duplicateMeta = is_array($duplicates[$index] ?? null) ? $duplicates[$index] : [];
+        $sourceUserMessageId = (int) ($thread['source_user_message_id'] ?? 0);
+        $threadRowId = (int) ($thread['id'] ?? 0);
+        $orgId = (int) ($thread['org_id'] ?? 0);
+        $projectId = (int) ($thread['checklist_project_id'] ?? 0);
+        $targetMode = (string) ($thread['checklist_target_mode'] ?? '');
         $targetBatchId = (string) ($thread['checklist_target_mode'] ?? '') === 'existing'
             ? (int) ($thread['checklist_existing_batch_id'] ?? 0)
             : 0;
+        $batchTitle = (string) ($thread['checklist_batch_title'] ?? '');
+        $pageUrl = (string) ($thread['checklist_page_url'] ?? '');
+        $moduleName = (string) ($item['module_name'] ?? '');
+        $submoduleName = (string) ($item['submodule_name'] ?? '');
+        $sequenceNo = (int) ($item['sequence_no'] ?? ($index + 1));
+        $title = (string) ($item['title'] ?? '');
+        $description = (string) ($item['description'] ?? '');
+        $priority = (string) ($item['priority'] ?? 'medium');
+        $requiredRole = (string) ($item['required_role'] ?? 'QA Tester');
         $duplicateStatus = (string) ($duplicateMeta['duplicate_status'] ?? 'unique');
         $duplicateSummary = (string) ($duplicateMeta['duplicate_summary'] ?? '');
         $duplicateMatches = json_encode($duplicateMeta['matches'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -1065,21 +1085,21 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $stmt->bind_param(
             'iiiiisissssisssssss',
             $assistantMessageId,
-            $thread['source_user_message_id'] ?? 0,
-            $thread['id'],
-            $thread['org_id'],
-            $thread['checklist_project_id'],
-            $thread['checklist_target_mode'],
+            $sourceUserMessageId,
+            $threadRowId,
+            $orgId,
+            $projectId,
+            $targetMode,
             $targetBatchId,
-            $thread['checklist_batch_title'],
-            $item['module_name'],
-            $item['submodule_name'],
-            $thread['checklist_page_url'],
-            $item['sequence_no'],
-            $item['title'],
-            $item['description'],
-            $item['priority'],
-            $item['required_role'],
+            $batchTitle,
+            $moduleName,
+            $submoduleName,
+            $pageUrl,
+            $sequenceNo,
+            $title,
+            $description,
+            $priority,
+            $requiredRole,
             $duplicateStatus,
             $duplicateSummary,
             $duplicateMatches
@@ -1311,12 +1331,16 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
     ");
     $submoduleName = trim((string) ($item['submodule_name'] ?? ''));
     $pageUrl = trim((string) ($item['page_url'] ?? ''));
+    $orgId = (int) ($item['org_id'] ?? 0);
+    $projectId = (int) ($item['project_id'] ?? 0);
+    $batchTitle = (string) ($item['batch_title'] ?? '');
+    $moduleName = (string) ($item['module_name'] ?? '');
     $stmt->bind_param(
         'iisssiis',
-        $item['org_id'],
-        $item['project_id'],
-        $item['batch_title'],
-        $item['module_name'],
+        $orgId,
+        $projectId,
+        $batchTitle,
+        $moduleName,
         $submoduleName,
         $actorUserId,
         $actorUserId,
@@ -1340,7 +1364,14 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     $assignedToUserId = 0;
     $submoduleName = trim((string) ($generatedItem['submodule_name'] ?? ''));
     $description = trim((string) ($generatedItem['description'] ?? ''));
-    $fullTitle = bugcatcher_checklist_full_title((string) $generatedItem['module_name'], $submoduleName, (string) $generatedItem['title']);
+    $orgId = (int) ($generatedItem['org_id'] ?? 0);
+    $projectId = (int) ($generatedItem['project_id'] ?? 0);
+    $title = (string) ($generatedItem['title'] ?? '');
+    $moduleName = (string) ($generatedItem['module_name'] ?? '');
+    $priority = (string) ($generatedItem['priority'] ?? 'medium');
+    $requiredRole = (string) ($generatedItem['required_role'] ?? 'QA Tester');
+    $batchId = (int) ($batch['id'] ?? 0);
+    $fullTitle = bugcatcher_checklist_full_title($moduleName, $submoduleName, $title);
     $stmt = $conn->prepare("
         INSERT INTO checklist_items
             (batch_id, org_id, project_id, sequence_no, title, module_name, submodule_name, full_title, description,
@@ -1349,17 +1380,17 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     ");
     $stmt->bind_param(
         'iiiisssssssiii',
-        $batch['id'],
-        $generatedItem['org_id'],
-        $generatedItem['project_id'],
+        $batchId,
+        $orgId,
+        $projectId,
         $sequenceNo,
-        $generatedItem['title'],
-        $generatedItem['module_name'],
+        $title,
+        $moduleName,
         $submoduleName,
         $fullTitle,
         $description,
-        $generatedItem['priority'],
-        $generatedItem['required_role'],
+        $priority,
+        $requiredRole,
         $assignedToUserId,
         $actorUserId,
         $actorUserId

@@ -32,6 +32,28 @@ type DashboardSummaryData = {
     id: number;
     title: string;
   }>;
+  qa_lead_checklist: null | {
+    org_totals: Array<{
+      user_id: number | null;
+      display_name: string;
+      assigned_items: number;
+      open_items: number;
+      is_unassigned: boolean;
+    }>;
+    projects: Array<{
+      project_id: number;
+      project_name: string;
+      assigned_items: number;
+      open_items: number;
+      testers: Array<{
+        user_id: number | null;
+        display_name: string;
+        assigned_items: number;
+        open_items: number;
+        is_unassigned: boolean;
+      }>;
+    }>;
+  };
 };
 
 type Sessions = {
@@ -47,6 +69,7 @@ type Sessions = {
 let api: APIRequestContext;
 let sessions: Sessions;
 const createdIssueIds: number[] = [];
+const createdChecklistFixtures: Array<{ batchId: number; itemIds: number[] }> = [];
 
 async function postIssueAction(session: RoleSession, issueId: number, actionPath: string, payload: object) {
   const { res, body } = await apiPostJson<ApiEnvelope<{ issue: Issue }>>(
@@ -105,6 +128,115 @@ async function moveToQaLead(issueId: number): Promise<void> {
   });
 }
 
+async function createChecklistFixture(marker: string): Promise<{ batchId: number; itemIds: number[] }> {
+  const batchCreate = await apiPostJson<ApiEnvelope<{ batch: { id: number } }>>(
+    api,
+    `${cfg.apiBasePath}/checklist/batches`,
+    {
+      project_id: cfg.projectId,
+      title: `QA Lead Dashboard ${marker}`,
+      module_name: "Dashboard",
+      submodule_name: "QA Lead",
+      status: "open",
+      assigned_qa_lead_id: cfg.accounts.qaLead.userId,
+      notes: "Created by dashboard summary regression test",
+    },
+    authHeaders(sessions.pm)
+  );
+  expect(batchCreate.res.status()).toBe(201);
+  expectApiSuccess(batchCreate.body);
+  const batchId = batchCreate.body.data.batch.id;
+
+  const createItem = async (payload: Record<string, unknown>) => {
+    const itemCreate = await apiPostJson<ApiEnvelope<{ item: { id: number } }>>(
+      api,
+      `${cfg.apiBasePath}/checklist/items`,
+      {
+        batch_id: batchId,
+        module_name: "Dashboard",
+        submodule_name: "QA Lead",
+        priority: "medium",
+        required_role: "QA Tester",
+        ...payload,
+      },
+      authHeaders(sessions.pm)
+    );
+    expect(itemCreate.res.status()).toBe(201);
+    expectApiSuccess(itemCreate.body);
+    return itemCreate.body.data.item.id;
+  };
+
+  const openAssignedItemId = await createItem({
+    sequence_no: 1,
+    title: `Assigned open ${marker}`,
+    description: "Assigned QA tester open checklist item",
+    assigned_to_user_id: cfg.accounts.qaTester.userId,
+  });
+  const passedAssignedItemId = await createItem({
+    sequence_no: 2,
+    title: `Assigned passed ${marker}`,
+    description: "Assigned QA tester passed checklist item",
+    assigned_to_user_id: cfg.accounts.qaTester.userId,
+  });
+  const unassignedOpenItemId = await createItem({
+    sequence_no: 3,
+    title: `Unassigned open ${marker}`,
+    description: "Unassigned QA tester open checklist item",
+    assigned_to_user_id: 0,
+  });
+
+  const statusUpdate = await apiPostJson<ApiEnvelope<{ item: { status: string } }>>(
+    api,
+    `${cfg.apiBasePath}/checklist/item_status`,
+    {
+      item_id: passedAssignedItemId,
+      status: "passed",
+    },
+    authHeaders(sessions.qaTester)
+  );
+  expect(statusUpdate.res.status()).toBe(200);
+  expectApiSuccess(statusUpdate.body);
+  expect(statusUpdate.body.data.item.status).toBe("passed");
+
+  const fixture = {
+    batchId,
+    itemIds: [openAssignedItemId, passedAssignedItemId, unassignedOpenItemId],
+  };
+  createdChecklistFixtures.push(fixture);
+  return fixture;
+}
+
+async function deleteChecklistFixture(batchId: number, itemIds: number[]): Promise<void> {
+  for (const itemId of itemIds) {
+    const itemDelete = await api.fetch(`${cfg.apiBasePath}/checklist/item?id=${itemId}`, {
+      method: "DELETE",
+      headers: authHeaders(sessions.pm),
+      data: {},
+    });
+    expect([200, 404]).toContain(itemDelete.status());
+  }
+
+  const batchDelete = await api.fetch(`${cfg.apiBasePath}/checklist/batch?id=${batchId}`, {
+    method: "DELETE",
+    headers: authHeaders(sessions.pm),
+    data: {},
+  });
+  expect([200, 404]).toContain(batchDelete.status());
+}
+
+function findWorkloadRow(
+  rows: NonNullable<DashboardSummaryData["qa_lead_checklist"]>["org_totals"] | NonNullable<DashboardSummaryData["qa_lead_checklist"]>["projects"][number]["testers"],
+  matcher: { userId?: number; unassigned?: boolean }
+) {
+  return rows.find((row) =>
+    matcher.unassigned ? row.is_unassigned : row.user_id === matcher.userId
+  );
+}
+
+function findProjectSummary(data: DashboardSummaryData, projectId: number) {
+  return data.qa_lead_checklist?.projects.find((project) => project.project_id === projectId);
+}
+
 test.beforeAll(async () => {
   api = await request.newContext({ baseURL: cfg.baseUrl });
   sessions = {
@@ -119,6 +251,9 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  for (const fixture of createdChecklistFixtures.splice(0)) {
+    await deleteChecklistFixture(fixture.batchId, fixture.itemIds);
+  }
   for (const issueId of createdIssueIds) {
     await apiDeleteJson<ApiEnvelope<{ deleted?: boolean }>>(
       api,
@@ -217,6 +352,85 @@ test("issue reads are organization-wide while workflow actions stay role-scoped"
     throw new Error("Expected QA action to stay restricted for non-assigned viewers.");
   }
   expect(blockedAction.body.error.message).toBe("You can only report issues assigned to you.");
+});
+
+test("qa lead dashboard includes org and project checklist workload summaries", async () => {
+  test.setTimeout(45_000);
+  const before = await apiGet<ApiEnvelope<DashboardSummaryData>>(
+    api,
+    `${cfg.apiBasePath}/dashboard/summary?org_id=${cfg.orgId}`,
+    authHeaders(sessions.qaLead)
+  );
+  expect(before.res.status()).toBe(200);
+  expectApiSuccess(before.body);
+  expect(before.body.data.qa_lead_checklist).not.toBeNull();
+
+  const beforeTesterRow = findWorkloadRow(before.body.data.qa_lead_checklist!.org_totals, {
+    userId: cfg.accounts.qaTester.userId,
+  });
+  const beforeUnassignedRow = findWorkloadRow(before.body.data.qa_lead_checklist!.org_totals, {
+    unassigned: true,
+  });
+  const beforeProject = findProjectSummary(before.body.data, cfg.projectId);
+  const beforeProjectTester = beforeProject
+    ? findWorkloadRow(beforeProject.testers, { userId: cfg.accounts.qaTester.userId })
+    : undefined;
+  const beforeProjectUnassigned = beforeProject
+    ? findWorkloadRow(beforeProject.testers, { unassigned: true })
+    : undefined;
+
+  await createChecklistFixture(`${Date.now()}`);
+
+  const after = await apiGet<ApiEnvelope<DashboardSummaryData>>(
+    api,
+    `${cfg.apiBasePath}/dashboard/summary?org_id=${cfg.orgId}`,
+    authHeaders(sessions.qaLead)
+  );
+  expect(after.res.status()).toBe(200);
+  expectApiSuccess(after.body);
+  expect(after.body.data.qa_lead_checklist).not.toBeNull();
+
+  const testerRow = findWorkloadRow(after.body.data.qa_lead_checklist!.org_totals, {
+    userId: cfg.accounts.qaTester.userId,
+  });
+  expect(testerRow).toBeTruthy();
+  expect(testerRow?.assigned_items).toBe((beforeTesterRow?.assigned_items ?? 0) + 2);
+  expect(testerRow?.open_items).toBe((beforeTesterRow?.open_items ?? 0) + 1);
+
+  const unassignedRow = findWorkloadRow(after.body.data.qa_lead_checklist!.org_totals, {
+    unassigned: true,
+  });
+  expect(unassignedRow).toBeTruthy();
+  expect(unassignedRow?.assigned_items).toBe((beforeUnassignedRow?.assigned_items ?? 0) + 1);
+  expect(unassignedRow?.open_items).toBe((beforeUnassignedRow?.open_items ?? 0) + 1);
+
+  const projectSummary = findProjectSummary(after.body.data, cfg.projectId);
+  expect(projectSummary).toBeTruthy();
+  expect(projectSummary?.assigned_items).toBe((beforeProject?.assigned_items ?? 0) + 3);
+  expect(projectSummary?.open_items).toBe((beforeProject?.open_items ?? 0) + 2);
+
+  const projectTesterRow = projectSummary
+    ? findWorkloadRow(projectSummary.testers, { userId: cfg.accounts.qaTester.userId })
+    : undefined;
+  expect(projectTesterRow).toBeTruthy();
+  expect(projectTesterRow?.assigned_items).toBe((beforeProjectTester?.assigned_items ?? 0) + 2);
+  expect(projectTesterRow?.open_items).toBe((beforeProjectTester?.open_items ?? 0) + 1);
+
+  const projectUnassignedRow = projectSummary
+    ? findWorkloadRow(projectSummary.testers, { unassigned: true })
+    : undefined;
+  expect(projectUnassignedRow).toBeTruthy();
+  expect(projectUnassignedRow?.assigned_items).toBe((beforeProjectUnassigned?.assigned_items ?? 0) + 1);
+  expect(projectUnassignedRow?.open_items).toBe((beforeProjectUnassigned?.open_items ?? 0) + 1);
+
+  const nonQaLeadDashboard = await apiGet<ApiEnvelope<DashboardSummaryData>>(
+    api,
+    `${cfg.apiBasePath}/dashboard/summary?org_id=${cfg.orgId}`,
+    authHeaders(sessions.juniorDev)
+  );
+  expect(nonQaLeadDashboard.res.status()).toBe(200);
+  expectApiSuccess(nonQaLeadDashboard.body);
+  expect(nonQaLeadDashboard.body.data.qa_lead_checklist).toBeNull();
 });
 
 test("issue workflow reject -> reassign -> delete", async () => {
