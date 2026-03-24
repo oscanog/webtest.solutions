@@ -18,10 +18,10 @@ Stores individual checklist rows under a checklist batch, including assignment, 
 | `submodule_name` | `VARCHAR(160)` | Yes | `NULL` | Stored submodule name. |
 | `full_title` | `VARCHAR(255)` | No | none | Display format `Module | Submodule | Title`. |
 | `description` | `LONGTEXT` | Yes | `NULL` | Main textarea content for steps, expected result, and notes. |
-| `status` | `ENUM('open','in_progress','passed','failed','blocked')` | No | `open` | Checklist workflow state. |
+| `status` | `ENUM('open','in_progress','passed','failed','blocked')` | No | `open` | Checklist workflow state. Canonical API mutations use `/api/v1/checklist/item_status`. |
 | `priority` | `ENUM('low','medium','high')` | No | `medium` | Priority marker. |
 | `required_role` | role enum | No | `QA Tester` | Role mainly expected to perform the item. |
-| `assigned_to_user_id` | `INT(11)` | Yes | `NULL` | Current assignee. |
+| `assigned_to_user_id` | `INT(11)` | Yes | `NULL` | Current assignee. Non-manager checklist work access is based on this assignment. |
 | `issue_id` | `INT(11)` | Yes | `NULL` | Linked issue created after failure/blocking. |
 | `started_at` | `DATETIME` | Yes | `NULL` | First in-progress timestamp. |
 | `completed_at` | `DATETIME` | Yes | `NULL` | Completion timestamp for passed/failed/blocked. |

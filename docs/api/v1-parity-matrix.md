@@ -88,6 +88,11 @@ This matrix maps every currently discovered backend function to its `/api/v1/*` 
 - `melvin/checklist_batch.php`: `save_batch`, `add_item`
 - `melvin/checklist_item.php`: `save_item`, `change_status`, `upload_attachment`, `delete_attachment`
 
+### Checklist mutation notes
+- `POST /api/v1/checklist/item_status` is the canonical workflow-status endpoint.
+- `PATCH /api/v1/checklist/item` and `PATCH /api/v1/checklist/items/{id}` remain the definition-edit path for checklist managers.
+- Assigned non-manager assignees may send a status-only `PATCH` payload as a temporary compatibility path; any other item field edits still require checklist-manager access.
+
 ## Discord Link
 | Legacy source | Legacy flow | v1 route | Method | Auth | Status |
 |---|---|---|---|---|---|

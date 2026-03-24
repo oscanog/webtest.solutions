@@ -573,6 +573,24 @@ function checklist_api_update_item(mysqli $conn, array $context, int $itemId, ar
     return $updated;
 }
 
+function checklist_api_patch_item(mysqli $conn, array $context, int $itemId, array $payload): array
+{
+    if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
+        return checklist_api_update_item($conn, $context, $itemId, $payload);
+    }
+
+    $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
+    if (!bugcatcher_checklist_user_can_work_item($context, $item)) {
+        checklist_api_json_error(403, 'forbidden', 'You cannot update this item.');
+    }
+
+    if (count($payload) !== 1 || !array_key_exists('status', $payload)) {
+        checklist_api_json_error(403, 'forbidden', 'Only checklist managers can edit item definitions.');
+    }
+
+    return checklist_api_change_item_status($conn, $context, $itemId, (string) ($payload['status'] ?? ''));
+}
+
 function checklist_api_auto_create_issue_if_needed(mysqli $conn, array $context, array $item): void
 {
     if (in_array((string) $item['status'], ['failed', 'blocked'], true) && (int) ($item['issue_id'] ?? 0) <= 0) {
