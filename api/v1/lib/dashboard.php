@@ -8,11 +8,10 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
     $actor = bc_v1_actor($conn, true);
     $org = bc_v1_org_context($conn, $actor, bc_v1_get_int($_GET, 'org_id', 0));
     $scope = bc_v1_issue_visibility_scope($org);
-    [$scopeSql, $scopeTypes, $scopeParams] = bc_v1_issue_scope_filter($scope, (int) $org['user_id']);
 
     $summary = [
-        'open_issues' => bc_v1_issue_count_by_scope($conn, (int) $org['org_id'], 'open', $scopeSql, $scopeTypes, $scopeParams),
-        'closed_issues' => bc_v1_issue_count_by_scope($conn, (int) $org['org_id'], 'closed', $scopeSql, $scopeTypes, $scopeParams),
+        'open_issues' => bc_v1_issue_count($conn, (int) $org['org_id'], 'open'),
+        'closed_issues' => bc_v1_issue_count($conn, (int) $org['org_id'], 'closed'),
         'active_projects' => 0,
         'checklist_open_items' => 0,
         'unread_notifications' => 0,
@@ -60,12 +59,11 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
     $issueTrendStmt = $conn->prepare("
         SELECT DATE(i.created_at) AS day_key, COUNT(*) AS total
         FROM issues i
-        WHERE i.org_id = ? AND DATE(i.created_at) BETWEEN ? AND ?{$scopeSql}
+        WHERE i.org_id = ? AND DATE(i.created_at) BETWEEN ? AND ?
         GROUP BY DATE(i.created_at)
         ORDER BY DATE(i.created_at) ASC
     ");
-    $issueParams = array_merge([(int) $org['org_id'], $days[0], $days[count($days) - 1]], $scopeParams);
-    bc_v1_stmt_bind($issueTrendStmt, 'iss' . $scopeTypes, $issueParams);
+    $issueTrendStmt->bind_param('iss', $org['org_id'], $days[0], $days[count($days) - 1]);
     $issueTrendStmt->execute();
     $issueRows = $issueTrendStmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $issueTrendStmt->close();
@@ -116,12 +114,11 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
         SELECT i.id, i.title, i.status, i.assign_status, u.username AS author_username
         FROM issues i
         LEFT JOIN users u ON u.id = i.author_id
-        WHERE i.org_id = ?{$scopeSql}
+        WHERE i.org_id = ?
         ORDER BY i.created_at DESC, i.id DESC
         LIMIT 5
     ");
-    $recentParams = array_merge([(int) $org['org_id']], $scopeParams);
-    bc_v1_stmt_bind($recentIssuesStmt, 'i' . $scopeTypes, $recentParams);
+    $recentIssuesStmt->bind_param('i', $org['org_id']);
     $recentIssuesStmt->execute();
     $recentIssues = $recentIssuesStmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $recentIssuesStmt->close();

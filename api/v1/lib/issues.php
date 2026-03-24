@@ -163,42 +163,14 @@ function bc_v1_issue_visibility_scope(array $orgContext): string
     return 'regular';
 }
 
-function bc_v1_issue_scope_filter(string $scope, int $userId): array
+function bc_v1_issue_count(mysqli $conn, int $orgId, string $status): int
 {
-    if ($scope === 'senior') {
-        return [' AND i.assigned_dev_id = ?', 'i', [$userId]];
-    }
-    if ($scope === 'junior') {
-        return [' AND i.assigned_junior_id = ?', 'i', [$userId]];
-    }
-    if ($scope === 'qa') {
-        return [' AND i.assigned_qa_id = ?', 'i', [$userId]];
-    }
-    if ($scope === 'senior_qa') {
-        return [' AND i.assigned_senior_qa_id = ?', 'i', [$userId]];
-    }
-    if ($scope === 'qa_lead') {
-        return [' AND i.assigned_qa_lead_id = ?', 'i', [$userId]];
-    }
-    if ($scope === 'regular') {
-        return [' AND i.author_id = ?', 'i', [$userId]];
-    }
-    return ['', '', []];
-}
-
-function bc_v1_issue_count_by_scope(
-    mysqli $conn,
-    int $orgId,
-    string $status,
-    string $scopeSql,
-    string $scopeTypes,
-    array $scopeParams
-): int {
-    $sql = "SELECT COUNT(*) AS total FROM issues i WHERE i.org_id = ? AND i.status = ?" . $scopeSql;
-    $types = 'is' . $scopeTypes;
-    $params = array_merge([$orgId, $status], $scopeParams);
-    $stmt = $conn->prepare($sql);
-    bc_v1_stmt_bind($stmt, $types, $params);
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM issues
+        WHERE org_id = ? AND status = ?
+    ");
+    $stmt->bind_param('is', $orgId, $status);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -270,29 +242,9 @@ function bc_v1_issue_link_path(int $issueId): string
     return '/app/reports/' . $issueId;
 }
 
-function bc_v1_issue_is_visible_to_actor(array $issue, array $org, int $userId): bool
+function bc_v1_issue_is_visible_to_actor(array $issue, array $org): bool
 {
-    $scope = bc_v1_issue_visibility_scope($org);
-    if (in_array($scope, ['admin', 'owner', 'pm'], true)) {
-        return true;
-    }
-    if ($scope === 'senior') {
-        return (int) ($issue['assigned_dev_id'] ?? 0) === $userId;
-    }
-    if ($scope === 'junior') {
-        return (int) ($issue['assigned_junior_id'] ?? 0) === $userId;
-    }
-    if ($scope === 'qa') {
-        return (int) ($issue['assigned_qa_id'] ?? 0) === $userId;
-    }
-    if ($scope === 'senior_qa') {
-        return (int) ($issue['assigned_senior_qa_id'] ?? 0) === $userId;
-    }
-    if ($scope === 'qa_lead') {
-        return (int) ($issue['assigned_qa_lead_id'] ?? 0) === $userId;
-    }
-
-    return (int) ($issue['author_id'] ?? 0) === $userId;
+    return (int) ($issue['org_id'] ?? 0) === (int) ($org['org_id'] ?? 0);
 }
 
 function bc_v1_issue_notify(mysqli $conn, array $issue, array $payload, array $recipientUserIds): void
@@ -319,7 +271,6 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
     bc_v1_require_method(['GET']);
     $actor = bc_v1_actor($conn, true);
     $org = bc_v1_org_context($conn, $actor, bc_v1_get_int($_GET, 'org_id', 0));
-    $userId = (int) $actor['user']['id'];
 
     $status = ((string) ($_GET['status'] ?? 'open')) === 'closed' ? 'closed' : 'open';
     $labelId = bc_v1_get_int($_GET, 'label', 0);
@@ -328,14 +279,8 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
     $isSystemAdmin = bugcatcher_is_system_admin_role((string) ($org['system_role'] ?? 'user'));
 
     if (!$isSystemAdmin) {
-        if (in_array($scope, ['senior', 'junior', 'qa', 'senior_qa', 'qa_lead', 'owner', 'pm'], true)) {
-            $author = 0;
-        } else {
-            $author = $userId;
-        }
+        $author = 0;
     }
-
-    [$scopeSql, $scopeTypes, $scopeParams] = bc_v1_issue_scope_filter($scope, $userId);
 
     $sql = "
         SELECT i.*, u.username AS author_username
@@ -346,7 +291,7 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
     $types = 'si';
     $queryParams = [$status, (int) $org['org_id']];
 
-    if ($author > 0 && $scope === 'admin') {
+    if ($author > 0 && $isSystemAdmin) {
         $sql .= " AND i.author_id = ?";
         $types .= 'i';
         $queryParams[] = $author;
@@ -357,9 +302,6 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
         $queryParams[] = $labelId;
     }
 
-    $sql .= $scopeSql;
-    $types .= $scopeTypes;
-    $queryParams = array_merge($queryParams, $scopeParams);
     $sql .= " ORDER BY i.created_at DESC";
 
     $stmt = $conn->prepare($sql);
@@ -380,22 +322,8 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
         $issues[] = bc_v1_issue_shape($row, $labelsMap[$issueId] ?? [], $attachmentsMap[$issueId] ?? []);
     }
 
-    $openCount = bc_v1_issue_count_by_scope(
-        $conn,
-        (int) $org['org_id'],
-        'open',
-        $scopeSql,
-        $scopeTypes,
-        $scopeParams
-    );
-    $closedCount = bc_v1_issue_count_by_scope(
-        $conn,
-        (int) $org['org_id'],
-        'closed',
-        $scopeSql,
-        $scopeTypes,
-        $scopeParams
-    );
+    $openCount = bc_v1_issue_count($conn, (int) $org['org_id'], 'open');
+    $closedCount = bc_v1_issue_count($conn, (int) $org['org_id'], 'closed');
 
     bc_v1_json_success([
         'org' => $org,
@@ -427,7 +355,7 @@ function bc_v1_issues_id_get(mysqli $conn, array $params): void
     if (!$issue) {
         bc_v1_json_error(404, 'issue_not_found', 'Issue not found in this organization.');
     }
-    if (!bc_v1_issue_is_visible_to_actor($issue, $org, (int) $actor['user']['id'])) {
+    if (!bc_v1_issue_is_visible_to_actor($issue, $org)) {
         bc_v1_json_error(403, 'forbidden', 'You do not have access to this issue.');
     }
 

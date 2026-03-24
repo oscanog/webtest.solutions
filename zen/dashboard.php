@@ -69,7 +69,7 @@ $isQALead = ($myOrgRole && $myOrgRole['role'] === 'QA Lead');
 
 $isSystemAdmin = bugcatcher_is_system_admin_role($current_role);
 
-// One visibility mode for the whole page
+// One workflow-role context for the whole page UI.
 $scope = 'regular'; // regular | junior | senior | pm | admin | owner | qa | senior_qa | qa_lead
 
 if ($isSystemAdmin) {
@@ -91,68 +91,26 @@ if ($isSystemAdmin) {
 } else {
   $scope = 'regular';
 }
-// pm/admin/owner: no extra scope filter
 
-// Non-admin: author filter should NOT restrict dev/qa roles (they work by assignment)
-// Owner/PM should see all by default (no forced author restriction)
+// Issue read visibility is organization-wide for every member.
+// Only system admins can use the author filter.
 if (!$isSystemAdmin) {
-  if ($scope === 'senior' || $scope === 'junior' || $scope === 'qa' || $scope === 'senior_qa' || $scope === 'qa_lead') {
-    $author = '';
-  } elseif ($scope === 'owner' || $scope === 'pm') {
-    $author = ''; // see all
-  } else {
-    $author = $current_user_id; // regular user sees own issues
-  }
+  $author = '';
 }
-
-$whereScopeSql = "";
-$scopeParams = [];
-$scopeTypes = "";
-
-if ($scope === 'senior') {
-  $whereScopeSql = " AND issues.assigned_dev_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-} elseif ($scope === 'junior') {
-  $whereScopeSql = " AND issues.assigned_junior_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-} elseif ($scope === 'qa') {
-  $whereScopeSql = " AND issues.assigned_qa_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-} elseif ($scope === 'senior_qa') {
-  $whereScopeSql = " AND issues.assigned_senior_qa_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-} elseif ($scope === 'qa_lead') {
-  $whereScopeSql = " AND issues.assigned_qa_lead_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-} elseif ($scope === 'regular') {
-  $whereScopeSql = " AND issues.author_id = ?";
-  $scopeParams[] = $current_user_id;
-  $scopeTypes .= "i";
-}
-// pm/admin: no extra scope filter
 
 // ---- Counts ----
-function count_issues(mysqli $conn, int $orgId, string $status, string $whereScopeSql, string $scopeTypes, array $scopeParams): int
+function count_issues(mysqli $conn, int $orgId, string $status): int
 {
-  $sql = "SELECT COUNT(*) AS total FROM issues WHERE org_id=? AND status=? $whereScopeSql";
-  $types = "is" . $scopeTypes;
-  $params = array_merge([$orgId, $status], $scopeParams);
-
-  $stmt = $conn->prepare($sql);
-  $stmt->bind_param($types, ...$params);
+  $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM issues WHERE org_id=? AND status=?");
+  $stmt->bind_param("is", $orgId, $status);
   $stmt->execute();
   $total = (int) $stmt->get_result()->fetch_assoc()['total'];
   $stmt->close();
   return $total;
 }
 
-$openCount = count_issues($conn, $orgId, 'open', $whereScopeSql, $scopeTypes, $scopeParams);
-$closedCount = count_issues($conn, $orgId, 'closed', $whereScopeSql, $scopeTypes, $scopeParams);
+$openCount = count_issues($conn, $orgId, 'open');
+$closedCount = count_issues($conn, $orgId, 'closed');
 
 // ---- Dropdown data (store to arrays so they can be reused safely) ----
 $usersArr = [];
@@ -1114,11 +1072,6 @@ if ($label !== '') {
   $params[] = (int) $label;
   $types .= "i";
 }
-
-// Apply visibility scope
-$sql .= $whereScopeSql;
-$params = array_merge($params, $scopeParams);
-$types .= $scopeTypes;
 
 $sql .= " ORDER BY issues.created_at DESC";
 

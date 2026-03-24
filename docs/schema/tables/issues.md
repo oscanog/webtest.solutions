@@ -55,8 +55,10 @@ Stores the main issue record plus the current workflow assignees and milestone t
 ## How the application uses it
 
 - `/zen/create_issue.php` inserts the base issue row with `title`, `description`, `author_id`, and `org_id`.
-- `/zen/dashboard.php` filters issues by `status`, `org_id`, author, label, and assignee columns depending on the current member role.
+- `/zen/dashboard.php` and `/api/v1/issues` expose issue list/detail reads to all members of the active organization.
+- The legacy dashboard keeps the author filter for system admins only, while label filters remain available to everyone.
 - The workflow uses the assignee columns to represent the current holder of each stage rather than storing a separate assignment history.
+- Workflow actions still rely on the assignee columns and member roles, so read access is broader than mutation access.
 - The current observed `assign_status` set is:
   - `unassigned`
   - `rejected`

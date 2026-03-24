@@ -1,6 +1,6 @@
 const { expect, test } = require("../../api-v1/node_modules/@playwright/test");
 const { cfg } = require("../src/config");
-const { apiUrl, loginByApi, loginByUi } = require("./helpers");
+const { apiUrl, deleteIssueByApi, loginByApi, loginByUi } = require("./helpers");
 
 function stripByteOrderMark(value) {
   return String(value || "").replace(/^\uFEFF/, "");
@@ -106,6 +106,41 @@ test("assigned qa tester updates checklist status from item detail without manag
     await expect(page.locator(".detail-pairs").first()).toContainText("Status");
     await expect(page.locator(".detail-pairs").first()).toContainText("passed");
   } finally {
+    await deleteChecklistFixture(request, fixture.accessToken, fixture.batchId, fixture.itemId);
+  }
+});
+
+test("linked issues created from checklist failures open for org members without access errors", async ({ page, request }) => {
+  test.setTimeout(40_000);
+  const marker = Date.now();
+  const fixture = await createChecklistFixture(request, marker);
+  let linkedIssueId = 0;
+
+  try {
+    await loginByUi(page, "qaTester");
+    await page.goto(`/app/checklist/items/${fixture.itemId}`);
+
+    await page.locator("select.select-inline").first().selectOption("failed");
+    await page.getByRole("button", { name: "Update Status" }).click();
+
+    await expect(page.getByText("Status updated.")).toBeVisible();
+    const linkedIssueLink = page.getByRole("link", { name: "Open linked issue" });
+    await expect(linkedIssueLink).toBeVisible();
+
+    const href = await linkedIssueLink.getAttribute("href");
+    expect(href).toMatch(/^\/app\/reports\/\d+$/);
+    linkedIssueId = Number((href || "").split("/").pop());
+
+    await linkedIssueLink.click();
+
+    await expect(page).toHaveURL(new RegExp(`/app/reports/${linkedIssueId}$`));
+    await expect(page.getByText("You do not have access to this issue.")).toHaveCount(0);
+    await expect(page.getByText(`Assigned QA item ${marker}`)).toBeVisible();
+    await expect(page.getByText("No workflow action is available for your role and the current issue state.")).toBeVisible();
+  } finally {
+    if (linkedIssueId > 0) {
+      await deleteIssueByApi(request, linkedIssueId);
+    }
     await deleteChecklistFixture(request, fixture.accessToken, fixture.batchId, fixture.itemId);
   }
 });

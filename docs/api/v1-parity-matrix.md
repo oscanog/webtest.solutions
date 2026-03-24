@@ -55,6 +55,10 @@ This matrix maps every currently discovered backend function to its `/api/v1/*` 
 | `zen/dashboard.php?action=qa_lead_reject` | QA lead reject | `/api/v1/issues/{id}/qa-lead-reject` | `POST` | Bearer/Session | live |
 | `zen/dashboard.php?action=pm_close` | PM close approved issue | `/api/v1/issues/{id}/pm-close` | `POST` | Bearer/Session | live |
 
+Issue read behavior:
+- `GET /api/v1/issues` and `GET /api/v1/issues/{id}` are organization-wide for active organization members.
+- Workflow mutations remain role/state/assignment-gated even when the viewer can read the issue.
+
 ## Projects
 | Legacy source | Legacy flow | v1 route | Method | Auth | Status |
 |---|---|---|---|---|---|

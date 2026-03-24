@@ -23,6 +23,17 @@ type Issue = {
   assigned_qa_lead_id: number;
 };
 
+type DashboardSummaryData = {
+  summary: {
+    open_issues: number;
+    closed_issues: number;
+  };
+  recent_issues: Array<{
+    id: number;
+    title: string;
+  }>;
+};
+
 type Sessions = {
   superAdmin: RoleSession;
   pm: RoleSession;
@@ -150,6 +161,62 @@ test("issue workflow approve -> pm close", async () => {
   expect(closedList.res.status()).toBe(200);
   expectApiSuccess(closedList.body);
   expect(closedList.body.data.issues.some((row) => row.id === issue.id)).toBeTruthy();
+});
+
+test("issue reads are organization-wide while workflow actions stay role-scoped", async () => {
+  const issue = await createIssue(`API V1 org visibility ${Date.now()}`);
+
+  const juniorList = await apiGet<
+    ApiEnvelope<{
+      filters: { author: number | null };
+      counts: { open: number; closed: number };
+      issues: Issue[];
+    }>
+  >(
+    api,
+    `${cfg.apiBasePath}/issues?org_id=${cfg.orgId}&status=open`,
+    authHeaders(sessions.juniorDev)
+  );
+  expect(juniorList.res.status()).toBe(200);
+  expectApiSuccess(juniorList.body);
+  expect(juniorList.body.data.filters.author).toBeNull();
+  expect(juniorList.body.data.counts.open).toBeGreaterThan(0);
+  expect(juniorList.body.data.issues.some((row) => row.id === issue.id)).toBe(true);
+
+  const qaDetail = await apiGet<ApiEnvelope<{ issue: Issue }>>(
+    api,
+    `${cfg.apiBasePath}/issues/${issue.id}?org_id=${cfg.orgId}`,
+    authHeaders(sessions.qaTester)
+  );
+  expect(qaDetail.res.status()).toBe(200);
+  expectApiSuccess(qaDetail.body);
+  expect(qaDetail.body.data.issue.id).toBe(issue.id);
+
+  const juniorDashboard = await apiGet<ApiEnvelope<DashboardSummaryData>>(
+    api,
+    `${cfg.apiBasePath}/dashboard/summary?org_id=${cfg.orgId}`,
+    authHeaders(sessions.juniorDev)
+  );
+  expect(juniorDashboard.res.status()).toBe(200);
+  expectApiSuccess(juniorDashboard.body);
+  expect(juniorDashboard.body.data.summary.open_issues).toBeGreaterThan(0);
+  expect(juniorDashboard.body.data.recent_issues.some((row) => row.id === issue.id)).toBe(true);
+
+  const blockedAction = await apiPostJson<ApiEnvelope<{ issue: Issue }>>(
+    api,
+    `${cfg.apiBasePath}/issues/${issue.id}/report-senior-qa`,
+    {
+      org_id: cfg.orgId,
+      senior_qa_id: cfg.accounts.seniorQa.userId,
+    },
+    authHeaders(sessions.qaTester)
+  );
+  expect(blockedAction.res.status()).toBe(403);
+  expect(blockedAction.body.ok).toBe(false);
+  if (blockedAction.body.ok) {
+    throw new Error("Expected QA action to stay restricted for non-assigned viewers.");
+  }
+  expect(blockedAction.body.error.message).toBe("You can only report issues assigned to you.");
 });
 
 test("issue workflow reject -> reassign -> delete", async () => {
