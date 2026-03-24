@@ -1132,7 +1132,13 @@ function bugcatcher_openclaw_seed_demo_ai_config(mysqli $conn): void
             false
         );
         $provider = bugcatcher_openclaw_find_provider_by_key($conn, $providerKey);
-    } elseif ($apiKey !== '' && bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '') === '') {
+    } elseif (
+        trim((string) ($provider['display_name'] ?? '')) !== $providerName
+        || trim((string) ($provider['provider_type'] ?? '')) !== $providerType
+        || trim((string) ($provider['base_url'] ?? '')) !== $baseUrl
+        || !(bool) ($provider['is_enabled'] ?? false)
+        || ($apiKey !== '' && bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '') !== $apiKey)
+    ) {
         bugcatcher_openclaw_save_provider(
             $conn,
             $actorId,
@@ -1163,6 +1169,25 @@ function bugcatcher_openclaw_seed_demo_ai_config(mysqli $conn): void
             $modelName,
             $supportsVision,
             false,
+            true,
+            true,
+            $actorId
+        );
+        $model = bugcatcher_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
+    } elseif (
+        trim((string) ($model['display_name'] ?? '')) !== $modelName
+        || (bool) ($model['supports_vision'] ?? false) !== $supportsVision
+        || !(bool) ($model['is_enabled'] ?? false)
+        || !(bool) ($model['is_default'] ?? false)
+    ) {
+        bugcatcher_openclaw_save_model(
+            $conn,
+            (int) $provider['id'],
+            (int) $model['id'],
+            $modelId,
+            $modelName,
+            $supportsVision,
+            (bool) ($model['supports_json_output'] ?? false),
             true,
             true,
             $actorId

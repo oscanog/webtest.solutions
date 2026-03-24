@@ -36,7 +36,7 @@ function bugcatcher_default_config(): array
         'AI_CHAT_DEMO_API_KEY' => '',
         'AI_CHAT_DEMO_MODEL_ID' => 'deepseek-chat',
         'AI_CHAT_DEMO_MODEL_NAME' => 'DeepSeek Chat',
-        'AI_CHAT_DEMO_MODEL_SUPPORTS_VISION' => false,
+        'AI_CHAT_DEMO_MODEL_SUPPORTS_VISION' => true,
         'AI_CHAT_DEMO_ENABLED' => true,
         'AI_CHAT_DEFAULT_ASSISTANT_NAME' => 'BugCatcher AI',
         'AI_CHAT_DEFAULT_SYSTEM_PROMPT' => 'You are BugCatcher AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',

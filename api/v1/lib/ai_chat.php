@@ -626,6 +626,7 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
     ];
 
     $supportsVision = (bool) ($runtime['model']['supports_vision'] ?? false);
+    $providerKey = strtolower(trim((string) ($runtime['provider']['provider_key'] ?? '')));
     foreach ($messages as $message) {
         $content = trim((string) ($message['content'] ?? ''));
         $attachments = $message['attachments'] ?? [];
@@ -637,6 +638,36 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
         }
 
         if ($message['role'] === 'user' && $supportsVision && $attachments) {
+            if ($providerKey === 'deepseek') {
+                $parts = [];
+                if ($content !== '') {
+                    $parts[] = $content;
+                }
+                $parts[] = 'Review the attached screenshot URLs below as image inputs.';
+                foreach ($attachments as $index => $attachment) {
+                    $originalName = trim((string) ($attachment['original_name'] ?? ('image-' . ($index + 1))));
+                    $imageUrl = trim((string) ($attachment['file_path'] ?? ''));
+                    if ($imageUrl === '') {
+                        continue;
+                    }
+                    $parts[] = sprintf(
+                        'Image %d (%s): ![%s](%s)',
+                        $index + 1,
+                        $originalName,
+                        $originalName,
+                        $imageUrl
+                    );
+                }
+                if (!$parts) {
+                    $parts[] = 'Please review the attached images.';
+                }
+                $payload[] = [
+                    'role' => 'user',
+                    'content' => implode("\n\n", $parts),
+                ];
+                continue;
+            }
+
             $parts = [];
             if ($content !== '') {
                 $parts[] = ['type' => 'text', 'text' => $content];
