@@ -56,6 +56,78 @@ function bugcatcher_notification_shape(array $row): array
     ];
 }
 
+function bugcatcher_notification_recipient_can_manage_checklist(mysqli $conn, int $userId, int $orgId): bool
+{
+    if ($userId <= 0 || $orgId <= 0) {
+        return false;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT role
+        FROM org_members
+        WHERE org_id = ? AND user_id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('ii', $orgId, $userId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $role = (string) ($row['role'] ?? '');
+    return in_array($role, ['owner', 'Project Manager', 'QA Lead'], true);
+}
+
+function bugcatcher_notification_resolve_link_path(mysqli $conn, int $userId, array $row): string
+{
+    $linkPath = (string) ($row['link_path'] ?? '/app/notifications');
+    $itemId = isset($row['checklist_item_id']) ? (int) $row['checklist_item_id'] : 0;
+    if ($itemId <= 0 || strpos($linkPath, '/app/checklist/items/') !== 0) {
+        return $linkPath;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT ci.id,
+               ci.batch_id,
+               ci.assigned_to_user_id,
+               cb.org_id
+        FROM checklist_items ci
+        JOIN checklist_batches cb ON cb.id = ci.batch_id
+        WHERE ci.id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('i', $itemId);
+    $stmt->execute();
+    $item = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$item) {
+        return '/app/notifications';
+    }
+
+    if ((int) ($item['assigned_to_user_id'] ?? 0) === $userId) {
+        return $linkPath;
+    }
+
+    $orgId = (int) ($item['org_id'] ?? 0);
+    if (bugcatcher_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
+        return $linkPath;
+    }
+
+    $batchId = (int) ($item['batch_id'] ?? 0);
+    if ($batchId > 0 && bugcatcher_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
+        return '/app/checklist/batches/' . $batchId;
+    }
+
+    return '/app/notifications';
+}
+
+function bugcatcher_notification_shape_for_user(mysqli $conn, int $userId, array $row): array
+{
+    $shape = bugcatcher_notification_shape($row);
+    $shape['link_path'] = bugcatcher_notification_resolve_link_path($conn, $userId, $row);
+    return $shape;
+}
+
 function bugcatcher_realtime_notifications_enabled(): bool
 {
     return (bool) bugcatcher_config('REALTIME_NOTIFICATIONS_ENABLED', true);
@@ -118,7 +190,7 @@ function bugcatcher_notification_fetch(mysqli $conn, int $userId, int $notificat
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    return $row ? bugcatcher_notification_shape($row) : null;
+    return $row ? bugcatcher_notification_shape_for_user($conn, $userId, $row) : null;
 }
 
 function bugcatcher_notification_counts(mysqli $conn, int $userId): array
@@ -353,7 +425,9 @@ function bugcatcher_notifications_list(
     $counts = bugcatcher_notification_counts($conn, $userId);
 
     return [
-        'items' => array_map('bugcatcher_notification_shape', $rows),
+        'items' => array_map(static function (array $row) use ($conn, $userId): array {
+            return bugcatcher_notification_shape_for_user($conn, $userId, $row);
+        }, $rows),
         'unread_count' => $counts['unread_count'],
         'total_count' => $counts['total_count'],
     ];
