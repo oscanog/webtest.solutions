@@ -45,6 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (empty($_POST['labels']) || !is_array($_POST['labels'])) {
         $error = "Please select at least one label.";
     } else {
+        bugcatcher_file_storage_ensure_schema($conn);
 
         // Insert issue safely
         $stmt = $conn->prepare("
@@ -57,12 +58,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $issueId = $conn->insert_id;
 
         // ---- Handle image uploads (optional) ----
-        $uploadDir = bugcatcher_uploads_dir();
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 02775, true);
-        }
-
         $allowed = [
             'image/jpeg' => 'jpg',
             'image/png' => 'png',
@@ -75,8 +70,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
 
             $stmtAtt = $conn->prepare("
-              INSERT INTO issue_attachments (issue_id, file_path, original_name, mime_type, file_size)
-              VALUES (?, ?, ?, ?, ?)
+              INSERT INTO issue_attachments (issue_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
 
             for ($i = 0; $i < count($_FILES['images']['name']); $i++) {
@@ -108,16 +103,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 // Make safe file name
                 $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
-                $newName = "issue_" . $issueId . "_" . bin2hex(random_bytes(8)) . "." . $ext;
-
-                $destAbs = $uploadDir . "/" . $newName;
-                $destRel = bugcatcher_upload_relative_path($newName);
-
-                if (!move_uploaded_file($tmp, $destAbs))
+                try {
+                    $stored = bugcatcher_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
+                } catch (Throwable $e) {
                     continue;
+                }
+
+                $filePath = (string) ($stored['file_path'] ?? '');
+                $storageKey = (string) ($stored['storage_key'] ?? '');
+                $storageProvider = (string) ($stored['storage_provider'] ?? '');
+                $storedName = (string) ($stored['original_name'] ?? $safeOrig);
+                $storedMime = (string) ($stored['mime_type'] ?? $mime);
+                $storedSize = (int) ($stored['file_size'] ?? $size);
 
                 // Save record
-                $stmtAtt->bind_param("isssi", $issueId, $destRel, $safeOrig, $mime, $size);
+                $stmtAtt->bind_param("isssssi", $issueId, $filePath, $storageKey, $storageProvider, $storedName, $storedMime, $storedSize);
                 $stmtAtt->execute();
             }
 

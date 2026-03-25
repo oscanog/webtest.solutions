@@ -413,8 +413,8 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
 
         if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
             $stmtAtt = $conn->prepare("
-                INSERT INTO issue_attachments (issue_id, file_path, storage_key, original_name, mime_type, file_size)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO issue_attachments (issue_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
 
             $count = count($_FILES['images']['name']);
@@ -449,6 +449,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
                 $stored = bugcatcher_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
                 $filePath = (string) $stored['file_path'];
                 $storageKey = (string) ($stored['storage_key'] ?? '');
+                $storageProvider = (string) ($stored['storage_provider'] ?? '');
                 $storedName = (string) ($stored['original_name'] ?? $safeOrig);
                 $storedMime = (string) ($stored['mime_type'] ?? $mime);
                 $storedSize = (int) ($stored['file_size'] ?? $size);
@@ -456,7 +457,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
                     $uploadedKeys[] = $storageKey;
                 }
 
-                $stmtAtt->bind_param('issssi', $issueId, $filePath, $storageKey, $storedName, $storedMime, $storedSize);
+                $stmtAtt->bind_param('isssssi', $issueId, $filePath, $storageKey, $storageProvider, $storedName, $storedMime, $storedSize);
                 $stmtAtt->execute();
             }
 
@@ -522,19 +523,19 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
 
     $conn->begin_transaction();
     try {
-        $stmt = $conn->prepare("SELECT file_path, storage_key FROM issue_attachments WHERE issue_id = ?");
+        $stmt = $conn->prepare("SELECT file_path, storage_key, storage_provider, mime_type FROM issue_attachments WHERE issue_id = ?");
         $stmt->bind_param('i', $issueId);
         $stmt->execute();
         $files = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        $remoteKeys = [];
+        $remoteFiles = [];
         $legacyPaths = [];
         foreach ($files as $file) {
             $storageKey = (string) ($file['storage_key'] ?? '');
             $storedPath = (string) ($file['file_path'] ?? '');
             if ($storageKey !== '') {
-                $remoteKeys[] = $storageKey;
+                $remoteFiles[] = $file;
                 continue;
             }
             $legacyPaths[] = bugcatcher_upload_absolute_path($storedPath);
@@ -561,8 +562,29 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
 
         $conn->commit();
 
-        foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
-            bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+        $deletedRemote = [];
+        foreach ($remoteFiles as $remoteFile) {
+            $storageKey = (string) ($remoteFile['storage_key'] ?? '');
+            if ($storageKey === '') {
+                continue;
+            }
+
+            $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+            $deleteKey = $provider . '|' . $storageKey;
+            if (isset($deletedRemote[$deleteKey])) {
+                continue;
+            }
+
+            bugcatcher_file_storage_delete_if_unreferenced(
+                $conn,
+                $storageKey,
+                null,
+                null,
+                (string) ($remoteFile['file_path'] ?? ''),
+                $provider,
+                (string) ($remoteFile['mime_type'] ?? '')
+            );
+            $deletedRemote[$deleteKey] = true;
         }
         foreach ($legacyPaths as $legacyPath) {
             bugcatcher_file_storage_delete_legacy_local($legacyPath);

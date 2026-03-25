@@ -94,6 +94,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
             message_id INT(11) NOT NULL,
             file_path VARCHAR(255) NOT NULL,
             storage_key VARCHAR(255) DEFAULT NULL,
+            storage_provider VARCHAR(32) DEFAULT NULL,
             original_name VARCHAR(255) NOT NULL,
             mime_type VARCHAR(100) NOT NULL,
             file_size INT(11) NOT NULL,
@@ -182,7 +183,7 @@ function bugcatcher_ai_chat_fetch_message_attachments(mysqli $conn, array $messa
     $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
     $types = str_repeat('i', count($messageIds));
     $stmt = $conn->prepare("
-        SELECT id, message_id, file_path, storage_key, original_name, mime_type, file_size, created_at
+        SELECT id, message_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size, created_at
         FROM ai_chat_message_attachments
         WHERE message_id IN ({$placeholders})
         ORDER BY id ASC
@@ -199,6 +200,7 @@ function bugcatcher_ai_chat_fetch_message_attachments(mysqli $conn, array $messa
             'id' => (int) $row['id'],
             'file_path' => (string) $row['file_path'],
             'storage_key' => (string) ($row['storage_key'] ?? ''),
+            'storage_provider' => (string) ($row['storage_provider'] ?? ''),
             'original_name' => (string) $row['original_name'],
             'mime_type' => (string) $row['mime_type'],
             'file_size' => (int) $row['file_size'],
@@ -1001,8 +1003,8 @@ function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messag
     $count = count($_FILES['attachments']['name']);
     $stmtAttachment = $conn->prepare("
         INSERT INTO ai_chat_message_attachments
-            (message_id, file_path, storage_key, original_name, mime_type, file_size)
-        VALUES (?, ?, ?, ?, ?, ?)
+            (message_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ");
 
     for ($index = 0; $index < $count; $index++) {
@@ -1030,6 +1032,7 @@ function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messag
         $stored = bugcatcher_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'ai-chat');
         $filePath = (string) $stored['file_path'];
         $storageKey = (string) ($stored['storage_key'] ?? '');
+        $storageProvider = (string) ($stored['storage_provider'] ?? '');
         if ($storageKey !== '') {
             $uploadedKeys[] = $storageKey;
         }
@@ -1037,7 +1040,7 @@ function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messag
         $storedName = (string) ($stored['original_name'] ?? $safeOrig);
         $storedMime = (string) ($stored['mime_type'] ?? $mime);
         $storedSize = (int) ($stored['file_size'] ?? $size);
-        $stmtAttachment->bind_param('issssi', $messageId, $filePath, $storageKey, $storedName, $storedMime, $storedSize);
+        $stmtAttachment->bind_param('isssssi', $messageId, $filePath, $storageKey, $storageProvider, $storedName, $storedMime, $storedSize);
         $stmtAttachment->execute();
     }
 
@@ -1415,6 +1418,7 @@ function bugcatcher_ai_chat_fetch_message_attachments_for_message(mysqli $conn, 
 function bugcatcher_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, array $attachment): bool
 {
     $storageKey = trim((string) ($attachment['storage_key'] ?? ''));
+    $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
     $filePath = trim((string) ($attachment['file_path'] ?? ''));
 
     if ($storageKey !== '') {
@@ -1423,9 +1427,10 @@ function bugcatcher_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, arr
             FROM checklist_batch_attachments
             WHERE checklist_batch_id = ?
               AND storage_key = ?
+              AND (storage_provider = ? OR storage_provider IS NULL OR storage_provider = '')
             LIMIT 1
         ");
-        $stmt->bind_param('is', $batchId, $storageKey);
+        $stmt->bind_param('iss', $batchId, $storageKey, $storageProvider);
     } else {
         $stmt = $conn->prepare("
             SELECT 1
@@ -1457,8 +1462,8 @@ function bugcatcher_ai_chat_promote_message_attachments_to_batch(
 
     $stmt = $conn->prepare("
         INSERT INTO checklist_batch_attachments
-            (checklist_batch_id, file_path, storage_key, original_name, mime_type, file_size, uploaded_by, source_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'bot')
+            (checklist_batch_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size, uploaded_by, source_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'bot')
     ");
 
     foreach ($attachments as $attachment) {
@@ -1468,10 +1473,11 @@ function bugcatcher_ai_chat_promote_message_attachments_to_batch(
 
         $filePath = (string) ($attachment['file_path'] ?? '');
         $storageKey = (string) ($attachment['storage_key'] ?? '');
+        $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
         $originalName = (string) ($attachment['original_name'] ?? 'screenshot');
         $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
         $fileSize = (int) ($attachment['file_size'] ?? 0);
-        $stmt->bind_param('issssii', $batchId, $filePath, $storageKey, $originalName, $mimeType, $fileSize, $actorUserId);
+        $stmt->bind_param('isssssii', $batchId, $filePath, $storageKey, $storageProvider, $originalName, $mimeType, $fileSize, $actorUserId);
         $stmt->execute();
     }
 
@@ -1611,7 +1617,7 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
     }
 
     $stmt = $conn->prepare("
-        SELECT a.storage_key
+        SELECT a.storage_key, a.storage_provider, a.file_path, a.mime_type
         FROM ai_chat_message_attachments a
         JOIN ai_chat_messages m ON m.id = a.message_id
         WHERE m.thread_id = ?
@@ -1621,14 +1627,6 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    $remoteKeys = [];
-    foreach ($rows as $row) {
-        $storageKey = (string) ($row['storage_key'] ?? '');
-        if ($storageKey !== '') {
-            $remoteKeys[] = $storageKey;
-        }
-    }
-
     $stmt = $conn->prepare("DELETE FROM ai_chat_threads WHERE id = ? AND user_id = ? AND org_id = ?");
     $orgId = (int) $org['org_id'];
     $userId = (int) $actor['user']['id'];
@@ -1636,9 +1634,30 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
     $stmt->execute();
     $stmt->close();
 
-    foreach (array_values(array_unique($remoteKeys)) as $storageKey) {
+    $deletedRemote = [];
+    foreach ($rows as $row) {
+        $storageKey = (string) ($row['storage_key'] ?? '');
+        if ($storageKey === '') {
+            continue;
+        }
+
+        $provider = bugcatcher_file_storage_provider_from_row($row);
+        $deleteKey = $provider . '|' . $storageKey;
+        if (isset($deletedRemote[$deleteKey])) {
+            continue;
+        }
+
         try {
-            bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+            bugcatcher_file_storage_delete_if_unreferenced(
+                $conn,
+                $storageKey,
+                null,
+                null,
+                (string) ($row['file_path'] ?? ''),
+                $provider,
+                (string) ($row['mime_type'] ?? '')
+            );
+            $deletedRemote[$deleteKey] = true;
         } catch (Throwable $deleteError) {
             // Ignore remote cleanup failures during thread deletion.
         }

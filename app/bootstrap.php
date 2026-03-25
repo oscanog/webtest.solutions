@@ -25,10 +25,10 @@ function bugcatcher_default_config(): array
         'OPENCLAW_TEMP_UPLOAD_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'openclaw-tmp',
         'OPENCLAW_LOG_LEVEL' => 'info',
         'UPLOADTHING_TOKEN' => '',
-        'UPLOADTHING_ENABLED' => false,
-        'UPLOADTHING_BRIDGE_HOST' => '127.0.0.1',
-        'UPLOADTHING_BRIDGE_PORT' => 8091,
-        'UPLOADTHING_BRIDGE_INTERNAL_SHARED_SECRET' => 'replace-with-a-third-long-random-secret',
+        'CLOUDINARY_CLOUD_NAME' => '',
+        'CLOUDINARY_API_KEY' => '',
+        'CLOUDINARY_API_SECRET' => '',
+        'CLOUDINARY_BASE_FOLDER' => 'bugcatcher',
         'AI_CHAT_DEMO_PROVIDER_KEY' => 'deepseek',
         'AI_CHAT_DEMO_PROVIDER_NAME' => 'DeepSeek',
         'AI_CHAT_DEMO_PROVIDER_TYPE' => 'openai-compatible',
@@ -112,20 +112,13 @@ function bugcatcher_load_config(): array
     $config['OPENCLAW_TEMP_UPLOAD_DIR'] = rtrim((string) ($config['OPENCLAW_TEMP_UPLOAD_DIR'] ?? ''), "\\/");
     $config['OPENCLAW_LOG_LEVEL'] = (string) ($config['OPENCLAW_LOG_LEVEL'] ?? 'info');
     $config['UPLOADTHING_TOKEN'] = trim((string) ($config['UPLOADTHING_TOKEN'] ?? ''));
-    $config['UPLOADTHING_ENABLED'] = filter_var(
-        $config['UPLOADTHING_ENABLED'] ?? false,
-        FILTER_VALIDATE_BOOLEAN,
-        FILTER_NULL_ON_FAILURE
-    );
-    if ($config['UPLOADTHING_ENABLED'] === null) {
-        $config['UPLOADTHING_ENABLED'] = false;
+    $config['CLOUDINARY_CLOUD_NAME'] = trim((string) ($config['CLOUDINARY_CLOUD_NAME'] ?? ''));
+    $config['CLOUDINARY_API_KEY'] = trim((string) ($config['CLOUDINARY_API_KEY'] ?? ''));
+    $config['CLOUDINARY_API_SECRET'] = trim((string) ($config['CLOUDINARY_API_SECRET'] ?? ''));
+    $config['CLOUDINARY_BASE_FOLDER'] = trim(str_replace('\\', '/', (string) ($config['CLOUDINARY_BASE_FOLDER'] ?? 'bugcatcher')), '/');
+    if ($config['CLOUDINARY_BASE_FOLDER'] === '') {
+        $config['CLOUDINARY_BASE_FOLDER'] = 'bugcatcher';
     }
-    $config['UPLOADTHING_BRIDGE_HOST'] = trim((string) ($config['UPLOADTHING_BRIDGE_HOST'] ?? '127.0.0.1'));
-    if ($config['UPLOADTHING_BRIDGE_HOST'] === '') {
-        $config['UPLOADTHING_BRIDGE_HOST'] = '127.0.0.1';
-    }
-    $config['UPLOADTHING_BRIDGE_PORT'] = max(1, (int) ($config['UPLOADTHING_BRIDGE_PORT'] ?? 8091));
-    $config['UPLOADTHING_BRIDGE_INTERNAL_SHARED_SECRET'] = (string) ($config['UPLOADTHING_BRIDGE_INTERNAL_SHARED_SECRET'] ?? '');
     $config['AI_CHAT_DEMO_PROVIDER_KEY'] = trim((string) ($config['AI_CHAT_DEMO_PROVIDER_KEY'] ?? 'deepseek'));
     $config['AI_CHAT_DEMO_PROVIDER_NAME'] = trim((string) ($config['AI_CHAT_DEMO_PROVIDER_NAME'] ?? 'DeepSeek'));
     $config['AI_CHAT_DEMO_PROVIDER_TYPE'] = trim((string) ($config['AI_CHAT_DEMO_PROVIDER_TYPE'] ?? 'openai-compatible'));

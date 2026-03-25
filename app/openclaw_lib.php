@@ -1379,16 +1379,17 @@ function bugcatcher_openclaw_store_batch_attachment(
     }
     $filePath = (string) $stored['file_path'];
     $storageKey = (string) ($stored['storage_key'] ?? '');
+    $storageProvider = (string) ($stored['storage_provider'] ?? '');
     $storedName = (string) ($stored['original_name'] ?? $safeOrig);
     $storedMime = (string) ($stored['mime_type'] ?? $mime);
     $storedSize = (int) ($stored['file_size'] ?? $size);
 
     $stmt = $conn->prepare("
         INSERT INTO checklist_batch_attachments
-            (checklist_batch_id, file_path, storage_key, original_name, mime_type, file_size, uploaded_by, source_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (checklist_batch_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size, uploaded_by, source_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param('issssiis', $batchId, $filePath, $storageKey, $storedName, $storedMime, $storedSize, $uploadedBy, $sourceType);
+    $stmt->bind_param('isssssiis', $batchId, $filePath, $storageKey, $storageProvider, $storedName, $storedMime, $storedSize, $uploadedBy, $sourceType);
     $stmt->execute();
     $stmt->close();
 

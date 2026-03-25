@@ -25,6 +25,7 @@ If any of those change later, update this document together with the server scri
 - Push the frontend changes to GitHub before deploying.
 - Use the frontend repo's deploy script instead of manually copying `dist/` files.
 - Keep nginx and service changes separate from a normal frontend release unless they are actually required.
+- The mobileweb attachment flows still post files to the backend API. No Cloudinary secret or signed upload config is required in the frontend repo or nginx config.
 
 ## 1. SSH Into the VM
 

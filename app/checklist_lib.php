@@ -576,16 +576,17 @@ function bugcatcher_checklist_store_uploaded_file(
     }
     $filePath = (string) $stored['file_path'];
     $storageKey = (string) ($stored['storage_key'] ?? '');
+    $storageProvider = (string) ($stored['storage_provider'] ?? '');
     $storedName = (string) ($stored['original_name'] ?? $safeOrig);
     $storedMime = (string) ($stored['mime_type'] ?? $mime);
     $storedSize = (int) ($stored['file_size'] ?? $size);
 
     $stmt = $conn->prepare("
         INSERT INTO checklist_attachments
-            (checklist_item_id, file_path, storage_key, original_name, mime_type, file_size, uploaded_by, source_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (checklist_item_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size, uploaded_by, source_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("issssiis", $itemId, $filePath, $storageKey, $storedName, $storedMime, $storedSize, $uploadedBy, $sourceType);
+    $stmt->bind_param("isssssiis", $itemId, $filePath, $storageKey, $storageProvider, $storedName, $storedMime, $storedSize, $uploadedBy, $sourceType);
     $stmt->execute();
     $stmt->close();
 
@@ -596,6 +597,7 @@ function bugcatcher_checklist_delete_attachment(mysqli $conn, array $attachment)
 {
     bugcatcher_file_storage_ensure_schema($conn);
     $storageKey = (string) ($attachment['storage_key'] ?? '');
+    $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
     $legacyPath = $storageKey === '' ? bugcatcher_checklist_upload_absolute_path($attachment['file_path']) : null;
 
     $stmt = $conn->prepare("DELETE FROM checklist_attachments WHERE id = ?");
@@ -605,7 +607,15 @@ function bugcatcher_checklist_delete_attachment(mysqli $conn, array $attachment)
     $stmt->close();
 
     if ($storageKey !== '') {
-        bugcatcher_file_storage_delete_if_unreferenced($conn, $storageKey);
+        bugcatcher_file_storage_delete_if_unreferenced(
+            $conn,
+            $storageKey,
+            null,
+            null,
+            (string) ($attachment['file_path'] ?? ''),
+            $storageProvider,
+            (string) ($attachment['mime_type'] ?? '')
+        );
     } else {
         bugcatcher_file_storage_delete_legacy_local($legacyPath);
     }

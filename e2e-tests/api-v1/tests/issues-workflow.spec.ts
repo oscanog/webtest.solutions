@@ -1,5 +1,7 @@
 ﻿import { expect, request, test, APIRequestContext } from "@playwright/test";
 import { cfg } from "../src/config";
+import fs from "node:fs";
+import path from "node:path";
 import { authHeaders, loginRole, RoleSession } from "./helpers/auth";
 import {
   ApiEnvelope,
@@ -7,6 +9,7 @@ import {
   apiGet,
   apiPostJson,
   expectApiSuccess,
+  parseJson,
 } from "./helpers/client";
 
 test.describe.configure({ mode: "serial" });
@@ -70,6 +73,7 @@ let api: APIRequestContext;
 let sessions: Sessions;
 const createdIssueIds: number[] = [];
 const createdChecklistFixtures: Array<{ batchId: number; itemIds: number[] }> = [];
+const issueFixturePath = path.resolve(__dirname, "fixtures", "sample.png");
 
 async function postIssueAction(session: RoleSession, issueId: number, actionPath: string, payload: object) {
   const { res, body } = await apiPostJson<ApiEnvelope<{ issue: Issue }>>(
@@ -101,6 +105,30 @@ async function createIssue(title: string): Promise<Issue> {
   createdIssueIds.push(body.data.issue.id);
   return body.data.issue;
 }
+
+test("issues endpoint accepts multipart evidence uploads", async () => {
+  const uploadRes = await api.post(`${cfg.apiBasePath}/issues`, {
+    multipart: {
+      org_id: String(cfg.orgId),
+      title: `Multipart Issue ${Date.now()}`,
+      description: "Created with issue evidence upload",
+      "labels[]": String(cfg.labelId),
+      "images[]": {
+        name: "sample.png",
+        mimeType: "image/png",
+        buffer: fs.readFileSync(issueFixturePath),
+      },
+    },
+    headers: authHeaders(sessions.pm),
+  });
+
+  const body = await parseJson<ApiEnvelope<{ issue: Issue & { attachments: Array<{ id: number; file_path: string; original_name: string }> } }>>(uploadRes);
+  expect(uploadRes.status()).toBe(201);
+  expectApiSuccess(body);
+  createdIssueIds.push(body.data.issue.id);
+  expect(body.data.issue.attachments.length).toBeGreaterThan(0);
+  expect(body.data.issue.attachments[0]?.file_path).toBeTruthy();
+});
 
 async function moveToQaLead(issueId: number): Promise<void> {
   await postIssueAction(sessions.pm, issueId, "assign-dev", {

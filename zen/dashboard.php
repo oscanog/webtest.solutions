@@ -177,47 +177,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     die("Closed issues cannot be deleted by the organization owner.");
   }
 
+  bugcatcher_file_storage_ensure_schema($conn);
+
   // Delete safely (remove files + rows)
   $conn->begin_transaction();
   try {
 
-    // 1) Collect attachment file paths (relative like "uploads/issues/xxx.jpg")
-    $stmt = $conn->prepare("SELECT file_path FROM issue_attachments WHERE issue_id=?");
+    // 1) Collect attachment references before deleting rows.
+    $stmt = $conn->prepare("SELECT file_path, storage_key, storage_provider, mime_type FROM issue_attachments WHERE issue_id=?");
     $stmt->bind_param("i", $issueId);
     $stmt->execute();
-    $attRes = $stmt->get_result();
-
-    $files = [];
-    while ($a = $attRes->fetch_assoc()) {
-      $files[] = (string) ($a['file_path'] ?? '');
-    }
+    $files = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    // 2) Delete physical files safely from the configured shared uploads path
-    foreach ($files as $rel) {
-      if ($rel === '') {
-        continue;
-      }
-
-      $abs = bugcatcher_upload_absolute_path($rel);
-      if ($abs !== null) {
-        @unlink($abs);
+    $remoteFiles = [];
+    $legacyPaths = [];
+    foreach ($files as $file) {
+      $storageKey = (string) ($file['storage_key'] ?? '');
+      if ($storageKey !== '') {
+        $remoteFiles[] = $file;
+      } else {
+        $abs = bugcatcher_upload_absolute_path((string) ($file['file_path'] ?? ''));
+        if ($abs !== null) {
+          $legacyPaths[] = $abs;
+        }
       }
     }
 
-    // 3) Delete attachment rows (optional; if FK cascade exists, still OK)
+    // 2) Delete attachment rows (optional; if FK cascade exists, still OK)
     $stmt = $conn->prepare("DELETE FROM issue_attachments WHERE issue_id=?");
     $stmt->bind_param("i", $issueId);
     $stmt->execute();
     $stmt->close();
 
-    // 4) Remove label links
+    // 3) Remove label links
     $stmt = $conn->prepare("DELETE FROM issue_labels WHERE issue_id=?");
     $stmt->bind_param("i", $issueId);
     $stmt->execute();
     $stmt->close();
 
-    // 5) Delete issue row
+    // 4) Delete issue row
     $stmt = $conn->prepare("DELETE FROM issues WHERE id=? AND org_id=?");
     $stmt->bind_param("ii", $issueId, $orgIdPost);
     $stmt->execute();
@@ -228,6 +227,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $stmt->close();
 
     $conn->commit();
+
+    $deletedRemote = [];
+    foreach ($remoteFiles as $remoteFile) {
+      $storageKey = (string) ($remoteFile['storage_key'] ?? '');
+      if ($storageKey === '') {
+        continue;
+      }
+
+      $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+      $deleteKey = $provider . '|' . $storageKey;
+      if (isset($deletedRemote[$deleteKey])) {
+        continue;
+      }
+
+      bugcatcher_file_storage_delete_if_unreferenced(
+        $conn,
+        $storageKey,
+        null,
+        null,
+        (string) ($remoteFile['file_path'] ?? ''),
+        $provider,
+        (string) ($remoteFile['mime_type'] ?? '')
+      );
+      $deletedRemote[$deleteKey] = true;
+    }
+    foreach ($legacyPaths as $legacyPath) {
+      bugcatcher_file_storage_delete_legacy_local($legacyPath);
+    }
 
   } catch (Throwable $e) {
     $conn->rollback();

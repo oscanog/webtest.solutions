@@ -27,6 +27,18 @@ The backend deploy flow is release-based. Do not treat `/var/www/bugcatcher/curr
 - shared uploads: `/var/www/bugcatcher/shared/uploads`
 - git mirror used by the release script: `/opt/bugcatcher/repo.git`
 
+## Runtime Config Before Deploy
+
+If this release includes the Cloudinary migration, make sure `/var/www/bugcatcher/shared/config.php` contains:
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- optional `CLOUDINARY_BASE_FOLDER` override if production should not use the default `bugcatcher`
+- optional temporary `UPLOADTHING_TOKEN` only if you still want best-effort cleanup for old UploadThing-hosted rows during the transition
+
+Do not commit those secrets to the repo.
+
 ## 1. Prepare the Change Locally
 
 Before touching production:
@@ -70,7 +82,7 @@ Then apply the migration. Example:
 
 ```bash
 cd /var/www/bugcatcher/current
-sudo mysql bug_catcher < infra/database/migrations/20260315_password_reset_requests.sql
+sudo mysql bug_catcher < infra/database/migrations/20260325_attachment_storage_providers.sql
 ```
 
 Notes:
@@ -126,7 +138,33 @@ Expected result:
 - the homepage request returns `HTTP/1.1 200 OK` or an expected redirect
 - the health endpoint returns a JSON success payload with `status` set to `ok`
 
-## 6. Restart Extra Services Only If Your Change Touched Them
+## 6. Migrate Existing UploadThing Rows If Needed
+
+Run this after the backend release is live and Cloudinary credentials are already present in shared config:
+
+```bash
+cd /var/www/bugcatcher/current
+php scripts/migrate_uploadthing_to_cloudinary.php
+php scripts/migrate_uploadthing_to_cloudinary.php --execute
+```
+
+Notes:
+
+- The first command is a dry run and should be used before any live migration.
+- The execute command downloads each UploadThing-backed file, re-uploads it to Cloudinary, and updates the attachment row in place.
+- Add `--table=<table>` to scope the run or `--limit=<count>` to migrate in smaller batches.
+- Leave `--delete-uploadthing-source` off for the initial migration so rollback stays simple while you verify production.
+
+## 7. Attachment Verification
+
+After the migration run:
+
+- create an issue with image evidence and verify the evidence loads in the report detail view
+- upload checklist evidence from the mobile item detail screen and verify it appears immediately
+- open an AI chat thread with screenshots and confirm attachments still render
+- delete one migrated attachment-bearing record and confirm the row disappears without breaking the page
+
+## 8. Restart Extra Services Only If Your Change Touched Them
 
 ### OpenClaw
 
@@ -169,6 +207,11 @@ sudo bash infra/deploy/rollback_release.sh 20260302153000
 ```
 
 After rollback, re-run the same verification commands from the previous section.
+
+If the release included attachment migration work:
+
+- do not immediately delete UploadThing originals during the first production pass
+- if you roll back the code after running the migration script, existing rows will still point at Cloudinary URLs unless you also restore the database backup
 
 ## Troubleshooting
 
