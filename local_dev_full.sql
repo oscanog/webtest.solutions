@@ -697,7 +697,10 @@ INSERT INTO users (id, username, email, password, role, last_active_org_id) VALU
   (13, 'bulletlangto', 'bulletlangto@gmail.com', '$2y$10$dSBKjvwGygMql4uX6I5MS.my.ABsX2C3KZ25C9Fmuli3YHNYmw.li', 'user', 1);
 
 INSERT INTO organizations (id, name, owner_id) VALUES
-  (1, 'GJC_team', 1);
+  (1, 'GJC_team', 1),
+  (2, 'Stark Industries', 1),
+  (3, 'Wayne Enterprises', 1),
+  (4, 'Oscorp', 1);
 
 INSERT INTO org_members (org_id, user_id, role) VALUES
   (1, 1, 'owner'),
@@ -712,7 +715,10 @@ INSERT INTO org_members (org_id, user_id, role) VALUES
   (1, 10, 'QA Tester'),
   (1, 11, 'QA Tester'),
   (1, 12, 'Senior Developer'),
-  (1, 13, 'Junior Developer');
+  (1, 13, 'Junior Developer'),
+  (2, 1, 'owner'),
+  (3, 1, 'owner'),
+  (4, 1, 'owner');
 
 INSERT INTO projects (id, org_id, name, code, description, status, created_by, updated_by) VALUES
   (1, 1, 'Website Revamp', 'WEB-REVAMP', 'Primary local dev project', 'active', 3, 3),

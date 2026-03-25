@@ -87,7 +87,15 @@ function bc_v1_orgs_members_post(mysqli $conn, array $params): void
         bc_v1_json_error(422, 'invalid_org', 'Organization id is invalid.');
     }
 
-    $org = bc_v1_org_context($conn, $actor, $orgId);
+    $findOrg = $conn->prepare("SELECT id, name FROM organizations WHERE id = ? LIMIT 1");
+    $findOrg->bind_param('i', $orgId);
+    $findOrg->execute();
+    $org = $findOrg->get_result()->fetch_assoc();
+    $findOrg->close();
+    if (!$org) {
+        bc_v1_json_error(404, 'org_not_found', 'Organization not found.');
+    }
+
     $payload = bc_v1_request_data();
 
     $username = trim((string) ($payload['username'] ?? ''));
@@ -158,7 +166,7 @@ function bc_v1_orgs_members_post(mysqli $conn, array $params): void
             'is_owner' => false,
             'joined_at' => date('Y-m-d H:i:s'),
         ],
-        'message' => 'New user created for ' . (string) ($org['org_name'] ?? 'the organization') . '.',
+        'message' => 'New user created for ' . (string) ($org['name'] ?? 'the organization') . '.',
     ], 201);
 }
 
