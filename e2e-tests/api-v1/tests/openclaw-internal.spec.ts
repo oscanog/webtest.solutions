@@ -1,7 +1,6 @@
-﻿import { expect, request, test, APIRequestContext } from "@playwright/test";
+import { expect, request, test, APIRequestContext } from "@playwright/test";
 import { cfg } from "../src/config";
 import { authHeaders, loginRole, RoleSession } from "./helpers/auth";
-import { ApiEnvelope } from "./helpers/client";
 
 test.describe.configure({ mode: "serial" });
 
@@ -23,17 +22,56 @@ test.afterAll(async () => {
   await api.dispose();
 });
 
-test("retired openclaw internal endpoints still enforce auth", async () => {
-  const health = await api.get(`${cfg.apiBasePath}/openclaw/health`);
-  expect(health.status()).toBe(401);
+test("removed legacy bridge endpoints now return not found", async () => {
+  const anonHealth = await api.get(`${cfg.apiBasePath}/openclaw/health`);
+  expect(anonHealth.status()).toBe(404);
 
-  const linkConfirm = await api.post(`${cfg.apiBasePath}/openclaw/link-confirm`, {
-    data: {},
-  });
-  expect(linkConfirm.status()).toBe(401);
+  for (const path of ["link-prepare", "link_prepare"]) {
+    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
+      data: {},
+      headers: authHeaders(pm),
+    });
+    expect(res.status()).toBe(404);
+  }
 
-  const runtimeConfig = await api.get(`${cfg.apiBasePath}/openclaw/runtime-config`);
-  expect(runtimeConfig.status()).toBe(401);
+  for (const path of ["link-confirm", "link_confirm", "link-context", "link_context"]) {
+    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
+      data: {},
+      headers: internalHeaders(),
+    });
+    expect(res.status()).toBe(404);
+  }
+
+  for (const path of ["runtime-config", "runtime_config"]) {
+    const res = await api.get(`${cfg.apiBasePath}/openclaw/${path}`, {
+      headers: internalHeaders(),
+    });
+    expect(res.status()).toBe(404);
+  }
+
+  for (const path of ["runtime-reload", "runtime_reload", "runtime-status", "runtime_status"]) {
+    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
+      data: {},
+      headers: internalHeaders(),
+    });
+    expect(res.status()).toBe(404);
+  }
+});
+
+test("retained openclaw checklist aliases still enforce auth", async () => {
+  for (const path of ["checklist-duplicates", "checklist_duplicates"]) {
+    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
+      data: {},
+    });
+    expect(res.status()).toBe(401);
+  }
+
+  for (const path of ["checklist-batches", "checklist_batches"]) {
+    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
+      data: {},
+    });
+    expect(res.status()).toBe(401);
+  }
 
   const ingest = await api.post(`${cfg.apiBasePath}/openclaw/checklist-ingest`, {
     data: {},
@@ -41,53 +79,23 @@ test("retired openclaw internal endpoints still enforce auth", async () => {
   expect(ingest.status()).toBe(401);
 });
 
-test("retired openclaw link prepare aliases return gone with session auth", async () => {
-  const prepareA = await api.post(`${cfg.apiBasePath}/openclaw/link-prepare`, {
-    data: {},
-    headers: authHeaders(pm),
-  });
-  expect(prepareA.status()).toBe(410);
-
-  const prepareB = await api.post(`${cfg.apiBasePath}/openclaw/link_prepare`, {
-    data: {},
-    headers: authHeaders(pm),
-  });
-  expect(prepareB.status()).toBe(410);
-});
-
-test("retired openclaw internals return gone while ingest aliases still validate", async () => {
+test("retained openclaw checklist aliases still validate payloads", async () => {
   test.skip(!cfg.openclawInternalToken, "Set E2E_OPENCLAW_INTERNAL_TOKEN to run internal positive checks.");
 
-  const health = await api.get(`${cfg.apiBasePath}/openclaw/health`, {
-    headers: internalHeaders(),
-  });
-  if (health.status() === 401) {
-    test.skip(true, "Configured E2E_OPENCLAW_INTERNAL_TOKEN is not accepted by this environment.");
-  }
-  expect(health.status()).toBe(410);
-
-  for (const path of ["link-confirm", "link_confirm"]) {
-    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
-      data: {},
-      headers: internalHeaders(),
-    });
-    expect(res.status()).toBe(410);
-  }
-
-  for (const path of ["link-context", "link_context"]) {
-    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
-      data: {},
-      headers: internalHeaders(),
-    });
-    expect(res.status()).toBe(410);
-  }
-
+  let internalTokenRejected = false;
   for (const path of ["checklist-duplicates", "checklist_duplicates"]) {
     const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
       data: {},
       headers: internalHeaders(),
     });
+    if (res.status() === 401) {
+      internalTokenRejected = true;
+      break;
+    }
     expect(res.status()).toBe(422);
+  }
+  if (internalTokenRejected) {
+    test.skip(true, "Configured E2E_OPENCLAW_INTERNAL_TOKEN is not accepted by this environment.");
   }
 
   for (const path of ["checklist-batches", "checklist_batches"]) {
@@ -98,37 +106,9 @@ test("retired openclaw internals return gone while ingest aliases still validate
     expect(res.status()).toBe(422);
   }
 
-  for (const path of ["runtime-config", "runtime_config"]) {
-    const res = await api.get(`${cfg.apiBasePath}/openclaw/${path}`, {
-      headers: internalHeaders(),
-    });
-    expect(res.status()).toBe(410);
-  }
-
-  for (const path of ["runtime-reload", "runtime_reload"]) {
-    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
-      data: { reason: "api_v1_e2e" },
-      headers: internalHeaders(),
-    });
-    expect(res.status()).toBe(410);
-  }
-
-  for (const path of ["runtime-status", "runtime_status"]) {
-    const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
-      data: {
-        gateway_state: "connected",
-        discord_state: "ready",
-      },
-      headers: internalHeaders(),
-    });
-    expect(res.status()).toBe(410);
-  }
-});
-
-test("checklist ingest aliases validate bot token payload", async () => {
   test.skip(!cfg.checklistBotToken, "Set E2E_CHECKLIST_BOT_TOKEN to run ingest positive checks.");
 
-  let tokenRejected = false;
+  let botTokenRejected = false;
   for (const path of ["checklist-ingest", "checklist_bot_ingest"]) {
     const res = await api.post(`${cfg.apiBasePath}/openclaw/${path}`, {
       data: {},
@@ -137,12 +117,12 @@ test("checklist ingest aliases validate bot token payload", async () => {
       },
     });
     if (res.status() === 401) {
-      tokenRejected = true;
+      botTokenRejected = true;
       break;
     }
     expect(res.status()).toBe(422);
   }
-  if (tokenRejected) {
+  if (botTokenRejected) {
     test.skip(true, "Configured E2E_CHECKLIST_BOT_TOKEN is not accepted by this environment.");
   }
 });

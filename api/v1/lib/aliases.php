@@ -85,27 +85,6 @@ function bc_v1_alias_checklist_batch_attachment_by_id(mysqli $conn, array $param
     bc_v1_include_legacy('api/checklist/v1/batch_attachment.php', ['id' => (string) ($params['id'] ?? '')]);
 }
 
-function bc_v1_alias_openclaw_health(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/health.php');
-}
-
-function bc_v1_alias_openclaw_link_prepare(mysqli $conn, array $params): void
-{
-    bc_v1_alias_require_actor_session($conn);
-    bc_v1_include_legacy('api/openclaw/link_prepare.php');
-}
-
-function bc_v1_alias_openclaw_link_confirm(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/link_confirm.php');
-}
-
-function bc_v1_alias_openclaw_link_context(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/link_context.php');
-}
-
 function bc_v1_alias_openclaw_checklist_duplicates(mysqli $conn, array $params): void
 {
     bc_v1_include_legacy('api/openclaw/checklist_duplicates.php');
@@ -114,21 +93,6 @@ function bc_v1_alias_openclaw_checklist_duplicates(mysqli $conn, array $params):
 function bc_v1_alias_openclaw_checklist_batches(mysqli $conn, array $params): void
 {
     bc_v1_include_legacy('api/openclaw/checklist_batches.php');
-}
-
-function bc_v1_alias_openclaw_runtime_config(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/runtime_config.php');
-}
-
-function bc_v1_alias_openclaw_runtime_reload(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/runtime_reload.php');
-}
-
-function bc_v1_alias_openclaw_runtime_status(mysqli $conn, array $params): void
-{
-    bc_v1_include_legacy('api/openclaw/runtime_status.php');
 }
 
 function bc_v1_alias_openclaw_checklist_ingest(mysqli $conn, array $params): void

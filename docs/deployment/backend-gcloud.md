@@ -84,7 +84,7 @@ Then apply the migration. Examples:
 ```bash
 cd /var/www/bugcatcher/current
 sudo mysql bug_catcher < infra/database/migrations/20260325_attachment_storage_providers.sql
-sudo mysql bug_catcher < infra/database/migrations/20260325_ai_runtime_split_and_discord_cleanup.sql
+sudo mysql bug_catcher < infra/database/migrations/20260325_ai_runtime_split_and_integration_cleanup.sql
 ```
 
 Notes:
@@ -168,7 +168,7 @@ After the migration run:
 
 ## 8. Verify AI Admin If Needed
 
-If this release includes the Discord retirement and AI Admin split:
+If this release includes the AI Admin split and legacy bridge cleanup:
 
 - open `Super Admin > AI Admin` and confirm runtime, providers, and models load
 - verify the default provider/model still match production expectations after the backfill migration

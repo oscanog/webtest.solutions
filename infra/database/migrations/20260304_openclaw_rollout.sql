@@ -24,52 +24,9 @@ CREATE TABLE IF NOT EXISTS checklist_batch_attachments (
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS discord_user_links (
-  id INT(11) NOT NULL AUTO_INCREMENT,
-  user_id INT(11) NOT NULL,
-  discord_user_id VARCHAR(64) DEFAULT NULL,
-  discord_username VARCHAR(100) DEFAULT NULL,
-  discord_global_name VARCHAR(100) DEFAULT NULL,
-  link_code_hash CHAR(64) DEFAULT NULL,
-  link_code_expires_at DATETIME DEFAULT NULL,
-  linked_at DATETIME DEFAULT NULL,
-  last_seen_at DATETIME DEFAULT NULL,
-  is_active TINYINT(1) NOT NULL DEFAULT 1,
-  PRIMARY KEY (id),
-  UNIQUE KEY uniq_discord_user_links_user (user_id),
-  UNIQUE KEY uniq_discord_user_links_discord_user (discord_user_id),
-  KEY idx_discord_user_links_code (link_code_hash, link_code_expires_at),
-  CONSTRAINT fk_discord_user_links_user
-    FOREIGN KEY (user_id) REFERENCES users(id)
-    ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE IF NOT EXISTS discord_channel_bindings (
-  id INT(11) NOT NULL AUTO_INCREMENT,
-  guild_id VARCHAR(64) NOT NULL,
-  guild_name VARCHAR(120) DEFAULT NULL,
-  channel_id VARCHAR(64) NOT NULL,
-  channel_name VARCHAR(120) DEFAULT NULL,
-  is_enabled TINYINT(1) NOT NULL DEFAULT 1,
-  allow_dm_followup TINYINT(1) NOT NULL DEFAULT 1,
-  created_by INT(11) NOT NULL,
-  updated_by INT(11) DEFAULT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT NULL,
-  PRIMARY KEY (id),
-  UNIQUE KEY uniq_discord_channel_bindings_channel (channel_id),
-  KEY idx_discord_channel_bindings_guild (guild_id, is_enabled),
-  CONSTRAINT fk_discord_channel_bindings_created_by
-    FOREIGN KEY (created_by) REFERENCES users(id),
-  CONSTRAINT fk_discord_channel_bindings_updated_by
-    FOREIGN KEY (updated_by) REFERENCES users(id)
-    ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 CREATE TABLE IF NOT EXISTS openclaw_runtime_config (
   id INT(11) NOT NULL AUTO_INCREMENT,
   is_enabled TINYINT(1) NOT NULL DEFAULT 0,
-  encrypted_discord_bot_token TEXT DEFAULT NULL,
   default_provider_config_id INT(11) DEFAULT NULL,
   default_model_id INT(11) DEFAULT NULL,
   notes TEXT DEFAULT NULL,
@@ -129,7 +86,6 @@ CREATE TABLE IF NOT EXISTS ai_models (
 
 CREATE TABLE IF NOT EXISTS openclaw_requests (
   id INT(11) NOT NULL AUTO_INCREMENT,
-  discord_user_link_id INT(11) NOT NULL,
   guild_id VARCHAR(64) DEFAULT NULL,
   channel_id VARCHAR(64) DEFAULT NULL,
   thread_id VARCHAR(64) DEFAULT NULL,
@@ -152,9 +108,6 @@ CREATE TABLE IF NOT EXISTS openclaw_requests (
   PRIMARY KEY (id),
   KEY idx_openclaw_requests_status (status, updated_at),
   KEY idx_openclaw_requests_user (requested_by_user_id, created_at),
-  CONSTRAINT fk_openclaw_requests_discord_user_link
-    FOREIGN KEY (discord_user_link_id) REFERENCES discord_user_links(id)
-    ON DELETE CASCADE,
   CONSTRAINT fk_openclaw_requests_selected_org
     FOREIGN KEY (selected_org_id) REFERENCES organizations(id)
     ON DELETE SET NULL,
@@ -200,7 +153,7 @@ CREATE TABLE IF NOT EXISTS openclaw_request_items (
 CREATE TABLE IF NOT EXISTS openclaw_request_attachments (
   id INT(11) NOT NULL AUTO_INCREMENT,
   openclaw_request_id INT(11) NOT NULL,
-  discord_attachment_id VARCHAR(64) DEFAULT NULL,
+  source_attachment_id VARCHAR(64) DEFAULT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
   file_size INT(11) NOT NULL,

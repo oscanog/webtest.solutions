@@ -1,6 +1,6 @@
 # AI Admin
 
-Built-in BugCatcher AI runtime management now lives in the dedicated AI Admin surface instead of the retired OpenClaw Discord control plane.
+Built-in BugCatcher AI runtime management now lives in the dedicated AI Admin surface instead of the old OpenClaw control plane.
 
 ## Entry Points
 
@@ -35,4 +35,4 @@ Built-in BugCatcher AI runtime management now lives in the dedicated AI Admin su
 
 - `/super-admin/openclaw.php` now redirects to `/super-admin/ai.php`.
 - `/api/v1/admin/openclaw/runtime`, `/providers`, and `/models` remain temporary aliases to the new AI Admin APIs.
-- Discord link APIs and the old Discord/OpenClaw runtime surfaces are intentionally retired and now return `410 Gone`.
+- The old bridge-only OpenClaw link and runtime routes have been removed.

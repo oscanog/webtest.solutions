@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS checklist_batches (
   module_name VARCHAR(160) NOT NULL,
   submodule_name VARCHAR(160) DEFAULT NULL,
   source_type ENUM('manual', 'bot') NOT NULL DEFAULT 'manual',
-  source_channel ENUM('web', 'telegram', 'discord', 'api') NOT NULL DEFAULT 'web',
+  source_channel ENUM('web', 'telegram', 'legacy_chat', 'api') NOT NULL DEFAULT 'web',
   source_reference VARCHAR(255) DEFAULT NULL,
   status ENUM('draft', 'open', 'completed', 'archived') NOT NULL DEFAULT 'open',
   created_by INT(11) NOT NULL,
@@ -343,11 +343,14 @@ CREATE TABLE IF NOT EXISTS openclaw_control_plane_state (
 
 CREATE TABLE IF NOT EXISTS openclaw_runtime_status (
   id INT(11) NOT NULL,
+  config_version_applied VARCHAR(40) DEFAULT NULL,
   gateway_state VARCHAR(40) NOT NULL DEFAULT 'unknown',
-  discord_state VARCHAR(40) NOT NULL DEFAULT 'unknown',
-  heartbeat_at DATETIME DEFAULT NULL,
+  integration_state VARCHAR(40) NOT NULL DEFAULT 'unknown',
+  integration_application_id VARCHAR(64) DEFAULT NULL,
+  last_heartbeat_at DATETIME DEFAULT NULL,
   last_reload_at DATETIME DEFAULT NULL,
-  last_error_message TEXT DEFAULT NULL,
+  last_provider_error TEXT DEFAULT NULL,
+  last_integration_error TEXT DEFAULT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -438,7 +441,6 @@ CREATE TABLE IF NOT EXISTS ai_runtime_config (
 
 CREATE TABLE IF NOT EXISTS openclaw_requests (
   id INT(11) NOT NULL AUTO_INCREMENT,
-  discord_user_link_id INT(11) DEFAULT NULL,
   guild_id VARCHAR(64) DEFAULT NULL,
   channel_id VARCHAR(64) DEFAULT NULL,
   thread_id VARCHAR(64) DEFAULT NULL,
@@ -506,7 +508,7 @@ CREATE TABLE IF NOT EXISTS openclaw_request_items (
 CREATE TABLE IF NOT EXISTS openclaw_request_attachments (
   id INT(11) NOT NULL AUTO_INCREMENT,
   openclaw_request_id INT(11) NOT NULL,
-  discord_attachment_id VARCHAR(64) DEFAULT NULL,
+  source_attachment_id VARCHAR(64) DEFAULT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
   file_size INT(11) NOT NULL,
@@ -863,9 +865,9 @@ INSERT INTO openclaw_control_plane_state (
 );
 
 INSERT INTO openclaw_runtime_status (
-  id, gateway_state, discord_state, heartbeat_at, last_reload_at, last_error_message
+  id, config_version_applied, gateway_state, integration_state, integration_application_id, last_heartbeat_at, last_reload_at, last_provider_error, last_integration_error
 ) VALUES (
-  1, 'idle', 'disconnected', NULL, NULL, NULL
+  1, 'v1', 'idle', 'offline', NULL, NULL, NULL, NULL, NULL
 );
 
 INSERT INTO notifications (

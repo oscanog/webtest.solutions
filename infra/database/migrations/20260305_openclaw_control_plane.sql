@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS openclaw_runtime_status (
   id TINYINT(1) NOT NULL DEFAULT 1,
   config_version_applied VARCHAR(40) DEFAULT NULL,
   gateway_state VARCHAR(30) DEFAULT NULL,
-  discord_state VARCHAR(30) DEFAULT NULL,
-  discord_application_id VARCHAR(64) DEFAULT NULL,
+  integration_state VARCHAR(30) DEFAULT NULL,
+  integration_application_id VARCHAR(64) DEFAULT NULL,
   last_heartbeat_at DATETIME DEFAULT NULL,
   last_reload_at DATETIME DEFAULT NULL,
   last_provider_error TEXT DEFAULT NULL,
-  last_discord_error TEXT DEFAULT NULL,
+  last_integration_error TEXT DEFAULT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -50,7 +50,7 @@ ON DUPLICATE KEY UPDATE
     config_version = COALESCE(NULLIF(config_version, ''), VALUES(config_version));
 
 INSERT INTO openclaw_runtime_status
-    (id, config_version_applied, gateway_state, discord_state, discord_application_id, last_heartbeat_at, last_reload_at, last_provider_error, last_discord_error, updated_at)
+    (id, config_version_applied, gateway_state, integration_state, integration_application_id, last_heartbeat_at, last_reload_at, last_provider_error, last_integration_error, updated_at)
 VALUES
     (1, NULL, 'unknown', 'unknown', NULL, NULL, NULL, NULL, NULL, NOW())
 ON DUPLICATE KEY UPDATE

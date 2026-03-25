@@ -203,6 +203,96 @@ function bc_v1_auth_me(mysqli $conn, array $params): void
     ]);
 }
 
+function bc_v1_auth_profile_patch(mysqli $conn, array $params): void
+{
+    bc_v1_require_method(['PATCH']);
+    $actor = bc_v1_actor($conn, true);
+    $payload = bc_v1_request_data();
+    $userId = (int) $actor['user']['id'];
+    $username = trim((string) ($payload['username'] ?? ''));
+
+    if ($username === '') {
+        bc_v1_json_error(422, 'validation_error', 'username is required.');
+    }
+
+    $check = $conn->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id <> ? LIMIT 1");
+    $check->bind_param('si', $username, $userId);
+    $check->execute();
+    $exists = $check->get_result()->fetch_assoc();
+    $check->close();
+    if ($exists) {
+        bc_v1_json_error(409, 'username_exists', 'This username is already used. Try another one.');
+    }
+
+    $update = $conn->prepare("UPDATE users SET username = ? WHERE id = ?");
+    $update->bind_param('si', $username, $userId);
+    $update->execute();
+    $update->close();
+
+    $_SESSION['username'] = $username;
+    $user = bc_v1_fetch_user_by_id($conn, $userId);
+    if (!$user) {
+        bc_v1_json_error(500, 'profile_update_failed', 'Profile updated but the user record could not be loaded.');
+    }
+
+    bc_v1_json_success([
+        'updated' => true,
+        'message' => 'Profile updated successfully.',
+        'user' => [
+            'id' => (int) $user['id'],
+            'username' => (string) $user['username'],
+            'email' => (string) $user['email'],
+            'role' => (string) $user['role'],
+        ],
+    ]);
+}
+
+function bc_v1_auth_change_password(mysqli $conn, array $params): void
+{
+    bc_v1_require_method(['POST']);
+    $actor = bc_v1_actor($conn, true);
+    $payload = bc_v1_request_data();
+    $userId = (int) $actor['user']['id'];
+    $currentPassword = (string) ($payload['current_password'] ?? '');
+    $password = (string) ($payload['password'] ?? '');
+    $confirm = (string) ($payload['confirm_password'] ?? $payload['cpass'] ?? '');
+
+    if ($currentPassword === '' || $password === '' || $confirm === '') {
+        bc_v1_json_error(422, 'validation_error', 'current_password, password, and confirm_password are required.');
+    }
+    if ($password !== $confirm) {
+        bc_v1_json_error(422, 'password_mismatch', 'Password does not match.');
+    }
+
+    $stmt = $conn->prepare("SELECT password FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        bc_v1_json_error(404, 'user_not_found', 'User account was not found.');
+    }
+
+    $currentHash = (string) ($row['password'] ?? '');
+    if (!password_verify($currentPassword, $currentHash)) {
+        bc_v1_json_error(422, 'current_password_incorrect', 'Current password is incorrect.');
+    }
+    if (password_verify($password, $currentHash)) {
+        bc_v1_json_error(422, 'password_reuse', 'Choose a new password different from your current password.');
+    }
+
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+    $update = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $update->bind_param('si', $hash, $userId);
+    $update->execute();
+    $update->close();
+
+    bc_v1_json_success([
+        'updated' => true,
+        'message' => 'Password updated successfully.',
+    ]);
+}
+
 function bc_v1_session_active_org_put(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['PUT']);

@@ -89,7 +89,7 @@ test("admin ai auth guards", async () => {
   expect(forbidden.body.ok).toBe(false);
 });
 
-test("admin ai APIs work and deprecated openclaw aliases are limited", async () => {
+test("admin ai APIs work and remaining openclaw aliases stay limited", async () => {
   const runtime = await apiGet<ApiEnvelope<{ runtime: AiRuntime; providers: unknown[]; models: unknown[] }>>(
     api,
     `${cfg.apiBasePath}/admin/ai/runtime`,
@@ -212,47 +212,47 @@ test("admin ai APIs work and deprecated openclaw aliases are limited", async () 
   expect(aliasModels.res.status()).toBe(200);
   expectApiSuccess(aliasModels.body);
 
-  const retiredReload = await apiPostJson<ApiEnvelope<unknown>>(
+  const removedReload = await apiPostJson<ApiEnvelope<unknown>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/runtime/reload`,
     { reason: "api_v1_e2e" },
     authHeaders(superAdmin)
   );
-  expect(retiredReload.res.status()).toBe(410);
-  expect(retiredReload.body.ok).toBe(false);
+  expect(removedReload.res.status()).toBe(404);
+  expect(removedReload.body.ok).toBe(false);
 
-  const retiredSnapshot = await apiPostJson<ApiEnvelope<unknown>>(
+  const removedSnapshot = await apiPostJson<ApiEnvelope<unknown>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/snapshot`,
     {},
     authHeaders(superAdmin)
   );
-  expect(retiredSnapshot.res.status()).toBe(410);
-  expect(retiredSnapshot.body.ok).toBe(false);
+  expect(removedSnapshot.res.status()).toBe(404);
+  expect(removedSnapshot.body.ok).toBe(false);
 
-  const retiredChannels = await apiGet<ApiEnvelope<unknown>>(
+  const removedChannels = await apiGet<ApiEnvelope<unknown>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/channels`,
     authHeaders(superAdmin)
   );
-  expect(retiredChannels.res.status()).toBe(410);
-  expect(retiredChannels.body.ok).toBe(false);
+  expect(removedChannels.res.status()).toBe(404);
+  expect(removedChannels.body.ok).toBe(false);
 
-  const retiredUsers = await apiGet<ApiEnvelope<unknown>>(
+  const removedUsers = await apiGet<ApiEnvelope<unknown>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/users?limit=10`,
     authHeaders(superAdmin)
   );
-  expect(retiredUsers.res.status()).toBe(410);
-  expect(retiredUsers.body.ok).toBe(false);
+  expect(removedUsers.res.status()).toBe(404);
+  expect(removedUsers.body.ok).toBe(false);
 
-  const retiredRequests = await apiGet<ApiEnvelope<unknown>>(
+  const removedRequests = await apiGet<ApiEnvelope<unknown>>(
     api,
     `${cfg.apiBasePath}/admin/openclaw/requests?limit=10`,
     authHeaders(superAdmin)
   );
-  expect(retiredRequests.res.status()).toBe(410);
-  expect(retiredRequests.body.ok).toBe(false);
+  expect(removedRequests.res.status()).toBe(404);
+  expect(removedRequests.body.ok).toBe(false);
 
   const deletedModel = await apiDeleteJson<ApiEnvelope<{ deleted: boolean; model_id: number }>>(
     api,

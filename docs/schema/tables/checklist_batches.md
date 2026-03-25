@@ -15,7 +15,7 @@ Stores one manual or bot-generated checklist batch under a project.
 | `module_name` | `VARCHAR(160)` | No | none | Main module name. |
 | `submodule_name` | `VARCHAR(160)` | Yes | `NULL` | Optional submodule name. |
 | `source_type` | `ENUM('manual','bot')` | No | `manual` | Indicates whether the batch was user-created or imported. |
-| `source_channel` | `ENUM('web','telegram','discord','api')` | No | `web` | Source entrypoint. |
+| `source_channel` | `ENUM('web','telegram','legacy_chat','api')` | No | `web` | Source entrypoint. |
 | `source_reference` | `VARCHAR(255)` | Yes | `NULL` | External message or request reference. |
 | `status` | `ENUM('draft','open','completed','archived')` | No | `open` | Batch state. |
 | `created_by` | `INT(11)` | No | none | Creating user. |

@@ -86,7 +86,7 @@ $title = trim((string) ($batchPayload['title'] ?? ''));
 $moduleName = trim((string) ($batchPayload['module_name'] ?? ''));
 $submoduleName = trim((string) ($batchPayload['submodule_name'] ?? ''));
 $sourceType = bugcatcher_checklist_normalize_enum((string) ($batchPayload['source_type'] ?? 'bot'), ['manual', 'bot'], 'bot');
-$sourceChannel = bugcatcher_checklist_normalize_enum((string) ($batchPayload['source_channel'] ?? 'api'), ['web', 'telegram', 'discord', 'api'], 'api');
+$sourceChannel = bugcatcher_checklist_normalize_enum((string) ($batchPayload['source_channel'] ?? 'api'), ['web', 'telegram', 'legacy_chat', 'api'], 'api');
 $sourceReference = trim((string) ($batchPayload['source_reference'] ?? ''));
 $notes = trim((string) ($batchPayload['notes'] ?? ''));
 

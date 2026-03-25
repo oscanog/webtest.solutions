@@ -9,7 +9,7 @@ Role-based API E2E suite for the modular `/api/v1/*` surface.
 - Issues role workflow (PM -> Senior Dev -> Junior Dev -> QA -> Senior QA -> QA Lead -> PM)
 - Checklist alias parity (`/api/v1/checklist/*`)
 - AI Admin runtime/providers/models API
-- Retired Discord link and OpenClaw admin/internal alias behavior
+- Remaining OpenClaw compatibility aliases and retained checklist ingest behavior
 - Checklist ingest aliases (with bot token)
 
 ## Structure

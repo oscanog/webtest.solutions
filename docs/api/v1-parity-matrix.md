@@ -128,39 +128,14 @@ Issue read behavior:
 | redirect legacy runtime view | runtime alias | `/api/v1/admin/openclaw/runtime` | `GET/PUT/PATCH` | Bearer/Session (super_admin) | alias |
 | redirect legacy providers view | providers alias | `/api/v1/admin/openclaw/providers` | `GET/POST/DELETE` | Bearer/Session (super_admin) | alias |
 | redirect legacy models view | models alias | `/api/v1/admin/openclaw/models` | `GET/POST/DELETE` | Bearer/Session (super_admin) | alias |
-| retired runtime control plane | runtime reload | `/api/v1/admin/openclaw/runtime/reload` | `POST` | Bearer/Session (super_admin) | retired |
-| retired runtime snapshot | snapshot | `/api/v1/admin/openclaw/snapshot` | `POST` | Bearer/Session (super_admin) | retired |
-| retired Discord channels tab | channels | `/api/v1/admin/openclaw/channels` | `GET/POST/DELETE` | Bearer/Session (super_admin) | retired |
-| retired Discord-linked users tab | users | `/api/v1/admin/openclaw/users` | `GET` | Bearer/Session (super_admin) | retired |
-| retired Discord request monitoring | requests | `/api/v1/admin/openclaw/requests` | `GET` | Bearer/Session (super_admin) | retired |
-
-## Discord Link Retirement
-| Legacy source | Legacy flow | v1 route | Method | Auth | Status |
-|---|---|---|---|---|---|
-| `discord-link.php` | view link state | `/api/v1/discord/link` | `GET` | Bearer/Session | retired |
-| `discord-link.php?action=generate_code` | generate link code | `/api/v1/discord/link-code` | `POST` | Bearer/Session | retired |
-| `discord-link.php?action=unlink` | unlink account | `/api/v1/discord/link` | `DELETE` | Bearer/Session | retired |
 
 ## OpenClaw Internal + Checklist Ingest
 | Legacy endpoint | v1 route | Method | Auth | Status |
 |---|---|---|---|---|
-| `/api/openclaw/health.php` | `/api/v1/openclaw/health` | `GET` | Internal Bearer | retired |
-| `/api/openclaw/link_prepare.php` | `/api/v1/openclaw/link-prepare` | `POST` | Bearer/Session | retired |
-| `/api/openclaw/link_prepare.php` | `/api/v1/openclaw/link_prepare` | `POST` | Bearer/Session | retired |
-| `/api/openclaw/link_confirm.php` | `/api/v1/openclaw/link-confirm` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/link_confirm.php` | `/api/v1/openclaw/link_confirm` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/link_context.php` | `/api/v1/openclaw/link-context` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/link_context.php` | `/api/v1/openclaw/link_context` | `POST` | Internal Bearer | retired |
 | `/api/openclaw/checklist_duplicates.php` | `/api/v1/openclaw/checklist-duplicates` | `POST` | Internal Bearer | alias |
 | `/api/openclaw/checklist_duplicates.php` | `/api/v1/openclaw/checklist_duplicates` | `POST` | Internal Bearer | alias |
 | `/api/openclaw/checklist_batches.php` | `/api/v1/openclaw/checklist-batches` | `POST` | Internal Bearer | alias |
 | `/api/openclaw/checklist_batches.php` | `/api/v1/openclaw/checklist_batches` | `POST` | Internal Bearer | alias |
-| `/api/openclaw/runtime_config.php` | `/api/v1/openclaw/runtime-config` | `GET` | Internal Bearer | retired |
-| `/api/openclaw/runtime_config.php` | `/api/v1/openclaw/runtime_config` | `GET` | Internal Bearer | retired |
-| `/api/openclaw/runtime_reload.php` | `/api/v1/openclaw/runtime-reload` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/runtime_reload.php` | `/api/v1/openclaw/runtime_reload` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/runtime_status.php` | `/api/v1/openclaw/runtime-status` | `POST` | Internal Bearer | retired |
-| `/api/openclaw/runtime_status.php` | `/api/v1/openclaw/runtime_status` | `POST` | Internal Bearer | retired |
 | `/melvin/checklist_bot_ingest.php` | `/api/v1/openclaw/checklist-ingest` | `POST` | Bot Token | alias |
 | `/melvin/checklist_bot_ingest.php` | `/api/v1/openclaw/checklist_bot_ingest` | `POST` | Bot Token | alias |
 
@@ -170,11 +145,10 @@ Issue read behavior:
 - `e2e-tests/api-v1/tests/projects.spec.ts`: list/create/detail/update/archive/activate.
 - `e2e-tests/api-v1/tests/issues-workflow.spec.ts`: full role chain + approve/close + reject/reassign + delete.
 - `e2e-tests/api-v1/tests/checklist-alias.spec.ts`: all checklist v1 aliases including path/query id forms and attachment aliases.
-- `e2e-tests/api-v1/tests/discord.spec.ts`: retired Discord link endpoints return `410 Gone` for authenticated callers.
-- `e2e-tests/api-v1/tests/openclaw-internal.spec.ts`: retired internal alias behavior plus retained checklist ingest and duplicate/batch alias validation.
-- `e2e-tests/api-v1/tests/admin-ai.spec.ts`: super-admin AI runtime/providers/models APIs plus deprecated OpenClaw admin alias behavior.
+- `e2e-tests/api-v1/tests/openclaw-internal.spec.ts`: retained checklist ingest and duplicate/batch alias validation, plus removed-route checks for the old bridge endpoints.
+- `e2e-tests/api-v1/tests/admin-ai.spec.ts`: super-admin AI runtime/providers/models APIs plus the remaining OpenClaw admin alias behavior.
 
 ## Maintainability Notes
 - Legacy paths remain active and mapped through aliases to preserve web compatibility.
 - Canonical mobile/integration target should be `/api/v1/*` paths.
-- Remove alias routes only after zero-traffic confirmation for old callers.
+- Remove unused aliases only after zero-traffic confirmation for old callers.
