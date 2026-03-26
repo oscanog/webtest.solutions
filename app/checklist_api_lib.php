@@ -133,6 +133,33 @@ function checklist_api_require_context(mysqli $conn): array
     ];
 }
 
+function checklist_api_uploaded_files(string $field): ?array
+{
+    foreach ([$field, $field . '[]'] as $candidate) {
+        $files = $_FILES[$candidate] ?? null;
+        if (!is_array($files)) {
+            continue;
+        }
+
+        if (is_array($files['name'] ?? null)) {
+            return $files;
+        }
+
+        $singleName = trim((string) ($files['name'] ?? ''));
+        if ($singleName !== '') {
+            return [
+                'name' => [$singleName],
+                'type' => [(string) ($files['type'] ?? '')],
+                'tmp_name' => [(string) ($files['tmp_name'] ?? '')],
+                'error' => [(int) ($files['error'] ?? UPLOAD_ERR_NO_FILE)],
+                'size' => [(int) ($files['size'] ?? 0)],
+            ];
+        }
+    }
+
+    return null;
+}
+
 function checklist_api_require_manager(array $context): void
 {
     if (!bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {

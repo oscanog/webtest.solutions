@@ -18,6 +18,7 @@ type Issue = {
   id: number;
   title: string;
   status: string;
+  workflow_status: string;
   assign_status: string;
   assigned_dev_id: number;
   assigned_junior_id: number;
@@ -93,6 +94,7 @@ async function createIssue(title: string): Promise<Issue> {
     `${cfg.apiBasePath}/issues`,
     {
       org_id: cfg.orgId,
+      project_id: cfg.projectId,
       title,
       description: "Created by API v1 e2e workflow test",
       labels: [cfg.labelId],
@@ -103,6 +105,9 @@ async function createIssue(title: string): Promise<Issue> {
   expect(res.status()).toBe(201);
   expectApiSuccess(body);
   createdIssueIds.push(body.data.issue.id);
+  expect(body.data.issue.workflow_status).toBe("unassigned");
+  expect(body.data.issue.status).toBe("open");
+  expect(body.data.issue.assign_status).toBe("unassigned");
   return body.data.issue;
 }
 
@@ -110,6 +115,7 @@ test("issues endpoint accepts multipart evidence uploads", async () => {
   const uploadRes = await api.post(`${cfg.apiBasePath}/issues`, {
     multipart: {
       org_id: String(cfg.orgId),
+      project_id: String(cfg.projectId),
       title: `Multipart Issue ${Date.now()}`,
       description: "Created with issue evidence upload",
       "labels[]": String(cfg.labelId),
@@ -308,11 +314,14 @@ test("issue workflow approve -> pm close", async () => {
   const approved = await postIssueAction(sessions.qaLead, issue.id, "qa-lead-approve", {
     org_id: cfg.orgId,
   });
+  expect(approved.workflow_status).toBe("approved");
+  expect(approved.status).toBe("open");
   expect(approved.assign_status).toBe("approved");
 
   const closed = await postIssueAction(sessions.pm, issue.id, "pm-close", {
     org_id: cfg.orgId,
   });
+  expect(closed.workflow_status).toBe("closed");
   expect(closed.status).toBe("closed");
   expect(closed.assign_status).toBe("closed");
 
@@ -324,6 +333,15 @@ test("issue workflow approve -> pm close", async () => {
   expect(closedList.res.status()).toBe(200);
   expectApiSuccess(closedList.body);
   expect(closedList.body.data.issues.some((row) => row.id === issue.id)).toBeTruthy();
+
+  const allList = await apiGet<ApiEnvelope<{ issues: Issue[] }>>(
+    api,
+    `${cfg.apiBasePath}/issues?org_id=${cfg.orgId}&status=all`,
+    authHeaders(sessions.pm)
+  );
+  expect(allList.res.status()).toBe(200);
+  expectApiSuccess(allList.body);
+  expect(allList.body.data.issues.some((row) => row.id === issue.id && row.workflow_status === "closed")).toBeTruthy();
 });
 
 test("issue reads are organization-wide while workflow actions stay role-scoped", async () => {
@@ -468,6 +486,7 @@ test("issue workflow reject -> reassign -> delete", async () => {
   const rejected = await postIssueAction(sessions.qaLead, issue.id, "qa-lead-reject", {
     org_id: cfg.orgId,
   });
+  expect(rejected.workflow_status).toBe("rejected");
   expect(rejected.assign_status).toBe("rejected");
   expect(rejected.assigned_dev_id).toBe(0);
 
@@ -475,6 +494,7 @@ test("issue workflow reject -> reassign -> delete", async () => {
     org_id: cfg.orgId,
     dev_id: cfg.accounts.seniorDev.userId,
   });
+  expect(reassigned.workflow_status).toBe("with_senior");
   expect(reassigned.assign_status).toBe("with_senior");
 
   const deleted = await apiDeleteJson<ApiEnvelope<{ deleted: boolean; issue_id: number }>>(

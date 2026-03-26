@@ -119,9 +119,13 @@ function bc_v1_checklist_batch_get(mysqli $conn, array $params): void
     }
 
     $requestedOrgId = bc_v1_get_int($_GET, 'org_id', 0);
-    $resolvedOrgId = $requestedOrgId > 0 || !bc_v1_actor_is_all_scope($actor)
+    $resolvedOrgId = $requestedOrgId > 0
         ? $requestedOrgId
-        : bc_v1_checklist_resolve_batch_org_id($conn, $actor, $batchId);
+        : (
+            bc_v1_actor_is_all_scope($actor)
+                ? bc_v1_checklist_resolve_batch_org_id($conn, $actor, $batchId)
+                : (int) ($actor['active_org_id'] ?? 0)
+        );
     if ($resolvedOrgId <= 0) {
         bc_v1_json_error(404, 'batch_not_found', 'Checklist batch not found.');
     }
@@ -156,9 +160,13 @@ function bc_v1_checklist_item_get(mysqli $conn, array $params): void
     }
 
     $requestedOrgId = bc_v1_get_int($_GET, 'org_id', 0);
-    $resolvedOrgId = $requestedOrgId > 0 || !bc_v1_actor_is_all_scope($actor)
+    $resolvedOrgId = $requestedOrgId > 0
         ? $requestedOrgId
-        : bc_v1_checklist_resolve_item_org_id($conn, $actor, $itemId);
+        : (
+            bc_v1_actor_is_all_scope($actor)
+                ? bc_v1_checklist_resolve_item_org_id($conn, $actor, $itemId)
+                : (int) ($actor['active_org_id'] ?? 0)
+        );
     if ($resolvedOrgId <= 0) {
         bc_v1_json_error(404, 'item_not_found', 'Checklist item not found.');
     }

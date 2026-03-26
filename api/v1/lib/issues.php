@@ -17,13 +17,29 @@ function bc_v1_issue_org_member_has_role(mysqli $conn, int $orgId, int $userId, 
     return (bool) $row;
 }
 
+function bc_v1_issue_project_fetch(mysqli $conn, int $orgId, int $projectId): ?array
+{
+    $stmt = $conn->prepare("
+        SELECT id, org_id, name, code, status
+        FROM projects
+        WHERE id = ? AND org_id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param('ii', $projectId, $orgId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
 function bc_v1_issue_fetch(mysqli $conn, int $orgId, int $issueId): ?array
 {
     $stmt = $conn->prepare("
-        SELECT i.*, u.username AS author_username, o.name AS org_name
+        SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
         FROM issues i
         LEFT JOIN users u ON u.id = i.author_id
         JOIN organizations o ON o.id = i.org_id
+        JOIN projects p ON p.id = i.project_id
         WHERE i.id = ? AND i.org_id = ?
         LIMIT 1
     ");
@@ -106,14 +122,22 @@ function bc_v1_issue_attachments_map(mysqli $conn, array $issueIds): array
 
 function bc_v1_issue_shape(array $row, array $labels = [], array $attachments = []): array
 {
+    $workflowStatus = bugcatcher_issue_workflow_normalize(
+        (string) ($row['workflow_status'] ?? $row['assign_status'] ?? bugcatcher_issue_workflow_default())
+    );
+
     return [
         'id' => (int) $row['id'],
         'org_id' => (int) $row['org_id'],
         'org_name' => (string) ($row['org_name'] ?? ''),
+        'project_id' => (int) ($row['project_id'] ?? 0),
+        'project_name' => (string) ($row['project_name'] ?? ''),
+        'project_code' => isset($row['project_code']) && $row['project_code'] !== null ? (string) $row['project_code'] : null,
         'title' => (string) $row['title'],
         'description' => (string) ($row['description'] ?? ''),
-        'status' => (string) ($row['status'] ?? 'open'),
-        'assign_status' => (string) ($row['assign_status'] ?? 'unassigned'),
+        'workflow_status' => $workflowStatus,
+        'status' => bugcatcher_issue_workflow_status_alias($workflowStatus),
+        'assign_status' => bugcatcher_issue_workflow_assign_status_alias($workflowStatus),
         'author_id' => isset($row['author_id']) ? (int) $row['author_id'] : 0,
         'author_username' => (string) ($row['author_username'] ?? ''),
         'pm_id' => isset($row['pm_id']) ? (int) $row['pm_id'] : 0,
@@ -167,12 +191,13 @@ function bc_v1_issue_visibility_scope(array $orgContext): string
 
 function bc_v1_issue_count(mysqli $conn, int $orgId, string $status): int
 {
+    $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
     $stmt = $conn->prepare("
         SELECT COUNT(*) AS total
         FROM issues
-        WHERE org_id = ? AND status = ?
+        WHERE org_id = ? AND {$filterSql}
     ");
-    $stmt->bind_param('is', $orgId, $status);
+    $stmt->bind_param('i', $orgId);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -186,12 +211,13 @@ function bc_v1_issue_count_for_org_ids(mysqli $conn, array $orgIds, string $stat
     }
 
     $placeholders = implode(',', array_fill(0, count($orgIds), '?'));
-    $params = array_merge([$status], $orgIds);
-    $types = 's' . str_repeat('i', count($orgIds));
+    $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
+    $params = $orgIds;
+    $types = str_repeat('i', count($orgIds));
     $stmt = $conn->prepare("
         SELECT COUNT(*) AS total
         FROM issues
-        WHERE status = ? AND org_id IN ({$placeholders})
+        WHERE {$filterSql} AND org_id IN ({$placeholders})
     ");
     bc_v1_stmt_bind($stmt, $types, $params);
     $stmt->execute();
@@ -204,12 +230,13 @@ function bc_v1_issue_fetch_for_actor(mysqli $conn, array $actor, int $issueId): 
 {
     $userId = (int) ($actor['user']['id'] ?? 0);
     $stmt = $conn->prepare("
-        SELECT i.*, u.username AS author_username, o.name AS org_name
+        SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
         FROM issues i
         JOIN org_members om
             ON om.org_id = i.org_id
            AND om.user_id = ?
         JOIN organizations o ON o.id = i.org_id
+        JOIN projects p ON p.id = i.project_id
         LEFT JOIN users u ON u.id = i.author_id
         WHERE i.id = ?
         LIMIT 1
@@ -286,6 +313,32 @@ function bc_v1_issue_link_path(int $issueId): string
     return '/app/reports/' . $issueId;
 }
 
+function bc_v1_issue_uploaded_images(): ?array
+{
+    foreach (['images', 'images[]'] as $field) {
+        $files = $_FILES[$field] ?? null;
+        if (!is_array($files)) {
+            continue;
+        }
+        if (is_array($files['name'] ?? null)) {
+            return $files;
+        }
+
+        $singleName = trim((string) ($files['name'] ?? ''));
+        if ($singleName !== '') {
+            return [
+                'name' => [$singleName],
+                'type' => [(string) ($files['type'] ?? '')],
+                'tmp_name' => [(string) ($files['tmp_name'] ?? '')],
+                'error' => [(int) ($files['error'] ?? UPLOAD_ERR_NO_FILE)],
+                'size' => [(int) ($files['size'] ?? 0)],
+            ];
+        }
+    }
+
+    return null;
+}
+
 function bc_v1_issue_is_visible_to_actor(array $issue, array $org): bool
 {
     return (int) ($issue['org_id'] ?? 0) === (int) ($org['org_id'] ?? 0);
@@ -293,6 +346,7 @@ function bc_v1_issue_is_visible_to_actor(array $issue, array $org): bool
 
 function bc_v1_issue_notify(mysqli $conn, array $issue, array $payload, array $recipientUserIds): void
 {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? $issue['assign_status'] ?? ''));
     bugcatcher_notifications_send($conn, $recipientUserIds, [
         'type' => 'issue',
         'event_key' => (string) ($payload['event_key'] ?? 'issue_updated'),
@@ -302,10 +356,13 @@ function bc_v1_issue_notify(mysqli $conn, array $issue, array $payload, array $r
         'link_path' => bc_v1_issue_link_path((int) $issue['id']),
         'actor_user_id' => (int) ($payload['actor_user_id'] ?? 0),
         'org_id' => (int) ($issue['org_id'] ?? 0),
+        'project_id' => (int) ($issue['project_id'] ?? 0),
         'issue_id' => (int) ($issue['id'] ?? 0),
         'meta' => $payload['meta'] ?? [
-            'assign_status' => (string) ($issue['assign_status'] ?? ''),
-            'status' => (string) ($issue['status'] ?? ''),
+            'project_id' => (int) ($issue['project_id'] ?? 0),
+            'workflow_status' => $workflowStatus,
+            'assign_status' => bugcatcher_issue_workflow_assign_status_alias($workflowStatus),
+            'status' => bugcatcher_issue_workflow_status_alias($workflowStatus),
         ],
     ]);
 }
@@ -316,7 +373,7 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
     $actor = bc_v1_actor($conn, true);
     $requestedOrgId = bc_v1_get_int($_GET, 'org_id', 0);
 
-    $status = ((string) ($_GET['status'] ?? 'open')) === 'closed' ? 'closed' : 'open';
+    $status = bugcatcher_issue_workflow_filter((string) ($_GET['status'] ?? 'open'));
     $labelId = bc_v1_get_int($_GET, 'label', 0);
     $author = bc_v1_get_int($_GET, 'author', 0);
     $isAllScope = bc_v1_actor_is_all_scope($actor) && $requestedOrgId <= 0;
@@ -350,15 +407,17 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
         }
 
         $placeholders = implode(',', array_fill(0, count($orgIds), '?'));
+        $statusSql = bugcatcher_issue_workflow_filter_sql('i.workflow_status', $status);
         $sql = "
-            SELECT i.*, u.username AS author_username, o.name AS org_name
+            SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
             FROM issues i
             JOIN organizations o ON o.id = i.org_id
+            JOIN projects p ON p.id = i.project_id
             LEFT JOIN users u ON u.id = i.author_id
-            WHERE i.status = ? AND i.org_id IN ({$placeholders})
+            WHERE {$statusSql} AND i.org_id IN ({$placeholders})
         ";
-        $types = 's' . str_repeat('i', count($orgIds));
-        $queryParams = array_merge([$status], $orgIds);
+        $types = str_repeat('i', count($orgIds));
+        $queryParams = $orgIds;
 
         if ($author > 0) {
             $sql .= " AND i.author_id = ?";
@@ -415,15 +474,17 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
         $author = 0;
     }
 
+    $statusSql = bugcatcher_issue_workflow_filter_sql('i.workflow_status', $status);
     $sql = "
-        SELECT i.*, u.username AS author_username, o.name AS org_name
+        SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
         FROM issues i
         JOIN organizations o ON o.id = i.org_id
+        JOIN projects p ON p.id = i.project_id
         LEFT JOIN users u ON u.id = i.author_id
-        WHERE i.status = ? AND i.org_id = ?
+        WHERE {$statusSql} AND i.org_id = ?
     ";
-    $types = 'si';
-    $queryParams = [$status, (int) $org['org_id']];
+    $types = 'i';
+    $queryParams = [(int) $org['org_id']];
 
     if ($author > 0 && $isSystemAdmin) {
         $sql .= " AND i.author_id = ?";
@@ -517,14 +578,22 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
 
     $title = trim((string) ($payload['title'] ?? ''));
     $description = trim((string) ($payload['description'] ?? ''));
+    $projectId = bc_v1_get_int($payload, 'project_id', 0);
     $labelIds = bc_v1_issue_parse_label_ids($payload);
     if ($title === '') {
         bc_v1_json_error(422, 'validation_error', 'title is required.');
+    }
+    if ($projectId <= 0) {
+        bc_v1_json_error(422, 'validation_error', 'project_id is required.');
     }
     if (!$labelIds) {
         bc_v1_json_error(422, 'validation_error', 'At least one label is required.');
     }
     $labelIds = bc_v1_issue_validate_labels($conn, $labelIds);
+    $project = bc_v1_issue_project_fetch($conn, (int) $org['org_id'], $projectId);
+    if (!$project || (string) ($project['status'] ?? 'archived') !== 'active') {
+        bc_v1_json_error(422, 'validation_error', 'project_id must reference an active project in this organization.');
+    }
     bugcatcher_file_storage_ensure_schema($conn);
 
     $allowedMimes = [
@@ -539,10 +608,11 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
     $conn->begin_transaction();
     try {
         $stmt = $conn->prepare("
-            INSERT INTO issues (title, description, author_id, org_id)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO issues (title, description, author_id, org_id, project_id, workflow_status)
+            VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param('ssii', $title, $description, $org['user_id'], $org['org_id']);
+        $workflowStatus = bugcatcher_issue_workflow_default();
+        $stmt->bind_param('ssiiis', $title, $description, $org['user_id'], $org['org_id'], $projectId, $workflowStatus);
         $stmt->execute();
         $issueId = (int) $conn->insert_id;
         $stmt->close();
@@ -554,32 +624,33 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
         }
         $stmtLabel->close();
 
-        if (!empty($_FILES['images']) && is_array($_FILES['images']['name'])) {
+        $imageUploads = bc_v1_issue_uploaded_images();
+        if ($imageUploads !== null) {
             $stmtAtt = $conn->prepare("
                 INSERT INTO issue_attachments (issue_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
 
-            $count = count($_FILES['images']['name']);
+            $count = count($imageUploads['name']);
             for ($i = 0; $i < $count; $i++) {
-                $err = (int) ($_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE);
+                $err = (int) ($imageUploads['error'][$i] ?? UPLOAD_ERR_NO_FILE);
                 if ($err === UPLOAD_ERR_NO_FILE || $err !== UPLOAD_ERR_OK) {
                     continue;
                 }
 
-                $tmp = (string) ($_FILES['images']['tmp_name'][$i] ?? '');
+                $tmp = (string) ($imageUploads['tmp_name'][$i] ?? '');
                 if ($tmp === '' || !is_uploaded_file($tmp)) {
                     continue;
                 }
 
-                $size = (int) ($_FILES['images']['size'][$i] ?? 0);
+                $size = (int) ($imageUploads['size'][$i] ?? 0);
                 if ($size <= 0 || $size > $maxBytes) {
                     continue;
                 }
 
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $mime = is_resource($finfo) ? (string) finfo_file($finfo, $tmp) : '';
-                if (is_resource($finfo)) {
+                $mime = $finfo !== false ? (string) finfo_file($finfo, $tmp) : '';
+                if ($finfo !== false) {
                     finfo_close($finfo);
                 }
                 if (!isset($allowedMimes[$mime])) {
@@ -587,7 +658,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
                 }
 
                 $ext = $allowedMimes[$mime];
-                $origName = (string) ($_FILES['images']['name'][$i] ?? ('image.' . $ext));
+                $origName = (string) ($imageUploads['name'][$i] ?? ('image.' . $ext));
                 $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
                 $stored = bugcatcher_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
                 $filePath = (string) $stored['file_path'];
@@ -659,7 +730,7 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
     if (!$isSystemAdmin && !$isOrgOwner) {
         bc_v1_json_error(403, 'forbidden', 'Only organization owners or system admins can delete issues.');
     }
-    if (!$isSystemAdmin && $isOrgOwner && (string) ($issue['status'] ?? '') === 'closed') {
+    if (!$isSystemAdmin && $isOrgOwner && bugcatcher_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? ''))) {
         bc_v1_json_error(422, 'forbidden_closed_issue', 'Closed issues cannot be deleted by the organization owner.');
     }
     bugcatcher_file_storage_ensure_schema($conn);
@@ -787,11 +858,11 @@ function bc_v1_issues_assign_dev_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $assignStatus = (string) ($issue['assign_status'] ?? 'unassigned');
-    if (!in_array($assignStatus, ['unassigned', 'rejected'], true)) {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_can_assign_dev($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not ready for PM assignment.');
     }
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be assigned.');
     }
     if (!empty($issue['pm_id']) && (int) $issue['pm_id'] !== $ctx['user_id']) {
@@ -814,9 +885,9 @@ function bc_v1_issues_assign_dev_post(mysqli $conn, array $params): void
             senior_qa_assigned_at = NULL,
             qa_lead_assigned_at = NULL,
             junior_done_at = NULL,
-            assign_status = 'with_senior',
+            workflow_status = 'with_senior',
             assigned_at = NOW()
-        WHERE id = ? AND org_id = ? AND status = 'open' AND assign_status IN ('unassigned', 'rejected')
+        WHERE id = ? AND org_id = ? AND workflow_status IN ('unassigned', 'rejected')
     ");
     $stmt->bind_param('iiii', $ctx['user_id'], $devId, $ctx['issue_id'], $ctx['org']['org_id']);
     $stmt->execute();
@@ -851,8 +922,12 @@ function bc_v1_issues_assign_junior_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
     if ((int) ($issue['assigned_dev_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only assign issues that are assigned to you.');
+    }
+    if (!bugcatcher_issue_workflow_can_assign_junior($workflowStatus)) {
+        bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with a Senior Developer.');
     }
     if (!empty($issue['assigned_junior_id'])) {
         bc_v1_json_error(422, 'invalid_state', 'Issue already has a Junior Developer assigned.');
@@ -863,8 +938,8 @@ function bc_v1_issues_assign_junior_post(mysqli $conn, array $params): void
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assigned_junior_id = ?, junior_assigned_at = NOW(), assign_status = 'with_junior'
-        WHERE id = ? AND org_id = ? AND assigned_dev_id = ? AND assigned_junior_id IS NULL
+        SET assigned_junior_id = ?, junior_assigned_at = NOW(), workflow_status = 'with_junior'
+        WHERE id = ? AND org_id = ? AND assigned_dev_id = ? AND assigned_junior_id IS NULL AND workflow_status = 'with_senior'
     ");
     $stmt->bind_param('iiii', $juniorId, $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -894,20 +969,21 @@ function bc_v1_issues_junior_done_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'Junior Developer', 'Only Junior Developers can mark DONE.');
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be marked DONE.');
     }
     if ((int) ($issue['assigned_junior_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only mark DONE for issues assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'with_junior') {
+    if (!bugcatcher_issue_workflow_can_mark_junior_done($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with a Junior Developer.');
     }
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assign_status = 'done_by_junior', junior_done_at = NOW()
-        WHERE id = ? AND org_id = ? AND assigned_junior_id = ? AND assign_status = 'with_junior'
+        SET workflow_status = 'done_by_junior', junior_done_at = NOW()
+        WHERE id = ? AND org_id = ? AND assigned_junior_id = ? AND workflow_status = 'with_junior'
     ");
     $stmt->bind_param('iii', $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -942,13 +1018,14 @@ function bc_v1_issues_assign_qa_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be analyzed.');
     }
     if ((int) ($issue['assigned_dev_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only analyze issues assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'done_by_junior') {
+    if (!bugcatcher_issue_workflow_can_assign_qa($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not ready for QA.');
     }
     if (!empty($issue['assigned_qa_id'])) {
@@ -960,8 +1037,8 @@ function bc_v1_issues_assign_qa_post(mysqli $conn, array $params): void
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assigned_qa_id = ?, qa_assigned_at = NOW(), assign_status = 'with_qa'
-        WHERE id = ? AND org_id = ? AND assigned_dev_id = ? AND assigned_qa_id IS NULL AND assign_status = 'done_by_junior'
+        SET assigned_qa_id = ?, qa_assigned_at = NOW(), workflow_status = 'with_qa'
+        WHERE id = ? AND org_id = ? AND assigned_dev_id = ? AND assigned_qa_id IS NULL AND workflow_status = 'done_by_junior'
     ");
     $stmt->bind_param('iiii', $qaId, $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -996,13 +1073,14 @@ function bc_v1_issues_report_senior_qa_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be reported.');
     }
     if ((int) ($issue['assigned_qa_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only report issues assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'with_qa') {
+    if (!bugcatcher_issue_workflow_can_report_senior_qa($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA.');
     }
     if (!empty($issue['assigned_senior_qa_id'])) {
@@ -1014,8 +1092,8 @@ function bc_v1_issues_report_senior_qa_post(mysqli $conn, array $params): void
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assigned_senior_qa_id = ?, senior_qa_assigned_at = NOW(), assign_status = 'with_senior_qa'
-        WHERE id = ? AND org_id = ? AND assigned_qa_id = ? AND assigned_senior_qa_id IS NULL AND assign_status = 'with_qa'
+        SET assigned_senior_qa_id = ?, senior_qa_assigned_at = NOW(), workflow_status = 'with_senior_qa'
+        WHERE id = ? AND org_id = ? AND assigned_qa_id = ? AND assigned_senior_qa_id IS NULL AND workflow_status = 'with_qa'
     ");
     $stmt->bind_param('iiii', $seniorQaId, $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -1050,13 +1128,14 @@ function bc_v1_issues_report_qa_lead_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be reported.');
     }
     if ((int) ($issue['assigned_senior_qa_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only report issues assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'with_senior_qa') {
+    if (!bugcatcher_issue_workflow_can_report_qa_lead($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with Senior QA.');
     }
     if (!empty($issue['assigned_qa_lead_id'])) {
@@ -1068,8 +1147,8 @@ function bc_v1_issues_report_qa_lead_post(mysqli $conn, array $params): void
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assigned_qa_lead_id = ?, qa_lead_assigned_at = NOW(), assign_status = 'with_qa_lead'
-        WHERE id = ? AND org_id = ? AND assigned_senior_qa_id = ? AND assigned_qa_lead_id IS NULL AND assign_status = 'with_senior_qa'
+        SET assigned_qa_lead_id = ?, qa_lead_assigned_at = NOW(), workflow_status = 'with_qa_lead'
+        WHERE id = ? AND org_id = ? AND assigned_senior_qa_id = ? AND assigned_qa_lead_id IS NULL AND workflow_status = 'with_senior_qa'
     ");
     $stmt->bind_param('iiii', $qaLeadId, $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -1099,20 +1178,21 @@ function bc_v1_issues_qa_lead_approve_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'QA Lead', 'Only QA Lead can approve.');
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be approved.');
     }
     if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'Issue is not assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'with_qa_lead') {
+    if (!bugcatcher_issue_workflow_can_qa_lead_decide($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA Lead.');
     }
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assign_status = 'approved'
-        WHERE id = ? AND org_id = ? AND assigned_qa_lead_id = ? AND assign_status = 'with_qa_lead' AND status = 'open'
+        SET workflow_status = 'approved'
+        WHERE id = ? AND org_id = ? AND assigned_qa_lead_id = ? AND workflow_status = 'with_qa_lead'
     ");
     $stmt->bind_param('iii', $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -1142,19 +1222,20 @@ function bc_v1_issues_qa_lead_reject_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'QA Lead', 'Only QA Lead can reject.');
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be rejected.');
     }
     if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'Issue is not assigned to you.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'with_qa_lead') {
+    if (!bugcatcher_issue_workflow_can_qa_lead_decide($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA Lead.');
     }
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET assign_status = 'rejected',
+        SET workflow_status = 'rejected',
             assigned_dev_id = NULL,
             assigned_junior_id = NULL,
             assigned_qa_id = NULL,
@@ -1166,7 +1247,7 @@ function bc_v1_issues_qa_lead_reject_post(mysqli $conn, array $params): void
             qa_assigned_at = NULL,
             senior_qa_assigned_at = NULL,
             qa_lead_assigned_at = NULL
-        WHERE id = ? AND org_id = ? AND assigned_qa_lead_id = ? AND assign_status = 'with_qa_lead' AND status = 'open'
+        WHERE id = ? AND org_id = ? AND assigned_qa_lead_id = ? AND workflow_status = 'with_qa_lead'
     ");
     $stmt->bind_param('iii', $ctx['issue_id'], $ctx['org']['org_id'], $ctx['user_id']);
     $stmt->execute();
@@ -1196,17 +1277,18 @@ function bc_v1_issues_pm_close_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'Project Manager', 'Only Project Managers can close issues.');
 
     $issue = $ctx['issue'];
-    if ((string) ($issue['status'] ?? '') !== 'open') {
+    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (bugcatcher_issue_workflow_is_closed($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is already closed.');
     }
-    if ((string) ($issue['assign_status'] ?? '') !== 'approved') {
+    if (!bugcatcher_issue_workflow_can_pm_close($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only approved issues can be closed.');
     }
 
     $stmt = $conn->prepare("
         UPDATE issues
-        SET status = 'closed', assign_status = 'closed'
-        WHERE id = ? AND org_id = ? AND status = 'open' AND assign_status = 'approved'
+        SET workflow_status = 'closed'
+        WHERE id = ? AND org_id = ? AND workflow_status = 'approved'
     ");
     $stmt->bind_param('ii', $ctx['issue_id'], $ctx['org']['org_id']);
     $stmt->execute();

@@ -248,6 +248,90 @@ function bugcatcher_file_storage_generate_public_id(string $originalName): strin
     return $baseName . '-' . bin2hex(random_bytes(6));
 }
 
+function bugcatcher_file_storage_local_root(string $scope): array
+{
+    $normalizedScope = bugcatcher_file_storage_normalize_scope($scope);
+    if (strpos($normalizedScope, 'checklist') === 0) {
+        return [
+            'dir' => bugcatcher_checklist_uploads_dir(),
+            'url_prefix' => bugcatcher_checklist_upload_path_prefix(),
+        ];
+    }
+
+    return [
+        'dir' => bugcatcher_uploads_dir(),
+        'url_prefix' => bugcatcher_upload_path_prefix(),
+    ];
+}
+
+function bugcatcher_file_storage_local_move_file(string $sourcePath, string $destinationPath): bool
+{
+    if (is_uploaded_file($sourcePath) && @move_uploaded_file($sourcePath, $destinationPath)) {
+        @chmod($destinationPath, 0664);
+        return true;
+    }
+
+    if (@rename($sourcePath, $destinationPath)) {
+        @chmod($destinationPath, 0664);
+        return true;
+    }
+
+    if (!@copy($sourcePath, $destinationPath)) {
+        return false;
+    }
+
+    if (!@unlink($sourcePath)) {
+        @unlink($destinationPath);
+        return false;
+    }
+
+    @chmod($destinationPath, 0664);
+    return true;
+}
+
+function bugcatcher_file_storage_local_upload_file(
+    string $tmpPath,
+    string $originalName,
+    string $mimeType,
+    int $size,
+    string $scope
+): array {
+    $root = bugcatcher_file_storage_local_root($scope);
+    $baseDir = rtrim((string) ($root['dir'] ?? ''), "\\/");
+    $urlPrefix = trim((string) ($root['url_prefix'] ?? ''), '/');
+    if ($baseDir === '' || $urlPrefix === '') {
+        throw new RuntimeException('Local file storage path is not configured.');
+    }
+
+    $scopeDirName = bugcatcher_file_storage_normalize_scope($scope);
+    $targetDir = $baseDir . DIRECTORY_SEPARATOR . $scopeDirName;
+    if (!is_dir($targetDir) && !@mkdir($targetDir, 02775, true) && !is_dir($targetDir)) {
+        throw new RuntimeException('Unable to create local upload directory.');
+    }
+
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if ($extension === '') {
+        $guessedExtension = strtolower((string) pathinfo(parse_url($mimeType, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
+        $extension = $guessedExtension !== '' ? $guessedExtension : 'bin';
+    }
+
+    $generatedName = bugcatcher_file_storage_generate_public_id($originalName);
+    $targetName = $generatedName . ($extension !== '' ? '.' . $extension : '');
+    $targetPath = $targetDir . DIRECTORY_SEPARATOR . $targetName;
+    if (!bugcatcher_file_storage_local_move_file($tmpPath, $targetPath)) {
+        throw new RuntimeException('Unable to store uploaded file locally.');
+    }
+
+    return [
+        'file_path' => $urlPrefix . '/' . $scopeDirName . '/' . $targetName,
+        'storage_key' => '',
+        'storage_provider' => '',
+        'original_name' => $originalName,
+        'mime_type' => $mimeType !== '' ? $mimeType : 'application/octet-stream',
+        'file_size' => $size,
+    ];
+}
+
 function bugcatcher_file_storage_cloudinary_upload_file(
     string $tmpPath,
     string $originalName,
@@ -414,11 +498,12 @@ function bugcatcher_file_storage_upload_file(
     int $size,
     string $scope
 ): array {
-    if (!bugcatcher_file_storage_is_remote_enabled()) {
-        throw new RuntimeException('Cloudinary storage is not configured.');
-    }
     if (!is_file($tmpPath)) {
         throw new RuntimeException('Upload source file was not found.');
+    }
+
+    if (!bugcatcher_file_storage_is_remote_enabled()) {
+        return bugcatcher_file_storage_local_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);
     }
 
     return bugcatcher_file_storage_cloudinary_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);

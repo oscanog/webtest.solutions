@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/issues_workflow.php';
+
 const BUGCATCHER_SHARED_CONFIG_PATH = '/var/www/bugcatcher/shared/config.php';
 const BUGCATCHER_INFRA_LOCAL_CONFIG_PATH = __DIR__ . '/../infra/config/local.php';
 const BUGCATCHER_LEGACY_LOCAL_CONFIG_PATH = __DIR__ . '/../config/local.php';

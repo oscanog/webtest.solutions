@@ -14,25 +14,26 @@ if (!bugcatcher_checklist_user_can_work_item($context, $item)) {
     checklist_api_json_error(403, 'forbidden', 'You cannot upload attachments to this item.');
 }
 
-if (empty($_FILES['attachments']['name']) || !is_array($_FILES['attachments']['name'])) {
+$uploads = checklist_api_uploaded_files('attachments');
+if ($uploads === null) {
     checklist_api_json_error(422, 'validation_error', 'Select at least one file.');
 }
 
 $uploadedCount = 0;
 $failed = [];
-for ($i = 0; $i < count($_FILES['attachments']['name']); $i++) {
-    $errCode = $_FILES['attachments']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+for ($i = 0; $i < count($uploads['name']); $i++) {
+    $errCode = $uploads['error'][$i] ?? UPLOAD_ERR_NO_FILE;
     if ($errCode !== UPLOAD_ERR_OK) {
         $failed[] = [
-            'name' => (string) ($_FILES['attachments']['name'][$i] ?? 'attachment'),
+            'name' => (string) ($uploads['name'][$i] ?? 'attachment'),
             'error' => $errCode,
         ];
         continue;
     }
 
-    $tmp = (string) ($_FILES['attachments']['tmp_name'][$i] ?? '');
-    $name = (string) ($_FILES['attachments']['name'][$i] ?? 'attachment');
-    $size = (int) ($_FILES['attachments']['size'][$i] ?? 0);
+    $tmp = (string) ($uploads['tmp_name'][$i] ?? '');
+    $name = (string) ($uploads['name'][$i] ?? 'attachment');
+    $size = (int) ($uploads['size'][$i] ?? 0);
     if (bugcatcher_checklist_store_uploaded_file($conn, $itemId, $tmp, $name, $size, true, (int) $context['current_user_id'])) {
         $uploadedCount++;
     } else {
@@ -56,4 +57,3 @@ checklist_api_json_response(200, [
     'failed' => $failed,
     'attachments' => $attachments,
 ]);
-

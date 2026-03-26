@@ -422,11 +422,15 @@ function bugcatcher_checklist_next_sequence(mysqli $conn, int $batchId): int
 
 function bugcatcher_checklist_user_can_work_item(array $context, array $item): bool
 {
-    if (bugcatcher_checklist_is_manager_role($context['org_role'])) {
+    if (bugcatcher_checklist_is_manager_role((string) ($context['org_role'] ?? ''))) {
         return true;
     }
 
-    return (int) ($item['assigned_to_user_id'] ?? 0) === (int) $context['current_user_id'];
+    $contextUserId = isset($context['current_user_id'])
+        ? (int) $context['current_user_id']
+        : (int) ($context['user_id'] ?? 0);
+
+    return $contextUserId > 0 && (int) ($item['assigned_to_user_id'] ?? 0) === $contextUserId;
 }
 
 function bugcatcher_checklist_detect_issue_label_id(mysqli $conn): int
@@ -465,10 +469,12 @@ function bugcatcher_checklist_create_issue_for_item(mysqli $conn, array $item, i
     $authorId = $actorUserId > 0 ? $actorUserId : (int) $item['created_by'];
 
     $stmt = $conn->prepare("
-        INSERT INTO issues (title, description, author_id, org_id, status, assign_status)
-        VALUES (?, ?, ?, ?, 'open', 'unassigned')
+        INSERT INTO issues (title, description, author_id, org_id, project_id, workflow_status)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("ssii", $item['full_title'], $issueDescription, $authorId, $item['org_id']);
+    $workflowStatus = bugcatcher_issue_workflow_default();
+    $projectId = (int) ($item['project_id'] ?? 0);
+    $stmt->bind_param("ssiiis", $item['full_title'], $issueDescription, $authorId, $item['org_id'], $projectId, $workflowStatus);
     $stmt->execute();
     $issueId = (int) $conn->insert_id;
     $stmt->close();

@@ -66,6 +66,7 @@ async function createIssueByApi(request, roleKey, title) {
     },
     data: {
       org_id: cfg.orgId,
+      project_id: cfg.projectId,
       title,
       description: "Created by mobile web Playwright suite",
       labels: [cfg.labelId],

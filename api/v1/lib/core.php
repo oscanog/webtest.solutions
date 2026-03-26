@@ -547,6 +547,9 @@ function bc_v1_org_context(mysqli $conn, array $actor, int $orgId = 0): array
         'org_owner_id' => (int) ($membership['owner_id'] ?? 0),
         'is_org_owner' => (int) ($membership['owner_id'] ?? 0) === $userId,
         'user_id' => $userId,
+        'current_user_id' => $userId,
+        'current_username' => (string) ($actor['user']['username'] ?? 'User'),
+        'current_role' => bugcatcher_normalize_system_role((string) ($actor['user']['role'] ?? 'user')),
         'system_role' => (string) ($actor['user']['role'] ?? 'user'),
         'active_scope' => 'org',
     ];

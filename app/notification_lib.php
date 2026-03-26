@@ -215,7 +215,13 @@ function bugcatcher_notification_counts(mysqli $conn, int $userId): array
 
 function bugcatcher_notification_realtime_publish(array $payload): void
 {
+    static $suppressUntil = 0.0;
+
     if (!bugcatcher_realtime_notifications_enabled()) {
+        return;
+    }
+
+    if ($suppressUntil > microtime(true)) {
         return;
     }
 
@@ -241,7 +247,7 @@ function bugcatcher_notification_realtime_publish(array $payload): void
                 'Connection: close',
             ]) . "\r\n",
             'content' => $json,
-            'timeout' => 1.5,
+            'timeout' => 0.25,
             'ignore_errors' => true,
         ],
     ]);
@@ -249,8 +255,12 @@ function bugcatcher_notification_realtime_publish(array $payload): void
     $result = @file_get_contents($url, false, $context);
     $statusLine = $http_response_header[0] ?? '';
     if ($result === false || !preg_match('/\s2\d\d\s/', $statusLine)) {
+        $suppressUntil = microtime(true) + 5.0;
         bugcatcher_notification_log('Publish failed for ' . ($payload['type'] ?? 'unknown') . ' (' . $statusLine . ')');
+        return;
     }
+
+    $suppressUntil = 0.0;
 }
 
 function bugcatcher_notification_dispatch_realtime(

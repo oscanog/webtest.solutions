@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/db.php';
+require_once dirname(__DIR__) . '/app/legacy_issue_helpers.php';
 
 if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) {
   $_SESSION['org_error'] = "You haven't joined an organization to access this, please do it first.";
@@ -9,7 +10,8 @@ if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) 
 
 // ---- Params ----
 $page = 'dashboard';
-$status = $_GET['status'] ?? 'open';             // open | closed
+$view = $_GET['view'] ?? 'kanban';               // kanban | list
+$status = $_GET['status'] ?? 'all';              // all | open | closed
 $author = $_GET['author'] ?? '';                 // user id
 $label = $_GET['label'] ?? '';                  // label id
 $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
@@ -32,18 +34,14 @@ $orgName = trim((string) ($rowOrg['name'] ?? 'Organization'));
 $isOrgOwner = ($orgOwnerId > 0 && $orgOwnerId === (int) $current_user_id);
 
 // normalize
-$status = ($status === 'closed') ? 'closed' : 'open';
+$view = ($view === 'list') ? 'list' : 'kanban';
+$status = bugcatcher_issue_workflow_filter($status);
 $author = ($author !== '' && ctype_digit((string) $author)) ? (int) $author : '';
 $label = ($label !== '' && ctype_digit((string) $label)) ? (int) $label : '';
 
 function require_membership(mysqli $conn, int $orgId, int $userId): ?array
 {
-  $stmt = $conn->prepare("SELECT role FROM org_members WHERE org_id=? AND user_id=? LIMIT 1");
-  $stmt->bind_param("ii", $orgId, $userId);
-  $stmt->execute();
-  $row = $stmt->get_result()->fetch_assoc();
-  $stmt->close();
-  return $row ?: null;
+  return bugcatcher_issue_find_membership($conn, $orgId, $userId);
 }
 
 function post_int($key): int
@@ -101,8 +99,9 @@ if (!$isSystemAdmin) {
 // ---- Counts ----
 function count_issues(mysqli $conn, int $orgId, string $status): int
 {
-  $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM issues WHERE org_id=? AND status=?");
-  $stmt->bind_param("is", $orgId, $status);
+  $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
+  $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM issues WHERE org_id=? AND {$filterSql}");
+  $stmt->bind_param("i", $orgId);
   $stmt->execute();
   $total = (int) $stmt->get_result()->fetch_assoc()['total'];
   $stmt->close();
@@ -130,6 +129,34 @@ $labelsArr = [];
 $lRes = $conn->query("SELECT id, name, description, color FROM labels ORDER BY name ASC");
 while ($r = $lRes->fetch_assoc())
   $labelsArr[] = $r;
+
+$projectOptions = bugcatcher_issue_project_catalog($conn, $orgId);
+$createIssueSelectedProjectId = post_int('project_id');
+if ($createIssueSelectedProjectId <= 0 && $projectOptions) {
+  $createIssueSelectedProjectId = (int) ($projectOptions[0]['id'] ?? 0);
+}
+
+$createIssueError = '';
+$createIssueSelectedLabels = array_map('strval', $_POST['labels'] ?? []);
+$showCreateIssueModal = (($_GET['create'] ?? '') === 'open');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_issue') {
+  try {
+    bugcatcher_issue_create_from_form($conn, $orgId, (int) $current_user_id, $_POST, $_FILES);
+
+    header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+      'page' => 'dashboard',
+      'view' => $view,
+      'status' => $status,
+      'author' => $author,
+      'label' => $label,
+    ])));
+    exit;
+  } catch (Throwable $e) {
+    $createIssueError = $e->getMessage();
+    $showCreateIssueModal = true;
+  }
+}
 
 /* ---------------- Handle DELETE Issue (by Org Owner or System Admin) ---------------- */
 
@@ -162,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
   }
 
   // Make sure issue belongs to this org
-  $stmt = $conn->prepare("SELECT id, status FROM issues WHERE id=? AND org_id=? LIMIT 1");
+  $stmt = $conn->prepare("SELECT id, workflow_status FROM issues WHERE id=? AND org_id=? LIMIT 1");
   $stmt->bind_param("ii", $issueId, $orgIdPost);
   $stmt->execute();
   $ok = $stmt->get_result()->fetch_assoc();
@@ -173,7 +200,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
   }
 
   // ✅ NEW: owner cannot delete closed issues
-  if (!$isSystemAdmin && $isOrgOwner && ($ok['status'] ?? '') === 'closed') {
+  if (
+    !$isSystemAdmin
+    && $isOrgOwner
+    && bugcatcher_issue_workflow_is_closed((string) ($ok['workflow_status'] ?? ''))
+  ) {
     die("Closed issues cannot be deleted by the organization owner.");
   }
 
@@ -264,6 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
   // Back to list (preserve filters)
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -289,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   // Issue must belong to same org + must be unassigned
   $stmt = $conn->prepare("
-    SELECT id, assigned_dev_id, assign_status, pm_id
+    SELECT id, assigned_dev_id, workflow_status, pm_id
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -302,8 +334,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   if (!$issue) {
     die("Issue not found in this organization.");
   }
-  $st = ($issue['assign_status'] ?? 'unassigned');
-  if (!in_array($st, ['unassigned', 'rejected'], true)) {
+  $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+  if (!bugcatcher_issue_workflow_can_assign_dev($workflowStatus)) {
     die("Issue is not ready for PM assignment.");
   }
 
@@ -346,9 +378,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
       qa_lead_assigned_at=NULL,
       junior_done_at=NULL,
 
-      assign_status='with_senior',
+      workflow_status='with_senior',
       assigned_at=NOW()
-    WHERE id=? AND org_id=? AND status='open' AND assign_status IN ('unassigned','rejected')
+    WHERE id=? AND org_id=? AND workflow_status IN ('unassigned','rejected')
   ");
   $stmt->bind_param("iiii", $current_user_id, $devId, $issueId, $orgId);
 
@@ -361,6 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   // Back to list
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -387,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   // Issue must belong to org AND be assigned to THIS senior dev
   $stmt = $conn->prepare("
-    SELECT id, assigned_dev_id, assigned_junior_id, assign_status
+    SELECT id, assigned_dev_id, assigned_junior_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -403,6 +436,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   if ((int) $issue['assigned_dev_id'] !== (int) $current_user_id) {
     die("You can only assign issues that are assigned to you.");
+  }
+  if (!bugcatcher_issue_workflow_can_assign_junior((string) ($issue['workflow_status'] ?? ''))) {
+    die("Issue is not currently with a Senior Developer.");
   }
 
   // optional: prevent re-assigning junior if already assigned
@@ -429,8 +465,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   // Assign junior
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assigned_junior_id=?, junior_assigned_at=NOW(), assign_status='with_junior'
-    WHERE id=? AND org_id=? AND assigned_dev_id=? AND assigned_junior_id IS NULL
+    SET assigned_junior_id=?, junior_assigned_at=NOW(), workflow_status='with_junior'
+    WHERE id=? AND org_id=? AND assigned_dev_id=? AND assigned_junior_id IS NULL AND workflow_status='with_senior'
   ");
   $stmt->bind_param("iiii", $juniorId, $issueId, $orgId, $current_user_id);
 
@@ -442,6 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -467,7 +504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
 
   // Issue must belong to org AND be assigned to THIS junior
   $stmt = $conn->prepare("
-    SELECT id, assigned_junior_id, assign_status, status
+    SELECT id, assigned_junior_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -481,23 +518,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
     die("Issue not found in this organization.");
   }
 
-  if (($issue['status'] ?? '') !== 'open') {
-    die("Only open issues can be marked DONE.");
-  }
-
   if ((int) $issue['assigned_junior_id'] !== (int) $current_user_id) {
     die("You can only mark DONE issues assigned to you.");
   }
 
-  if (($issue['assign_status'] ?? '') !== 'with_junior') {
+  if (!bugcatcher_issue_workflow_can_mark_junior_done((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with a Junior Developer.");
   }
 
   // Mark done
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assign_status='done_by_junior', junior_done_at=NOW()
-    WHERE id=? AND org_id=? AND assigned_junior_id=? AND assign_status='with_junior'
+    SET workflow_status='done_by_junior', junior_done_at=NOW()
+    WHERE id=? AND org_id=? AND assigned_junior_id=? AND workflow_status='with_junior'
   ");
   $stmt->bind_param("iii", $issueId, $orgId, $current_user_id);
 
@@ -509,6 +542,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -535,7 +569,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   // Issue must belong to org AND be assigned to THIS senior AND be done_by_junior
   $stmt = $conn->prepare("
-    SELECT id, assigned_dev_id, assigned_qa_id, assign_status, status
+    SELECT id, assigned_dev_id, assigned_qa_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -547,14 +581,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   if (!$issue)
     die("Issue not found in this organization.");
-  if (($issue['status'] ?? '') !== 'open')
-    die("Only open issues can be analyzed.");
 
   if ((int) $issue['assigned_dev_id'] !== (int) $current_user_id) {
     die("You can only analyze issues assigned to you.");
   }
 
-  if (($issue['assign_status'] ?? '') !== 'done_by_junior') {
+  if (!bugcatcher_issue_workflow_can_assign_qa((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not ready for QA (Junior must click DONE first).");
   }
 
@@ -581,8 +613,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   // Assign QA + move state
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assigned_qa_id=?, qa_assigned_at=NOW(), assign_status='with_qa'
-    WHERE id=? AND org_id=? AND assigned_dev_id=? AND assigned_qa_id IS NULL AND assign_status='done_by_junior'
+    SET assigned_qa_id=?, qa_assigned_at=NOW(), workflow_status='with_qa'
+    WHERE id=? AND org_id=? AND assigned_dev_id=? AND assigned_qa_id IS NULL AND workflow_status='done_by_junior'
   ");
   $stmt->bind_param("iiii", $qaId, $issueId, $orgId, $current_user_id);
 
@@ -594,6 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -620,7 +653,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   // Issue must belong to org AND be assigned to THIS QA AND be with_qa
   $stmt = $conn->prepare("
-    SELECT id, assigned_qa_id, assigned_senior_qa_id, assign_status, status
+    SELECT id, assigned_qa_id, assigned_senior_qa_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -632,12 +665,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   if (!$issue)
     die("Issue not found in this organization.");
-  if (($issue['status'] ?? '') !== 'open')
-    die("Only open issues can be reported.");
   if ((int) ($issue['assigned_qa_id'] ?? 0) !== (int) $current_user_id) {
     die("You can only report issues assigned to you.");
   }
-  if (($issue['assign_status'] ?? '') !== 'with_qa') {
+  if (!bugcatcher_issue_workflow_can_report_senior_qa((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with QA.");
   }
   if (!empty($issue['assigned_senior_qa_id'])) {
@@ -663,11 +694,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   // Assign Senior QA + move state
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assigned_senior_qa_id=?, senior_qa_assigned_at=NOW(), assign_status='with_senior_qa'
+    SET assigned_senior_qa_id=?, senior_qa_assigned_at=NOW(), workflow_status='with_senior_qa'
     WHERE id=? AND org_id=? 
       AND assigned_qa_id=? 
       AND assigned_senior_qa_id IS NULL
-      AND assign_status='with_qa'
+      AND workflow_status='with_qa'
   ");
   $stmt->bind_param("iiii", $seniorQaId, $issueId, $orgId, $current_user_id);
 
@@ -679,6 +710,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -705,7 +737,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   // Issue must belong to org AND be assigned to THIS senior QA AND be with_senior_qa
   $stmt = $conn->prepare("
-    SELECT id, assigned_senior_qa_id, assigned_qa_lead_id, assign_status, status
+    SELECT id, assigned_senior_qa_id, assigned_qa_lead_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -717,12 +749,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   if (!$issue)
     die("Issue not found in this organization.");
-  if (($issue['status'] ?? '') !== 'open')
-    die("Only open issues can be reported.");
   if ((int) ($issue['assigned_senior_qa_id'] ?? 0) !== (int) $current_user_id) {
     die("You can only report issues assigned to you.");
   }
-  if (($issue['assign_status'] ?? '') !== 'with_senior_qa') {
+  if (!bugcatcher_issue_workflow_can_report_qa_lead((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with Senior QA.");
   }
   if (!empty($issue['assigned_qa_lead_id'])) {
@@ -748,11 +778,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   // Assign QA Lead + move state
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assigned_qa_lead_id=?, qa_lead_assigned_at=NOW(), assign_status='with_qa_lead'
+    SET assigned_qa_lead_id=?, qa_lead_assigned_at=NOW(), workflow_status='with_qa_lead'
     WHERE id=? AND org_id=?
       AND assigned_senior_qa_id=?
       AND assigned_qa_lead_id IS NULL
-      AND assign_status='with_senior_qa'
+      AND workflow_status='with_senior_qa'
   ");
   $stmt->bind_param("iiii", $qaLeadId, $issueId, $orgId, $current_user_id);
 
@@ -764,6 +794,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -787,7 +818,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
   // Must be assigned to THIS QA Lead and currently with_qa_lead
   $stmt = $conn->prepare("
-    SELECT id, assigned_qa_lead_id, assign_status, status
+    SELECT id, assigned_qa_lead_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -799,18 +830,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
   if (!$issue)
     die("Issue not found.");
-  if (($issue['status'] ?? '') !== 'open')
-    die("Only open issues can be approved.");
   if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== (int) $current_user_id)
     die("Not assigned to you.");
-  if (($issue['assign_status'] ?? '') !== 'with_qa_lead')
+  if (!bugcatcher_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
     die("Issue is not with QA Lead.");
 
   // Approve -> goes back to PM (PM already sees all, we just set state)
   $stmt = $conn->prepare("
     UPDATE issues
-    SET assign_status='approved'
-    WHERE id=? AND org_id=? AND assigned_qa_lead_id=? AND assign_status='with_qa_lead' AND status='open'
+    SET workflow_status='approved'
+    WHERE id=? AND org_id=? AND assigned_qa_lead_id=? AND workflow_status='with_qa_lead'
   ");
   $stmt->bind_param("iii", $issueId, $orgId, $current_user_id);
 
@@ -822,6 +851,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -844,7 +874,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
     die("Only QA Lead can reject.");
 
   $stmt = $conn->prepare("
-    SELECT id, assigned_qa_lead_id, assign_status, status
+    SELECT id, assigned_qa_lead_id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -856,18 +886,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
   if (!$issue)
     die("Issue not found.");
-  if (($issue['status'] ?? '') !== 'open')
-    die("Only open issues can be rejected.");
   if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== (int) $current_user_id)
     die("Not assigned to you.");
-  if (($issue['assign_status'] ?? '') !== 'with_qa_lead')
+  if (!bugcatcher_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
     die("Issue is not with QA Lead.");
 
   // Reject -> PM can reassign again (cycle repeats)
   $stmt = $conn->prepare("
     UPDATE issues
     SET 
-      assign_status='rejected',
+      workflow_status='rejected',
 
       assigned_dev_id=NULL,
       assigned_junior_id=NULL,
@@ -884,8 +912,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
     WHERE id=? AND org_id=? 
       AND assigned_qa_lead_id=? 
-      AND assign_status='with_qa_lead'
-      AND status='open'
+      AND workflow_status='with_qa_lead'
   ");
   $stmt->bind_param("iii", $issueId, $orgId, $current_user_id);
 
@@ -897,6 +924,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
     'author' => $author,
     'label' => $label,
@@ -920,7 +948,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
 
   // Must be approved + open
   $stmt = $conn->prepare("
-    SELECT id, assign_status, status
+    SELECT id, workflow_status
     FROM issues
     WHERE id=? AND org_id=?
     LIMIT 1
@@ -932,15 +960,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
 
   if (!$issue)
     die("Issue not found.");
-  if (($issue['status'] ?? '') !== 'open')
+  if (bugcatcher_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? '')))
     die("Issue is already closed.");
-  if (($issue['assign_status'] ?? '') !== 'approved')
+  if (!bugcatcher_issue_workflow_can_pm_close((string) ($issue['workflow_status'] ?? '')))
     die("Only APPROVED issues can be closed.");
 
   $stmt = $conn->prepare("
     UPDATE issues
-    SET status='closed', assign_status='closed'
-    WHERE id=? AND org_id=? AND status='open' AND assign_status='approved'
+    SET workflow_status='closed'
+    WHERE id=? AND org_id=? AND workflow_status='approved'
   ");
   $stmt->bind_param("ii", $issueId, $orgId);
 
@@ -952,6 +980,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => 'closed',
     'author' => $author,
     'label' => $label,
@@ -1049,7 +1078,7 @@ $rankingSql = "
     ON u.id = om.user_id
   LEFT JOIN issues i
     ON i.org_id = om.org_id
-    AND i.status = 'closed'
+    AND i.workflow_status = 'closed'
     AND (
       (om.role = 'Project Manager'   AND i.pm_id = om.user_id) OR
       (om.role = 'QA Lead'           AND i.assigned_qa_lead_id = om.user_id) OR
@@ -1075,15 +1104,27 @@ $topTenRanking = array_slice($rankingRows, 0, 10);
 $remainingRanking = array_slice($rankingRows, 10);
 
 // ---- Issues query (prepared + optional author/label filters) ----
+$statusSql = bugcatcher_issue_workflow_filter_sql('issues.workflow_status', $status);
 $sql = "
-  SELECT issues.*, users.username
+  SELECT
+    issues.*,
+    users.username,
+    projects.name AS project_name,
+    projects.code AS project_code,
+    issues.workflow_status,
+    CASE
+      WHEN issues.workflow_status = 'closed' THEN 'closed'
+      ELSE 'open'
+    END AS status,
+    issues.workflow_status AS assign_status
   FROM issues
   JOIN users ON issues.author_id = users.id
-  WHERE issues.status = ? AND issues.org_id = ?
+  JOIN projects ON projects.id = issues.project_id
+  WHERE issues.org_id = ? AND {$statusSql}
 ";
 
-$params = [$status, $orgId];
-$types = "si";
+$params = [$orgId];
+$types = "i";
 
 // Admin can filter by author freely
 // PM can also filter by author if you want, but you said "no author dropdown", so it likely stays hidden anyway.
@@ -1105,13 +1146,15 @@ $sql .= " ORDER BY issues.created_at DESC";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
-$issuesRes = $stmt->get_result();
+$issuesRows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 // Helper to build URLs while preserving filters
-function issues_url($status, $author, $label)
+function issues_url($status, $author, $label, $view)
 {
   $qs = [
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status,
   ];
   if ($author !== '')
@@ -1122,13 +1165,127 @@ function issues_url($status, $author, $label)
   return bugcatcher_path("zen/dashboard.php?" . http_build_query($qs));
 }
 
-function issues_url_clear($status)
+function issues_url_clear($status, $view)
 {
   return bugcatcher_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
+    'view' => $view,
     'status' => $status
   ]));
 }
+
+function issue_detail_url(int $issueId): string
+{
+  return bugcatcher_path("zen/issue_detail.php?" . http_build_query([
+    'id' => $issueId,
+  ]));
+}
+
+function issue_project_label(array $issue): string
+{
+  $name = trim((string) ($issue['project_name'] ?? ''));
+  $code = trim((string) ($issue['project_code'] ?? ''));
+  if ($name === '') {
+    return 'No project';
+  }
+  return $code !== '' ? ($name . ' (' . $code . ')') : $name;
+}
+
+function issue_workflow_badge_class(string $workflowStatus): string
+{
+  switch (bugcatcher_issue_workflow_normalize($workflowStatus)) {
+    case 'with_senior':
+      return 'badge-senior';
+    case 'with_junior':
+      return 'badge-junior';
+    case 'done_by_junior':
+      return 'badge-ready';
+    case 'with_qa':
+      return 'badge-qa';
+    case 'with_senior_qa':
+      return 'badge-senior-qa';
+    case 'with_qa_lead':
+      return 'badge-qa-lead';
+    case 'approved':
+      return 'badge-approved';
+    case 'rejected':
+      return 'badge-rejected';
+    case 'closed':
+      return 'badge-closed';
+    default:
+      return 'badge-unassigned';
+  }
+}
+
+function issue_lane_class(string $laneKey): string
+{
+  return 'issue-lane-' . preg_replace('/[^a-z0-9_-]/i', '-', $laneKey);
+}
+
+$issueIds = array_map(static function (array $row): int {
+  return (int) ($row['id'] ?? 0);
+}, $issuesRows);
+$issueIds = array_values(array_filter($issueIds));
+
+$attachmentCounts = [];
+$issueLabels = [];
+if ($issueIds) {
+  $issueIdsSql = implode(',', $issueIds);
+
+  $attachmentRes = $conn->query("
+    SELECT issue_id, COUNT(*) AS total
+    FROM issue_attachments
+    WHERE issue_id IN ({$issueIdsSql})
+    GROUP BY issue_id
+  ");
+  while ($attachmentRes && ($attachmentRow = $attachmentRes->fetch_assoc())) {
+    $attachmentCounts[(int) $attachmentRow['issue_id']] = (int) $attachmentRow['total'];
+  }
+
+  $labelsRes = $conn->query("
+    SELECT issue_labels.issue_id, labels.name, labels.color
+    FROM issue_labels
+    JOIN labels ON labels.id = issue_labels.label_id
+    WHERE issue_labels.issue_id IN ({$issueIdsSql})
+    ORDER BY labels.name ASC
+  ");
+  while ($labelsRes && ($labelRow = $labelsRes->fetch_assoc())) {
+    $issueId = (int) ($labelRow['issue_id'] ?? 0);
+    if (!isset($issueLabels[$issueId])) {
+      $issueLabels[$issueId] = [];
+    }
+    $issueLabels[$issueId][] = [
+      'name' => (string) ($labelRow['name'] ?? ''),
+      'color' => (string) ($labelRow['color'] ?? '#bbb'),
+    ];
+  }
+}
+
+$issuesByLane = [];
+foreach (bugcatcher_issue_workflow_lanes() as $lane) {
+  $issuesByLane[(string) $lane['key']] = [];
+}
+
+foreach ($issuesRows as &$row) {
+  $issueId = (int) ($row['id'] ?? 0);
+  $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($row['workflow_status'] ?? ''));
+  $row['workflow_status'] = $workflowStatus;
+  $row['status'] = bugcatcher_issue_workflow_status_alias($workflowStatus);
+  $row['assign_status'] = bugcatcher_issue_workflow_assign_status_alias($workflowStatus);
+  $row['workflow_label'] = bugcatcher_issue_workflow_label($workflowStatus);
+  $row['badge_class'] = issue_workflow_badge_class($workflowStatus);
+  $row['attachment_count'] = $attachmentCounts[$issueId] ?? 0;
+  $row['labels'] = $issueLabels[$issueId] ?? [];
+
+  foreach (bugcatcher_issue_workflow_lanes() as $lane) {
+    $laneKey = (string) ($lane['key'] ?? '');
+    $laneStates = $lane['states'] ?? [];
+    if (in_array($workflowStatus, $laneStates, true)) {
+      $issuesByLane[$laneKey][] = $row;
+    }
+  }
+}
+unset($row);
 
 ?>
 <!doctype html>
@@ -1139,7 +1296,7 @@ function issues_url_clear($status)
   <title>BugCatcher</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=12')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=13')) ?>">
 </head>
 
 <body>
@@ -1265,22 +1422,36 @@ function issues_url_clear($status)
 
       <div class="topbar topbar-secondary">
         <h1 class="topbar-subtitle">Issues</h1>
-
-        <?php if ($isProjectManager): ?>
-          <a href="<?= htmlspecialchars(bugcatcher_path('zen/create_issue.php')) ?>" class="btn-green">New Issue</a>
-        <?php endif; ?>
       </div>
     <?php else: ?>
       <div class="topbar">
         <h1>Issues</h1>
-        <a href="<?= htmlspecialchars(bugcatcher_path('zen/create_issue.php')) ?>" class="btn-green">New Issue</a>
       </div>
     <?php endif; ?>
 
     <!-- Issues list (shown on dashboard too, but links go to page=issues) -->
-    <div class="issue-container">
+    <div class="issue-container issue-board-shell">
+      <div class="issues-hero">
+        <div>
+          <div class="issues-eyebrow"><?= htmlspecialchars($orgName) ?></div>
+          <h2>Workflow queue</h2>
+          <p>Kanban is read-only, while list view keeps role actions for the active org workflow.</p>
+        </div>
 
-      <!-- Toolbar (Author/Labels dropdown with search) -->
+        <div class="issues-hero-actions">
+          <div class="view-switcher" role="tablist" aria-label="Issue view mode">
+            <a href="<?= issues_url($status, $author, $label, 'kanban') ?>"
+              class="view-switcher-link <?= $view === 'kanban' ? 'active' : '' ?>">Kanban</a>
+            <a href="<?= issues_url($status, $author, $label, 'list') ?>"
+              class="view-switcher-link <?= $view === 'list' ? 'active' : '' ?>">List</a>
+          </div>
+
+          <button type="button" class="btn-green issue-create-trigger" data-modal-open="createIssueModal" <?= $projectOptions ? '' : 'disabled' ?>>
+            Create Issue
+          </button>
+        </div>
+      </div>
+
       <div class="gh-toolbar">
         <div class="gh-filters">
 
@@ -1298,14 +1469,14 @@ function issues_url_clear($status)
                 </div>
 
                 <div class="gh-dd-list" data-list="author">
-                  <a class="gh-dd-item" href="<?= issues_url($status, '', $label) ?>">
+                  <a class="gh-dd-item" href="<?= issues_url($status, '', $label, $view) ?>">
                     <span class="chk <?= ($author === '' ? 'on' : '') ?>"></span>
                     <span class="txt">Any author</span>
                   </a>
 
                   <?php foreach ($usersArr as $u): ?>
                     <a class="gh-dd-item" data-text="<?= htmlspecialchars(strtolower($u['username'])) ?>"
-                      href="<?= issues_url($status, (int) $u['id'], $label) ?>">
+                      href="<?= issues_url($status, (int) $u['id'], $label, $view) ?>">
                       <span class="chk <?= ((string) $author === (string) $u['id'] ? 'on' : '') ?>"></span>
                       <span class="avatar"><?= strtoupper(substr($u['username'], 0, 1)) ?></span>
                       <span class="txt"><?= htmlspecialchars($u['username']) ?></span>
@@ -1329,7 +1500,7 @@ function issues_url_clear($status)
               </div>
 
               <div class="gh-dd-list" data-list="labels">
-                <a class="gh-dd-item" href="<?= issues_url($status, $author, '') ?>">
+                <a class="gh-dd-item" href="<?= issues_url($status, $author, '', $view) ?>">
                   <span class="chk <?= ($label === '' ? 'on' : '') ?>"></span>
                   <span class="txt">No labels</span>
                 </a>
@@ -1339,7 +1510,7 @@ function issues_url_clear($status)
                   $t = strtolower(($l['name'] ?? '') . ' ' . ($l['description'] ?? ''));
                   ?>
                   <a class="gh-dd-item" data-text="<?= htmlspecialchars($t) ?>"
-                    href="<?= issues_url($status, $author, (int) $l['id']) ?>">
+                    href="<?= issues_url($status, $author, (int) $l['id'], $view) ?>">
                     <span class="chk <?= ((string) $label === (string) $l['id'] ? 'on' : '') ?>"></span>
                     <span class="dot" style="background:<?= htmlspecialchars($l['color'] ?? '#bbb') ?>"></span>
                     <span class="txt">
@@ -1355,26 +1526,96 @@ function issues_url_clear($status)
           </div>
 
           <!-- Clear filters -->
-          <button type="button" class="gh-clear-btn" onclick="window.location.href='<?= issues_url_clear($status) ?>'">
+          <button type="button" class="gh-clear-btn" onclick="window.location.href='<?= issues_url_clear($status, $view) ?>'">
             Clear Filters
           </button>
 
         </div>
       </div>
 
-      <!-- Open/Closed tabs -->
-      <div class="issue-tabs">
-        <a href="<?= issues_url('open', $author, $label) ?>" class="<?= $status === 'open' ? 'active' : '' ?>">
-          Open <?= $openCount ?>
-        </a>
-
-        <a href="<?= issues_url('closed', $author, $label) ?>" class="<?= $status === 'closed' ? 'active' : '' ?>">
-          Closed <?= $closedCount ?>
-        </a>
+      <div class="issue-summary-bar">
+        <span><?= (int) $openCount ?> open</span>
+        <span><?= (int) $closedCount ?> closed</span>
+        <span><?= count($issuesRows) ?> visible</span>
       </div>
 
+      <div class="issue-filter-chips">
+        <a href="<?= issues_url('all', $author, $label, $view) ?>"
+          class="issue-filter-chip <?= $status === 'all' ? 'active' : '' ?>">All Statuses</a>
+        <a href="<?= issues_url('open', $author, $label, $view) ?>"
+          class="issue-filter-chip <?= $status === 'open' ? 'active' : '' ?>">Open Only</a>
+        <a href="<?= issues_url('closed', $author, $label, $view) ?>"
+          class="issue-filter-chip <?= $status === 'closed' ? 'active' : '' ?>">Closed Only</a>
+      </div>
+
+      <?php if ($view === 'kanban'): ?>
+        <div class="issue-kanban-shell" data-kanban-shell>
+          <button type="button" class="issue-kanban-nav issue-kanban-nav--prev" data-kanban-nav="prev" aria-label="Scroll issue lanes left">
+            <span aria-hidden="true">&lt;</span>
+          </button>
+          <div class="issue-kanban-scroll" data-kanban-scroll>
+            <div class="issue-kanban-board">
+              <?php foreach (bugcatcher_issue_workflow_lanes() as $lane): ?>
+                <?php
+                $laneKey = (string) ($lane['key'] ?? '');
+                if (($status === 'closed' && $laneKey !== 'closed') || ($status === 'open' && $laneKey === 'closed')) {
+                  continue;
+                }
+                $laneIssues = $issuesByLane[$laneKey] ?? [];
+                ?>
+                <section class="issue-lane <?= htmlspecialchars(issue_lane_class($laneKey)) ?>">
+                  <div class="issue-lane-head">
+                    <div>
+                      <h3><?= htmlspecialchars((string) ($lane['label'] ?? 'Lane')) ?></h3>
+                      <p><?= count($laneIssues) ?> issue<?= count($laneIssues) === 1 ? '' : 's' ?></p>
+                    </div>
+                  </div>
+
+                  <div class="issue-lane-stack">
+                    <?php if (!$laneIssues): ?>
+                      <div class="issue-lane-empty">No issues in this lane yet.</div>
+                    <?php else: ?>
+                      <?php foreach ($laneIssues as $laneIssue): ?>
+                        <?php $laneIssueId = (int) ($laneIssue['id'] ?? 0); ?>
+                        <a href="<?= htmlspecialchars(issue_detail_url($laneIssueId)) ?>" class="issue-kanban-card">
+                          <div class="issue-kanban-card-top">
+                            <span class="badge <?= htmlspecialchars((string) ($laneIssue['badge_class'] ?? 'badge-unassigned')) ?>">
+                              <?= htmlspecialchars((string) ($laneIssue['workflow_label'] ?? 'Unassigned')) ?>
+                            </span>
+                            <span class="issue-kanban-id">#<?= $laneIssueId ?></span>
+                          </div>
+                          <div class="issue-kanban-title">
+                            <?= htmlspecialchars((string) ($laneIssue['title'] ?? 'Untitled issue')) ?>
+                          </div>
+                          <div class="issue-kanban-meta">
+                            <span><?= htmlspecialchars(issue_project_label($laneIssue)) ?></span>
+                            <span><?= htmlspecialchars((string) ($laneIssue['username'] ?? 'Unknown')) ?></span>
+                          </div>
+                          <div class="issue-kanban-meta">
+                            <span><?= date("M d, Y", strtotime((string) ($laneIssue['created_at'] ?? 'now'))) ?></span>
+                            <span><?= (int) ($laneIssue['attachment_count'] ?? 0) ?> evidence</span>
+                          </div>
+                          <div class="issue-kanban-meta">
+                            <span><?= count($laneIssue['labels'] ?? []) ?> labels</span>
+                          </div>
+                        </a>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  </div>
+                </section>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <button type="button" class="issue-kanban-nav issue-kanban-nav--next" data-kanban-nav="next" aria-label="Scroll issue lanes right">
+            <span aria-hidden="true">&gt;</span>
+          </button>
+        </div>
+      <?php else: ?>
       <!-- Issues list -->
-      <?php while ($row = $issuesRes->fetch_assoc()): ?>
+      <?php if (!$issuesRows): ?>
+        <div class="issue-list-empty">No issues matched your current filters.</div>
+      <?php endif; ?>
+      <?php foreach ($issuesRows as $row): ?>
         <?php
         $issueId = (int) $row['id'];
 
@@ -1403,68 +1644,11 @@ function issues_url_clear($status)
         $isAssignedToMeAsQALead = ($isQALead && (int) ($row['assigned_qa_lead_id'] ?? 0) === (int) $current_user_id);
         $isWithQALead = (($row['assign_status'] ?? '') === 'with_qa_lead');
 
-        $badgeText = '';
-        $badgeClass = '';
-
-        if (($row['status'] ?? 'open') === 'closed') {
-          $badgeText = 'Closed';
-          $badgeClass = 'badge-closed';
-        } else {
-          switch ($assignStatus) {
-            case 'with_senior':
-              $badgeText = 'With Senior';
-              $badgeClass = 'badge-senior';
-              break;
-
-            case 'with_junior':
-              $badgeText = 'With Junior';
-              $badgeClass = 'badge-junior';
-              break;
-
-            case 'done_by_junior':
-              $badgeText = 'Done';
-              $badgeClass = 'badge-done';
-              break;
-
-            case 'with_qa':
-              $badgeText = 'With QA';
-              $badgeClass = 'badge-qa';
-              break;
-
-            case 'with_senior_qa':
-              $badgeText = 'With Senior QA';
-              $badgeClass = 'badge-qa';
-              break;
-
-            case 'with_qa_lead':
-              $badgeText = 'With QA Lead';
-              $badgeClass = 'badge-qa';
-              break;
-
-            case 'approved':
-              $badgeText = 'Approved';
-              $badgeClass = 'badge-approved';
-              break;
-
-            case 'rejected':
-              $badgeText = 'Rejected';
-              $badgeClass = 'badge-rejected';
-              break;
-
-            case 'closed':
-              $badgeText = 'Closed';
-              $badgeClass = 'badge-closed';
-              break;
-
-            default:
-              $badgeText = 'Unassigned';
-              $badgeClass = 'badge-unassigned';
-              break;
-          }
-        }
+        $badgeText = (string) ($row['workflow_label'] ?? bugcatcher_issue_workflow_label($assignStatus));
+        $badgeClass = (string) ($row['badge_class'] ?? issue_workflow_badge_class($assignStatus));
         ?>
 
-        <div class="issue">
+        <div class="issue issue-list-card" data-issue-link="<?= htmlspecialchars(issue_detail_url($issueId)) ?>">
           <div class="issue-head">
 
             <!-- LEFT SIDE (title + meta + description + attachments) -->
@@ -1476,7 +1660,8 @@ function issues_url_clear($status)
               </div>
 
               <div class="issue-meta">
-                opened by <?= htmlspecialchars($row['username']) ?>
+                <?= htmlspecialchars(issue_project_label($row)) ?>
+                Â· opened by <?= htmlspecialchars($row['username']) ?>
                 · <?= date("M d, Y", strtotime($row['created_at'])) ?>
               </div>
 
@@ -1752,24 +1937,106 @@ function issues_url_clear($status)
 
           <!-- labels etc stay the same -->
           <div style="margin-top:6px;">
-            <?php
-            $labRes = $conn->query("
-        SELECT labels.name, labels.color
-        FROM labels
-        JOIN issue_labels ON labels.id = issue_labels.label_id
-        WHERE issue_labels.issue_id = $issueId
-      ");
-            while ($lab = $labRes->fetch_assoc()) {
-              $nm = htmlspecialchars($lab['name']);
-              $cl = htmlspecialchars($lab['color']);
-              echo "<span class='label' style='background:$cl'>$nm</span>";
-            }
-            ?>
+            <?php foreach (($row['labels'] ?? []) as $issueLabel): ?>
+              <span class="label" style="background:<?= htmlspecialchars((string) ($issueLabel['color'] ?? '#bbb')) ?>">
+                <?= htmlspecialchars((string) ($issueLabel['name'] ?? 'Label')) ?>
+              </span>
+            <?php endforeach; ?>
           </div>
 
         </div>
-      <?php endwhile; ?>
+      <?php endforeach; ?>
+      <?php endif; ?>
 
+    </div>
+
+    <div class="issue-modal-backdrop <?= $showCreateIssueModal ? 'is-visible' : '' ?>" data-modal-backdrop="createIssueModal"
+      <?= $showCreateIssueModal ? '' : 'hidden' ?>></div>
+    <div class="issue-modal-shell <?= $showCreateIssueModal ? 'is-visible' : '' ?>" id="createIssueModal" role="dialog"
+      aria-modal="true" aria-labelledby="createIssueTitle" <?= $showCreateIssueModal ? '' : 'hidden' ?>>
+      <div class="issue-modal-card">
+        <div class="issue-modal-head">
+          <div>
+            <div class="issues-eyebrow">Create Issue</div>
+            <h3 id="createIssueTitle">Open a new issue</h3>
+            <p>Any organization member can open an issue for this workspace.</p>
+          </div>
+          <button type="button" class="issue-modal-close" data-modal-close="createIssueModal"
+            aria-label="Close create issue form">×</button>
+        </div>
+
+        <?php if ($createIssueError !== ''): ?>
+          <div class="issue-form-alert">
+            <?= htmlspecialchars($createIssueError) ?>
+          </div>
+        <?php endif; ?>
+
+        <form method="POST" enctype="multipart/form-data" class="issue-modal-form">
+          <input type="hidden" name="action" value="create_issue">
+
+          <label class="issue-form-label">Project</label>
+          <select name="project_id" required class="issue-input">
+            <option value="">Select a project</option>
+            <?php foreach ($projectOptions as $project): ?>
+              <?php
+              $projectId = (int) ($project['id'] ?? 0);
+              $projectCode = trim((string) ($project['code'] ?? ''));
+              $projectLabel = $projectCode !== ''
+                ? ((string) ($project['name'] ?? 'Project') . ' (' . $projectCode . ')')
+                : (string) ($project['name'] ?? 'Project');
+              ?>
+              <option value="<?= $projectId ?>" <?= $createIssueSelectedProjectId === $projectId ? 'selected' : '' ?>>
+                <?= htmlspecialchars($projectLabel) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <?php if (!$projectOptions): ?>
+            <small class="issue-help">Create an active project first before opening a new issue.</small>
+          <?php endif; ?>
+
+          <label class="issue-form-label">Title</label>
+          <input type="text" name="title" required class="issue-input"
+            value="<?= htmlspecialchars((string) ($_POST['title'] ?? '')) ?>">
+
+          <label class="issue-form-label">Description</label>
+          <textarea name="description"
+            class="issue-textarea"><?= htmlspecialchars((string) ($_POST['description'] ?? '')) ?></textarea>
+
+          <label class="issue-form-label">Attach Images</label>
+          <input type="file" id="dashboardImagesInput" name="images[]" accept="image/*" multiple class="issue-file-input">
+          <small class="issue-help">
+            You can upload JPG/PNG/GIF/WebP. Max 10 MB each.
+          </small>
+
+          <div id="dashboardImgPreview" class="issue-preview"></div>
+
+          <div class="issue-label-row">
+            <span class="issue-form-label">Labels</span>
+            <button type="button" id="dashboardClearLabelsBtn">Clear Labels</button>
+          </div>
+
+          <div class="label-pills">
+            <?php foreach ($labelsArr as $l):
+              $labelId = (int) $l['id'];
+              $checked = in_array((string) $labelId, $createIssueSelectedLabels, true);
+              ?>
+              <label class="pill <?= $checked ? 'selected' : '' ?>" data-pill>
+                <span class="dot" style="background: <?= htmlspecialchars((string) ($l['color'] ?? '#bbb')) ?>;"></span>
+                <input type="checkbox" name="labels[]" value="<?= $labelId ?>" <?= $checked ? 'checked' : '' ?>>
+                <span class="pill-text"><?= htmlspecialchars((string) ($l['name'] ?? 'Label')) ?></span>
+                <span class="pill-close">&times;</span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+
+          <div class="issue-modal-actions">
+            <button type="button" class="btn btn-modal-secondary" data-modal-close="createIssueModal">Cancel</button>
+            <button type="submit" id="dashboardSubmitBtn" class="btn-green" <?= ($createIssueSelectedLabels && $projectOptions) ? '' : 'disabled' ?>>
+              Create Issue
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </main>
 
@@ -1802,7 +2069,7 @@ function issues_url_clear($status)
         list.querySelectorAll(".gh-dd-item").forEach(item => {
           const isSpecial =
             item.innerText.toLowerCase().includes("any author") ||
-            item.innerText.toLowerCase().includes("no labels");
+            item.innerText.toLowerCase().includes("any label");
 
           const t = (item.getAttribute("data-text") || item.innerText).toLowerCase();
           item.style.display = (isSpecial || t.includes(q)) ? "flex" : "none";
@@ -1915,6 +2182,174 @@ function issues_url_clear($status)
 
     renumberMoreRankingRows("desc");
     filterMoreRankingRows();
+
+    function setModalState(modalId, open) {
+      const modal = document.getElementById(modalId);
+      const backdrop = document.querySelector(`[data-modal-backdrop="${modalId}"]`);
+      if (!modal || !backdrop) return;
+
+      modal.hidden = !open;
+      backdrop.hidden = !open;
+      modal.classList.toggle("is-visible", open);
+      backdrop.classList.toggle("is-visible", open);
+      document.body.classList.toggle("modal-open", open);
+    }
+
+    document.querySelectorAll("[data-modal-open]").forEach(trigger => {
+      trigger.addEventListener("click", () => {
+        setModalState(trigger.dataset.modalOpen, true);
+      });
+    });
+
+    document.querySelectorAll("[data-modal-close]").forEach(trigger => {
+      trigger.addEventListener("click", () => {
+        setModalState(trigger.dataset.modalClose, false);
+      });
+    });
+
+    document.querySelectorAll("[data-modal-backdrop]").forEach(backdrop => {
+      backdrop.addEventListener("click", () => {
+        setModalState(backdrop.dataset.modalBackdrop, false);
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      document.querySelectorAll(".issue-modal-shell.is-visible").forEach(modal => {
+        setModalState(modal.id, false);
+      });
+    });
+
+    function syncIssuePill(pill) {
+      const checkbox = pill.querySelector('input[type="checkbox"]');
+      if (!checkbox) return;
+      pill.classList.toggle("selected", checkbox.checked);
+    }
+
+    function updateIssueSubmitState() {
+      const submitButton = document.getElementById("dashboardSubmitBtn");
+      if (!submitButton) return;
+      const checked = document.querySelectorAll('#createIssueModal input[name="labels[]"]:checked');
+      submitButton.disabled = checked.length === 0;
+    }
+
+    document.querySelectorAll("#createIssueModal [data-pill]").forEach(pill => {
+      const checkbox = pill.querySelector('input[type="checkbox"]');
+      if (!checkbox) return;
+
+      pill.addEventListener("click", (event) => {
+        if (event.target.tagName === "INPUT") return;
+        event.preventDefault();
+
+        if (event.target.classList.contains("pill-close")) {
+          checkbox.checked = false;
+        } else {
+          checkbox.checked = !checkbox.checked;
+        }
+
+        syncIssuePill(pill);
+        updateIssueSubmitState();
+      });
+
+      checkbox.addEventListener("change", () => {
+        syncIssuePill(pill);
+        updateIssueSubmitState();
+      });
+
+      syncIssuePill(pill);
+    });
+
+    document.getElementById("dashboardClearLabelsBtn")?.addEventListener("click", () => {
+      document.querySelectorAll('#createIssueModal input[name="labels[]"]:checked').forEach(checkbox => {
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+
+    updateIssueSubmitState();
+
+    const dashboardImagesInput = document.getElementById("dashboardImagesInput");
+    const dashboardImgPreview = document.getElementById("dashboardImgPreview");
+    let dashboardImageUrls = [];
+
+    dashboardImagesInput?.addEventListener("change", () => {
+      dashboardImageUrls.forEach(url => URL.revokeObjectURL(url));
+      dashboardImageUrls = [];
+
+      if (!dashboardImgPreview) return;
+      dashboardImgPreview.innerHTML = "";
+
+      Array.from(dashboardImagesInput.files || []).forEach(file => {
+        if (!file.type.startsWith("image/")) return;
+
+        const url = URL.createObjectURL(file);
+        dashboardImageUrls.push(url);
+
+        const wrap = document.createElement("div");
+        wrap.className = "issue-preview-card";
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = file.name;
+
+        link.appendChild(img);
+        wrap.appendChild(link);
+        dashboardImgPreview.appendChild(wrap);
+      });
+    });
+
+    document.querySelectorAll("[data-issue-link]").forEach(card => {
+      card.addEventListener("click", (event) => {
+        if (event.target.closest("button, a, input, select, textarea, form, label")) {
+          return;
+        }
+        const href = card.getAttribute("data-issue-link");
+        if (href) {
+          window.location.href = href;
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-kanban-shell]").forEach(shell => {
+      const scrollRegion = shell.querySelector("[data-kanban-scroll]");
+      const prevButton = shell.querySelector('[data-kanban-nav="prev"]');
+      const nextButton = shell.querySelector('[data-kanban-nav="next"]');
+
+      if (!scrollRegion || !prevButton || !nextButton) {
+        return;
+      }
+
+      const syncKanbanButtons = () => {
+        const maxScrollLeft = Math.max(scrollRegion.scrollWidth - scrollRegion.clientWidth, 0);
+        const currentLeft = scrollRegion.scrollLeft;
+        const hasOverflow = maxScrollLeft > 6;
+
+        prevButton.disabled = !hasOverflow || currentLeft <= 6;
+        nextButton.disabled = !hasOverflow || currentLeft >= maxScrollLeft - 6;
+      };
+
+      const scrollStep = () => Math.max(scrollRegion.clientWidth * 0.82, 220);
+
+      prevButton.addEventListener("click", () => {
+        scrollRegion.scrollBy({ left: -scrollStep(), behavior: "smooth" });
+      });
+
+      nextButton.addEventListener("click", () => {
+        scrollRegion.scrollBy({ left: scrollStep(), behavior: "smooth" });
+      });
+
+      scrollRegion.addEventListener("scroll", syncKanbanButtons, { passive: true });
+      window.addEventListener("resize", syncKanbanButtons);
+      requestAnimationFrame(syncKanbanButtons);
+    });
+
+    <?php if ($showCreateIssueModal): ?>
+      setModalState("createIssueModal", true);
+    <?php endif; ?>
   </script>
 
 </body>

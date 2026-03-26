@@ -41,12 +41,12 @@ ON DUPLICATE KEY UPDATE
   joined_at = VALUES(joined_at);
 
 INSERT INTO issues (
-  id, title, description, status, author_id, org_id, assigned_dev_id, assign_status,
+  id, title, description, author_id, org_id, assigned_dev_id, workflow_status,
   assigned_at, created_at, assigned_junior_id, assigned_qa_id, assigned_senior_qa_id,
   assigned_qa_lead_id, junior_assigned_at, qa_assigned_at, senior_qa_assigned_at,
   qa_lead_assigned_at, junior_done_at, pm_id
 ) VALUES (
-  6, 'CSS problem', 'CSS isn''t working, is it being overridden?', 'closed', 5, 4, 4, 'closed',
+  6, 'CSS problem', 'CSS isn''t working, is it being overridden?', 5, 4, 4, 'closed',
   '2026-03-01 21:08:11', '2026-03-01 12:31:30', 8, 9, 6,
   7, '2026-03-01 21:08:29', '2026-03-01 21:30:02', '2026-03-01 21:30:47',
   '2026-03-01 21:31:46', '2026-03-01 21:29:28', 5
@@ -54,11 +54,10 @@ INSERT INTO issues (
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
   description = VALUES(description),
-  status = VALUES(status),
   author_id = VALUES(author_id),
   org_id = VALUES(org_id),
   assigned_dev_id = VALUES(assigned_dev_id),
-  assign_status = VALUES(assign_status),
+  workflow_status = VALUES(workflow_status),
   assigned_at = VALUES(assigned_at),
   assigned_junior_id = VALUES(assigned_junior_id),
   assigned_qa_id = VALUES(assigned_qa_id),

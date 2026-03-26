@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS org_members (
 ALTER TABLE issues
   ADD COLUMN org_id INT NOT NULL AFTER author_id,
   ADD COLUMN assigned_dev_id INT NULL AFTER org_id,
-  ADD COLUMN assign_status VARCHAR(20) NOT NULL DEFAULT 'unassigned' AFTER assigned_dev_id,
-  ADD COLUMN assigned_at DATETIME NULL AFTER assign_status;
+  ADD COLUMN workflow_status ENUM('unassigned','with_senior','with_junior','done_by_junior','with_qa','with_senior_qa','with_qa_lead','approved','rejected','closed') NOT NULL DEFAULT 'unassigned' AFTER assigned_dev_id,
+  ADD COLUMN assigned_at DATETIME NULL AFTER workflow_status;
 
 ALTER TABLE issues
   ADD INDEX idx_issues_org (org_id),
@@ -68,8 +68,8 @@ ALTER TABLE issues
 
 
 UPDATE issues
-SET assign_status='unassigned'
-WHERE assign_status IS NULL OR assign_status='' OR assign_status='pending';
+SET workflow_status='unassigned'
+WHERE workflow_status IS NULL OR workflow_status='' OR workflow_status='pending';
 
 ALTER TABLE issues
   ADD COLUMN assigned_qa_id INT NULL AFTER assigned_junior_id,
@@ -77,7 +77,7 @@ ALTER TABLE issues
   ADD COLUMN junior_done_at DATETIME NULL AFTER qa_assigned_at;
 
 CREATE INDEX idx_issues_assigned_qa_id ON issues (assigned_qa_id);
-CREATE INDEX idx_issues_assign_status ON issues (assign_status);
+CREATE INDEX idx_issues_workflow_status ON issues (workflow_status);
 
 ALTER TABLE issues
   ADD COLUMN assigned_senior_qa_id INT NULL AFTER assigned_qa_id,
@@ -89,6 +89,11 @@ ALTER TABLE issues
 
 ALTER TABLE issues
   ADD COLUMN pm_id INT NULL;
+
+CREATE INDEX idx_issues_assigned_junior ON issues (assigned_junior_id);
+CREATE INDEX idx_issues_assigned_senior_qa ON issues (assigned_senior_qa_id);
+CREATE INDEX idx_issues_assigned_qa_lead ON issues (assigned_qa_lead_id);
+CREATE INDEX idx_issues_pm_id ON issues (pm_id);
 
 CREATE TABLE issue_attachments (
   id INT AUTO_INCREMENT PRIMARY KEY,

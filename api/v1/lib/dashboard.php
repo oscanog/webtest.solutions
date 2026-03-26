@@ -304,7 +304,18 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
             }
 
             $recentIssuesStmt = $conn->prepare("
-                SELECT i.id, i.title, i.status, i.assign_status, u.username AS author_username, o.name AS org_name, i.org_id
+                SELECT
+                    i.id,
+                    i.title,
+                    i.workflow_status,
+                    CASE
+                        WHEN i.workflow_status = 'closed' THEN 'closed'
+                        ELSE 'open'
+                    END AS status,
+                    i.workflow_status AS assign_status,
+                    u.username AS author_username,
+                    o.name AS org_name,
+                    i.org_id
                 FROM issues i
                 JOIN organizations o ON o.id = i.org_id
                 LEFT JOIN users u ON u.id = i.author_id
@@ -433,7 +444,18 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
     }
 
     $recentIssuesStmt = $conn->prepare("
-        SELECT i.id, i.title, i.status, i.assign_status, u.username AS author_username, ? AS org_name, i.org_id
+        SELECT
+            i.id,
+            i.title,
+            i.workflow_status,
+            CASE
+                WHEN i.workflow_status = 'closed' THEN 'closed'
+                ELSE 'open'
+            END AS status,
+            i.workflow_status AS assign_status,
+            u.username AS author_username,
+            ? AS org_name,
+            i.org_id
         FROM issues i
         LEFT JOIN users u ON u.id = i.author_id
         WHERE i.org_id = ?

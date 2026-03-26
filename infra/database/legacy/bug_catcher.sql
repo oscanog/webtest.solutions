@@ -45,11 +45,10 @@ CREATE TABLE `issues` (
   `id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
-  `status` enum('open','closed') DEFAULT 'open',
   `author_id` int(11) DEFAULT NULL,
   `org_id` int(11) NOT NULL,
   `assigned_dev_id` int(11) DEFAULT NULL,
-  `assign_status` varchar(20) NOT NULL DEFAULT 'unassigned',
+  `workflow_status` enum('unassigned','with_senior','with_junior','done_by_junior','with_qa','with_senior_qa','with_qa_lead','approved','rejected','closed') NOT NULL DEFAULT 'unassigned',
   `assigned_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `assigned_junior_id` int(11) DEFAULT NULL,
@@ -68,8 +67,8 @@ CREATE TABLE `issues` (
 -- Dumping data for table `issues`
 --
 
-INSERT INTO `issues` (`id`, `title`, `description`, `status`, `author_id`, `org_id`, `assigned_dev_id`, `assign_status`, `assigned_at`, `created_at`, `assigned_junior_id`, `assigned_qa_id`, `assigned_senior_qa_id`, `assigned_qa_lead_id`, `junior_assigned_at`, `qa_assigned_at`, `senior_qa_assigned_at`, `qa_lead_assigned_at`, `junior_done_at`, `pm_id`) VALUES
-(6, 'CSS problem', 'CSS isn\'t working, is it being overridden?', 'closed', 5, 4, 4, 'closed', '2026-03-01 21:08:11', '2026-03-01 12:31:30', 8, 9, 6, 7, '2026-03-01 21:08:29', '2026-03-01 21:30:02', '2026-03-01 21:30:47', '2026-03-01 21:31:46', '2026-03-01 21:29:28', 5);
+INSERT INTO `issues` (`id`, `title`, `description`, `author_id`, `org_id`, `assigned_dev_id`, `workflow_status`, `assigned_at`, `created_at`, `assigned_junior_id`, `assigned_qa_id`, `assigned_senior_qa_id`, `assigned_qa_lead_id`, `junior_assigned_at`, `qa_assigned_at`, `senior_qa_assigned_at`, `qa_lead_assigned_at`, `junior_done_at`, `pm_id`) VALUES
+(6, 'CSS problem', 'CSS isn\'t working, is it being overridden?', 5, 4, 4, 'closed', '2026-03-01 21:08:11', '2026-03-01 12:31:30', 8, 9, 6, 7, '2026-03-01 21:08:29', '2026-03-01 21:30:02', '2026-03-01 21:30:47', '2026-03-01 21:31:46', '2026-03-01 21:29:28', 5);
 
 -- --------------------------------------------------------
 
@@ -244,7 +243,11 @@ ALTER TABLE `issues`
   ADD KEY `idx_issues_org` (`org_id`),
   ADD KEY `idx_issues_assigned_dev` (`assigned_dev_id`),
   ADD KEY `idx_issues_assigned_qa_id` (`assigned_qa_id`),
-  ADD KEY `idx_issues_assign_status` (`assign_status`);
+  ADD KEY `idx_issues_assigned_junior` (`assigned_junior_id`),
+  ADD KEY `idx_issues_assigned_senior_qa` (`assigned_senior_qa_id`),
+  ADD KEY `idx_issues_assigned_qa_lead` (`assigned_qa_lead_id`),
+  ADD KEY `idx_issues_pm_id` (`pm_id`),
+  ADD KEY `idx_issues_workflow_status` (`workflow_status`);
 
 --
 -- Indexes for table `issue_attachments`

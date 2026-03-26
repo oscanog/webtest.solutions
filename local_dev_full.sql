@@ -103,11 +103,10 @@ CREATE TABLE IF NOT EXISTS issues (
   id INT(11) NOT NULL AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
   description TEXT DEFAULT NULL,
-  status ENUM('open', 'closed') DEFAULT 'open',
   author_id INT(11) DEFAULT NULL,
   org_id INT(11) NOT NULL,
   assigned_dev_id INT(11) DEFAULT NULL,
-  assign_status VARCHAR(20) NOT NULL DEFAULT 'unassigned',
+  workflow_status ENUM('unassigned','with_senior','with_junior','done_by_junior','with_qa','with_senior_qa','with_qa_lead','approved','rejected','closed') NOT NULL DEFAULT 'unassigned',
   assigned_at DATETIME DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   assigned_junior_id INT(11) DEFAULT NULL,
@@ -125,7 +124,11 @@ CREATE TABLE IF NOT EXISTS issues (
   KEY idx_issues_org (org_id),
   KEY idx_issues_assigned_dev (assigned_dev_id),
   KEY idx_issues_assigned_qa_id (assigned_qa_id),
-  KEY idx_issues_assign_status (assign_status),
+  KEY idx_issues_assigned_junior (assigned_junior_id),
+  KEY idx_issues_assigned_senior_qa (assigned_senior_qa_id),
+  KEY idx_issues_assigned_qa_lead (assigned_qa_lead_id),
+  KEY idx_issues_pm_id (pm_id),
+  KEY idx_issues_workflow_status (workflow_status),
   CONSTRAINT fk_issues_author
     FOREIGN KEY (author_id) REFERENCES users(id),
   CONSTRAINT fk_issues_org
@@ -727,15 +730,14 @@ INSERT INTO projects (id, org_id, name, code, description, status, created_by, u
   (2, 1, 'Mobile QA Sweep', 'MOBILE-QA', 'Secondary local dev project', 'active', 3, 3);
 
 INSERT INTO issues (
-  id, title, description, status, author_id, org_id,
+  id, title, description, author_id, org_id,
   assigned_dev_id, assigned_junior_id, assigned_qa_id, assigned_senior_qa_id, assigned_qa_lead_id,
-  assign_status, pm_id, assigned_at, junior_assigned_at, junior_done_at, qa_assigned_at, senior_qa_assigned_at, qa_lead_assigned_at
+  workflow_status, pm_id, assigned_at, junior_assigned_at, junior_done_at, qa_assigned_at, senior_qa_assigned_at, qa_lead_assigned_at
 ) VALUES
   (
     1,
     'Login page validation fails on empty submit',
     'Submit button allows request with empty payload in some browsers.',
-    'open',
     3,
     1,
     4,
@@ -756,7 +758,6 @@ INSERT INTO issues (
     2,
     'Dashboard sort icon overlaps text on narrow cards',
     'Visual issue visible on smaller laptop widths.',
-    'open',
     3,
     1,
     NULL,

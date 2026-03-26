@@ -9,6 +9,7 @@ type Issue = {
   id: number;
   title: string;
   status: string;
+  workflow_status: string;
   assign_status: string;
 };
 
@@ -42,6 +43,7 @@ async function createIssue(title: string): Promise<Issue> {
     `${cfg.apiBasePath}/issues`,
     {
       org_id: cfg.orgId,
+      project_id: cfg.projectId,
       title,
       description: "Created by API v1 notification suite",
       labels: [cfg.labelId],
@@ -51,6 +53,7 @@ async function createIssue(title: string): Promise<Issue> {
   expect(res.status()).toBe(201);
   expectApiSuccess(body);
   createdIssueId = body.data.issue.id;
+  expect(body.data.issue.workflow_status).toBe("unassigned");
   return body.data.issue;
 }
 
@@ -123,6 +126,8 @@ test("notifications list, mark-read, mark-all-read, and issue deep links work", 
   );
   expect(assigned.res.status()).toBe(200);
   expectApiSuccess(assigned.body);
+  expect(assigned.body.data.issue.workflow_status).toBe("with_senior");
+  expect(assigned.body.data.issue.assign_status).toBe("with_senior");
 
   const seniorInbox = await apiGet<ApiEnvelope<{ items: NotificationRecord[]; unread_count: number; total_count: number }>>(
     api,
