@@ -1,0 +1,262 @@
+erDiagram
+    users {
+        int id PK
+        string username
+        string email
+        string role
+    }
+    password_reset_requests {
+        int id PK
+        int user_id FK
+        datetime expires_at
+        datetime verified_at
+        datetime used_at
+    }
+    organizations {
+        int id PK
+        string name
+        int owner_id FK
+        timestamp created_at
+    }
+    org_members {
+        int org_id FK
+        int user_id FK
+        string role
+        timestamp joined_at
+    }
+    labels {
+        int id PK
+        string name
+        string color
+    }
+    projects {
+        int id PK
+        int org_id FK
+        string name
+        string code
+        string status
+        int created_by FK
+        int updated_by FK
+    }
+    issues {
+        int id PK
+        int author_id FK
+        int org_id FK
+        int project_id FK
+        string workflow_status
+        int assigned_dev_id
+        int assigned_qa_id
+        int assigned_qa_lead_id
+    }
+    issue_labels {
+        int issue_id FK
+        int label_id FK
+    }
+    issue_attachments {
+        int id PK
+        int issue_id FK
+        string file_path
+    }
+    checklist_batches {
+        int id PK
+        int org_id FK
+        int project_id FK
+        string title
+        string module_name
+        string status
+        int created_by FK
+        int assigned_qa_lead_id FK
+    }
+    checklist_items {
+        int id PK
+        int batch_id FK
+        int org_id FK
+        int project_id FK
+        int issue_id FK
+        string full_title
+        string status
+        string required_role
+        int assigned_to_user_id FK
+    }
+    checklist_attachments {
+        int id PK
+        int checklist_item_id FK
+        int uploaded_by FK
+        string file_path
+    }
+    checklist_batch_attachments {
+        int id PK
+        int checklist_batch_id FK
+        int uploaded_by FK
+        string file_path
+    }
+    openclaw_runtime_config {
+        int id PK
+        int created_by FK
+        int updated_by FK
+        int default_provider_config_id FK
+        int default_model_id FK
+    }
+    openclaw_control_plane_state {
+        int id PK
+        int last_runtime_reload_requested_by FK
+        string config_version
+    }
+    openclaw_runtime_status {
+        int id PK
+        string last_seen_at
+        string runtime_version
+    }
+    openclaw_reload_requests {
+        int id PK
+        int requested_by_user_id FK
+        string reason
+    }
+    ai_provider_configs {
+        int id PK
+        string provider_key
+        string display_name
+        string provider_type
+        int created_by FK
+        int updated_by FK
+    }
+    ai_models {
+        int id PK
+        int provider_config_id FK
+        string model_id
+        string display_name
+    }
+    ai_runtime_config {
+        int id PK
+        int created_by FK
+        int updated_by FK
+        int default_provider_config_id FK
+        int default_model_id FK
+    }
+    openclaw_requests {
+        int id PK
+        int selected_org_id FK
+        int selected_project_id FK
+        int requested_by_user_id FK
+        int provider_config_id FK
+        int model_id FK
+        int submitted_batch_id FK
+    }
+    openclaw_request_items {
+        int id PK
+        int openclaw_request_id FK
+        string title
+        string duplicate_status
+    }
+    openclaw_request_attachments {
+        int id PK
+        int openclaw_request_id FK
+        string file_path
+    }
+    ai_chat_threads {
+        int id PK
+        int org_id FK
+        int user_id FK
+        int checklist_project_id FK
+        int checklist_existing_batch_id FK
+        int checklist_resolved_batch_id FK
+        string title
+    }
+    ai_chat_messages {
+        int id PK
+        int thread_id FK
+        int provider_config_id FK
+        int model_id FK
+        string role
+        string status
+    }
+    ai_chat_message_attachments {
+        int id PK
+        int message_id FK
+        string file_path
+    }
+    notifications {
+        int id PK
+        int recipient_user_id FK
+        int actor_user_id FK
+        int org_id FK
+        int project_id FK
+        int issue_id FK
+        int checklist_batch_id FK
+        int checklist_item_id FK
+        string severity
+    }
+    contact {
+        int id PK
+        string name
+        string email
+        string message
+    }
+
+    users ||--o{ password_reset_requests : receives
+    users ||--o{ organizations : owns
+    users ||--o{ org_members : joins
+    organizations ||--o{ org_members : has
+    organizations ||--o{ projects : contains
+    organizations ||--o{ issues : contains
+    organizations ||--o{ checklist_batches : contains
+    organizations ||--o{ checklist_items : contains
+    organizations ||--o{ openclaw_requests : scopes
+    organizations ||--o{ ai_chat_threads : scopes
+    organizations ||--o{ notifications : scopes
+
+    projects ||--o{ issues : scopes
+    projects ||--o{ checklist_batches : groups
+    projects ||--o{ checklist_items : groups
+    projects ||--o{ openclaw_requests : selected_for
+    projects ||--o{ notifications : related_to
+
+    users ||--o{ projects : creates
+    users ||--o{ checklist_batches : creates
+    users ||--o{ checklist_items : creates
+    users ||--o{ checklist_attachments : uploads
+    users ||--o{ checklist_batch_attachments : uploads
+    users ||--o{ openclaw_runtime_config : changes
+    users ||--o{ openclaw_reload_requests : requests
+    users ||--o{ ai_provider_configs : manages
+    users ||--o{ ai_runtime_config : manages
+    users ||--o{ openclaw_requests : submits
+    users ||--o{ ai_chat_threads : starts
+    users ||--o{ notifications : receives
+    users ||--o{ notifications : acts
+
+    users ||--o{ issues : authors
+    issues ||--o{ issue_labels : tags
+    labels ||--o{ issue_labels : catalog
+    issues ||--o{ issue_attachments : stores
+    issues ||--o| checklist_items : linked_from
+    issues ||--o{ notifications : notifies
+
+    checklist_batches ||--o{ checklist_items : stores
+    checklist_batches ||--o{ checklist_batch_attachments : stores
+    checklist_batches ||--o{ openclaw_requests : submitted_from
+    checklist_batches ||--o{ notifications : references
+
+    checklist_items ||--o{ checklist_attachments : stores
+    checklist_items ||--o{ notifications : references
+
+    ai_provider_configs ||--o{ ai_models : provides
+    ai_provider_configs ||--o{ ai_runtime_config : defaults
+    ai_provider_configs ||--o{ openclaw_runtime_config : defaults
+    ai_provider_configs ||--o{ openclaw_requests : selected_for
+    ai_provider_configs ||--o{ ai_chat_messages : serves
+
+    ai_models ||--o{ ai_runtime_config : defaults
+    ai_models ||--o{ openclaw_runtime_config : defaults
+    ai_models ||--o{ openclaw_requests : selected_for
+    ai_models ||--o{ ai_chat_messages : serves
+
+    openclaw_requests ||--o{ openclaw_request_items : contains
+    openclaw_requests ||--o{ openclaw_request_attachments : stores
+
+    ai_chat_threads ||--o{ ai_chat_messages : contains
+    ai_chat_messages ||--o{ ai_chat_message_attachments : stores
+
+%% Runtime extension note:
+%% ai_chat_generated_checklist_items is created dynamically by api/v1/lib/ai_chat.php
+%% and links assistant messages and threads to reviewed checklist-draft records.

@@ -1,0 +1,274 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1300" viewBox="0 0 1480 1300">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1480" height="1300" fill="#f8fafc"/>
+  <text x="40" y="42" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">BugCatcher Consolidated Full ERD</text>
+  <text x="40" y="68" font-size="13" font-family="Segoe UI, Arial, sans-serif" fill="#334155">Current-system view derived from local_dev_full.sql, schema.sql, migrations, and ai_chat runtime schema helpers.</text>
+  <text x="40" y="760" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">AI Admin, OpenClaw, AI Chat, and Notification Domain</text>
+  <text x="40" y="505" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">Checklist Domain</text>
+  <text x="40" y="74" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">Core Identity, Organization, Project, and Issue Domain</text>
+  <polyline points="155,208 155,208 155,235 155,235" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 300,149 300,140 320,140" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 300,149 300,270 320,270" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="445,190 445,190 445,220 445,220" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,140 590,140 590,149 610,149" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,140 590,140 590,308 610,308" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="735,208 735,208 735,240 735,240" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="860,308 880,308 880,291 900,291" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,391 735,391 735,291 900,291" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="860,308 880,308 880,391 900,391" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="320,140 300,140 300,588 280,588" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="610,149 445,149 445,588 280,588" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,588 300,588 300,597 320,597" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="445,190 445,190 445,520 445,520" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="610,149 590,149 590,597 570,597" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,597 590,597 590,561 610,561" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,588 445,588 445,661 610,661" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,597 590,597 590,308 610,308" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 445,149 445,561 610,561" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 445,149 445,661 610,661" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="155,208 155,208 155,780 155,780" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,839 300,839 300,830 320,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,839 445,839 445,830 610,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,830 590,830 590,830 610,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,839 590,839 590,830 900,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,830 735,830 735,830 900,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 590,149 590,830 900,830" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 590,149 590,941 900,941" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 730,149 730,821 1180,821" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="320,140 300,140 300,1008 280,1008" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="610,149 445,149 445,1008 280,1008" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="155,208 155,208 155,940 155,940" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="155,898 155,898 155,940 155,940" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="320,830 300,830 300,1008 280,1008" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="155,656 155,656 155,940 155,940" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,1008 300,1008 300,990 320,990" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,1008 445,1008 445,981 610,981" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="320,140 300,140 300,1184 280,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="155,208 155,208 155,1125 155,1125" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="610,149 445,149 445,1184 280,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,1184 300,1184 300,1175 320,1175" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,839 300,839 300,1175 320,1175" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="445,880 445,880 445,1125 445,1125" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,1175 590,1175 590,1166 610,1166" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,149 590,149 590,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,140 735,140 735,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="860,149 880,149 880,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="860,308 880,308 880,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,588 590,588 590,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,597 735,597 735,1184 900,1184" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="570,1175 875,1175 875,1170 1180,1170" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <polyline points="280,1184 730,1184 730,1170 1180,1170" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" opacity="0.9"/>
+  <rect x="30" y="90" rx="12" ry="12" width="250" height="118" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="30" y="90" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="42" y="112" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">users</text>
+  <text x="42" y="142" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="160" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">username</text>
+  <text x="42" y="178" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">email</text>
+  <text x="42" y="196" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">role</text>
+  <rect x="30" y="235" rx="12" ry="12" width="250" height="100" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="30" y="235" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="42" y="257" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">password_reset_requests</text>
+  <text x="42" y="287" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="305" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK user_id</text>
+  <text x="42" y="323" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">otp + expires</text>
+  <text x="42" y="341" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">verified_at / used_at</text>
+  <rect x="320" y="90" rx="12" ry="12" width="250" height="100" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="320" y="90" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="332" y="112" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">organizations</text>
+  <text x="332" y="142" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="160" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">name</text>
+  <text x="332" y="178" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK owner_id</text>
+  <text x="332" y="196" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">created_at</text>
+  <rect x="320" y="220" rx="12" ry="12" width="250" height="100" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="320" y="220" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="332" y="242" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">org_members</text>
+  <text x="332" y="272" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK org_id + user_id</text>
+  <text x="332" y="290" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="332" y="308" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK user_id</text>
+  <text x="332" y="326" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">role</text>
+  <rect x="320" y="350" rx="12" ry="12" width="250" height="82" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="320" y="350" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="332" y="372" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">labels</text>
+  <text x="332" y="402" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="420" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">name</text>
+  <text x="332" y="438" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">color</text>
+  <rect x="610" y="90" rx="12" ry="12" width="250" height="118" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="610" y="90" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="622" y="112" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">projects</text>
+  <text x="622" y="142" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="160" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="622" y="178" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">name / code</text>
+  <text x="622" y="196" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">status</text>
+  <text x="622" y="214" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK created_by / updated_by</text>
+  <rect x="610" y="240" rx="12" ry="12" width="250" height="136" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="610" y="240" rx="12" ry="12" width="250" height="32" fill="#475569"/>
+  <text x="622" y="262" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">issues</text>
+  <text x="622" y="292" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="310" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK author_id</text>
+  <text x="622" y="328" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="622" y="346" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK project_id</text>
+  <text x="622" y="364" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">workflow_status</text>
+  <text x="622" y="382" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">multiple assignee ids</text>
+  <rect x="900" y="250" rx="12" ry="12" width="220" height="82" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="900" y="250" rx="12" ry="12" width="220" height="32" fill="#475569"/>
+  <text x="912" y="272" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">issue_labels</text>
+  <text x="912" y="302" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK issue_id</text>
+  <text x="912" y="320" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK label_id</text>
+  <rect x="900" y="350" rx="12" ry="12" width="220" height="82" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="900" y="350" rx="12" ry="12" width="220" height="32" fill="#475569"/>
+  <text x="912" y="372" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">issue_attachments</text>
+  <text x="912" y="402" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="912" y="420" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK issue_id</text>
+  <text x="912" y="438" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">file_path</text>
+  <rect x="900" y="455" rx="12" ry="12" width="220" height="82" fill="#ffffff" stroke="#475569" stroke-width="2"/>
+  <rect x="900" y="455" rx="12" ry="12" width="220" height="32" fill="#475569"/>
+  <text x="912" y="477" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">contact</text>
+  <text x="912" y="507" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="912" y="525" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">name</text>
+  <text x="912" y="543" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">email</text>
+  <text x="912" y="561" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">message</text>
+  <rect x="30" y="520" rx="12" ry="12" width="250" height="136" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="30" y="520" rx="12" ry="12" width="250" height="32" fill="#059669"/>
+  <text x="42" y="542" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">checklist_batches</text>
+  <text x="42" y="572" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="590" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="42" y="608" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK project_id</text>
+  <text x="42" y="626" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">title / module</text>
+  <text x="42" y="644" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">status</text>
+  <text x="42" y="662" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK assigned_qa_lead_id</text>
+  <rect x="320" y="520" rx="12" ry="12" width="250" height="154" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="320" y="520" rx="12" ry="12" width="250" height="32" fill="#059669"/>
+  <text x="332" y="542" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">checklist_items</text>
+  <text x="332" y="572" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="590" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK batch_id</text>
+  <text x="332" y="608" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="332" y="626" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK project_id</text>
+  <text x="332" y="644" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK issue_id</text>
+  <text x="332" y="662" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">status / priority</text>
+  <text x="332" y="680" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK assigned_to_user_id</text>
+  <rect x="610" y="520" rx="12" ry="12" width="250" height="82" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="610" y="520" rx="12" ry="12" width="250" height="32" fill="#059669"/>
+  <text x="622" y="542" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">checklist_attachments</text>
+  <text x="622" y="572" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="590" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK checklist_item_id</text>
+  <text x="622" y="608" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK uploaded_by</text>
+  <rect x="610" y="620" rx="12" ry="12" width="250" height="82" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="610" y="620" rx="12" ry="12" width="250" height="32" fill="#059669"/>
+  <text x="622" y="642" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">checklist_batch_attachments</text>
+  <text x="622" y="672" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="690" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK checklist_batch_id</text>
+  <text x="622" y="708" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK uploaded_by</text>
+  <rect x="30" y="780" rx="12" ry="12" width="250" height="118" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="30" y="780" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="42" y="802" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_provider_configs</text>
+  <text x="42" y="832" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="850" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">provider_key</text>
+  <text x="42" y="868" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">display_name</text>
+  <text x="42" y="886" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">provider_type</text>
+  <text x="42" y="904" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK created_by / updated_by</text>
+  <rect x="320" y="780" rx="12" ry="12" width="250" height="100" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="320" y="780" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="332" y="802" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_models</text>
+  <text x="332" y="832" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="850" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK provider_config_id</text>
+  <text x="332" y="868" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">model_id</text>
+  <text x="332" y="886" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">display_name</text>
+  <rect x="610" y="780" rx="12" ry="12" width="250" height="100" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="610" y="780" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="622" y="802" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_runtime_config</text>
+  <text x="622" y="832" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="850" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK default_provider_config_id</text>
+  <text x="622" y="868" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK default_model_id</text>
+  <text x="622" y="886" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">assistant / prompt</text>
+  <rect x="900" y="780" rx="12" ry="12" width="240" height="100" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="900" y="780" rx="12" ry="12" width="240" height="32" fill="#2563eb"/>
+  <text x="912" y="802" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_runtime_config</text>
+  <text x="912" y="832" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="912" y="850" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK default_provider_config_id</text>
+  <text x="912" y="868" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK default_model_id</text>
+  <text x="912" y="886" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">runtime switches</text>
+  <rect x="1180" y="780" rx="12" ry="12" width="240" height="82" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="1180" y="780" rx="12" ry="12" width="240" height="32" fill="#2563eb"/>
+  <text x="1192" y="802" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_control_plane_state</text>
+  <text x="1192" y="832" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="1192" y="850" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">config_version</text>
+  <text x="1192" y="868" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK last_runtime_reload_requested_by</text>
+  <rect x="1180" y="880" rx="12" ry="12" width="240" height="82" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="1180" y="880" rx="12" ry="12" width="240" height="32" fill="#2563eb"/>
+  <text x="1192" y="902" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_runtime_status</text>
+  <text x="1192" y="932" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="1192" y="950" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">runtime_version</text>
+  <text x="1192" y="968" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">last_seen_at</text>
+  <rect x="900" y="900" rx="12" ry="12" width="240" height="82" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="900" y="900" rx="12" ry="12" width="240" height="32" fill="#2563eb"/>
+  <text x="912" y="922" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_reload_requests</text>
+  <text x="912" y="952" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="912" y="970" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK requested_by_user_id</text>
+  <text x="912" y="988" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">reason</text>
+  <rect x="30" y="940" rx="12" ry="12" width="250" height="136" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="30" y="940" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="42" y="962" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_requests</text>
+  <text x="42" y="992" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="1010" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK selected_org_id</text>
+  <text x="42" y="1028" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK selected_project_id</text>
+  <text x="42" y="1046" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK requested_by_user_id</text>
+  <text x="42" y="1064" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK provider_config_id / model_id</text>
+  <text x="42" y="1082" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK submitted_batch_id</text>
+  <rect x="320" y="940" rx="12" ry="12" width="250" height="100" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="320" y="940" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="332" y="962" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_request_items</text>
+  <text x="332" y="992" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="1010" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK openclaw_request_id</text>
+  <text x="332" y="1028" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">title</text>
+  <text x="332" y="1046" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">duplicate_status</text>
+  <rect x="610" y="940" rx="12" ry="12" width="250" height="82" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="610" y="940" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="622" y="962" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">openclaw_request_attachments</text>
+  <text x="622" y="992" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="1010" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK openclaw_request_id</text>
+  <text x="622" y="1028" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">file_path</text>
+  <rect x="30" y="1125" rx="12" ry="12" width="250" height="118" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="30" y="1125" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="42" y="1147" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_chat_threads</text>
+  <text x="42" y="1177" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="42" y="1195" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id</text>
+  <text x="42" y="1213" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK user_id</text>
+  <text x="42" y="1231" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK checklist_project_id</text>
+  <text x="42" y="1249" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">existing / resolved batch refs</text>
+  <rect x="320" y="1125" rx="12" ry="12" width="250" height="100" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="320" y="1125" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="332" y="1147" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_chat_messages</text>
+  <text x="332" y="1177" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="332" y="1195" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK thread_id</text>
+  <text x="332" y="1213" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK provider_config_id</text>
+  <text x="332" y="1231" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK model_id</text>
+  <text x="332" y="1249" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">role / status</text>
+  <rect x="610" y="1125" rx="12" ry="12" width="250" height="82" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="610" y="1125" rx="12" ry="12" width="250" height="32" fill="#2563eb"/>
+  <text x="622" y="1147" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">ai_chat_message_attachments</text>
+  <text x="622" y="1177" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="622" y="1195" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK message_id</text>
+  <text x="622" y="1213" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">file_path</text>
+  <rect x="900" y="1125" rx="12" ry="12" width="280" height="118" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <rect x="900" y="1125" rx="12" ry="12" width="280" height="32" fill="#2563eb"/>
+  <text x="912" y="1147" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">notifications</text>
+  <text x="912" y="1177" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">PK id</text>
+  <text x="912" y="1195" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK recipient_user_id</text>
+  <text x="912" y="1213" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK actor_user_id</text>
+  <text x="912" y="1231" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK org_id / project_id</text>
+  <text x="912" y="1249" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">FK issue_id / checklist refs</text>
+  <text x="912" y="1267" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">severity</text>
+  <rect x="1180" y="1115" rx="12" ry="12" width="240" height="110" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+  <rect x="1180" y="1115" rx="12" ry="12" width="240" height="32" fill="#f97316"/>
+  <text x="1192" y="1137" font-size="15" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#ffffff">runtime extension</text>
+  <text x="1192" y="1167" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">ai_chat_generated_checklist_items</text>
+  <text x="1192" y="1185" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">created by ai_chat.php</text>
+  <text x="1192" y="1203" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">links assistant messages</text>
+  <text x="1192" y="1221" font-size="12" font-family="Consolas, 'Courier New', monospace" fill="#0f172a">to reviewed checklist drafts</text>
+  <text x="1180" y="1252" font-size="12" font-family="Segoe UI, Arial, sans-serif" fill="#7c2d12">Runtime extension note: ai_chat_generated_checklist_items is created dynamically by api/v1/lib/ai_chat.php.</text>
+</svg>
+
