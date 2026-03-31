@@ -99,6 +99,7 @@ function bc_v1_routes(): array
         ['method' => 'POST', 'pattern' => '/ai-chat/threads', 'handler' => 'bc_v1_ai_chat_threads_post'],
         ['method' => 'GET', 'pattern' => '/ai-chat/threads/{id}', 'handler' => 'bc_v1_ai_chat_threads_id_get'],
         ['method' => 'PATCH', 'pattern' => '/ai-chat/threads/{id}/draft-context', 'handler' => 'bc_v1_ai_chat_threads_id_draft_context_patch'],
+        ['method' => 'POST', 'pattern' => '/ai-chat/threads/{id}/page-link-preview', 'handler' => 'bc_v1_ai_chat_threads_id_page_link_preview_post'],
         ['method' => 'POST', 'pattern' => '/ai-chat/threads/{id}/checklist-drafts', 'handler' => 'bc_v1_ai_chat_threads_id_checklist_drafts_post'],
         ['method' => 'DELETE', 'pattern' => '/ai-chat/threads/{id}', 'handler' => 'bc_v1_ai_chat_threads_id_delete'],
         ['method' => 'POST', 'pattern' => '/ai-chat/generated-items/{id}/approve', 'handler' => 'bc_v1_ai_chat_generated_items_id_approve_post'],

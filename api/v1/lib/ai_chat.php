@@ -54,11 +54,16 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     $threadColumns = [
         'checklist_project_id' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_project_id INT(11) DEFAULT NULL AFTER user_id",
         'checklist_target_mode' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_target_mode ENUM('new', 'existing') DEFAULT NULL AFTER checklist_project_id",
+        'checklist_source_mode' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_source_mode ENUM('screenshot', 'link') DEFAULT 'screenshot' AFTER checklist_target_mode",
         'checklist_existing_batch_id' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_existing_batch_id INT(11) DEFAULT NULL AFTER checklist_target_mode",
         'checklist_batch_title' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_batch_title VARCHAR(160) DEFAULT NULL AFTER checklist_existing_batch_id",
         'checklist_module_name' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_module_name VARCHAR(160) DEFAULT NULL AFTER checklist_batch_title",
         'checklist_submodule_name' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_submodule_name VARCHAR(160) DEFAULT NULL AFTER checklist_module_name",
         'checklist_page_url' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_page_url VARCHAR(2048) DEFAULT NULL AFTER checklist_submodule_name",
+        'page_link_status' => "ALTER TABLE ai_chat_threads ADD COLUMN page_link_status VARCHAR(32) DEFAULT NULL AFTER checklist_page_url",
+        'page_link_warning' => "ALTER TABLE ai_chat_threads ADD COLUMN page_link_warning TEXT DEFAULT NULL AFTER page_link_status",
+        'page_link_basic_auth_username' => "ALTER TABLE ai_chat_threads ADD COLUMN page_link_basic_auth_username VARCHAR(255) DEFAULT NULL AFTER page_link_warning",
+        'page_link_basic_auth_password' => "ALTER TABLE ai_chat_threads ADD COLUMN page_link_basic_auth_password TEXT DEFAULT NULL AFTER page_link_basic_auth_username",
         'checklist_resolved_batch_id' => "ALTER TABLE ai_chat_threads ADD COLUMN checklist_resolved_batch_id INT(11) DEFAULT NULL AFTER checklist_submodule_name",
     ];
 
@@ -113,6 +118,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
             thread_id INT(11) NOT NULL,
             org_id INT(11) NOT NULL,
             project_id INT(11) NOT NULL,
+            source_mode ENUM('screenshot', 'link') NOT NULL DEFAULT 'screenshot',
             target_mode ENUM('new', 'existing') NOT NULL DEFAULT 'new',
             target_batch_id INT(11) DEFAULT NULL,
             batch_title VARCHAR(160) NOT NULL,
@@ -147,6 +153,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     $generatedItemColumns = [
         'page_url' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN page_url VARCHAR(2048) DEFAULT NULL AFTER submodule_name",
         'source_user_message_id' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN source_user_message_id INT(11) DEFAULT NULL AFTER assistant_message_id",
+        'source_mode' => "ALTER TABLE ai_chat_generated_checklist_items ADD COLUMN source_mode ENUM('screenshot', 'link') NOT NULL DEFAULT 'screenshot' AFTER project_id",
     ];
 
     foreach ($generatedItemColumns as $column => $sql) {
@@ -171,6 +178,33 @@ function bugcatcher_ai_chat_fetch_thread(mysqli $conn, int $threadId, int $orgId
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     return $row ?: null;
+}
+
+function bugcatcher_ai_chat_normalize_source_mode(?string $value, string $default = 'screenshot'): string
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['screenshot', 'link'], true) ? $normalized : $default;
+}
+
+function bugcatcher_ai_chat_source_mode_requires_images(string $sourceMode): bool
+{
+    return bugcatcher_ai_chat_normalize_source_mode($sourceMode) === 'screenshot';
+}
+
+function bugcatcher_ai_chat_page_link_status_allows_link_draft(string $status): bool
+{
+    return in_array($status, ['ready', 'thin_content'], true);
+}
+
+function bugcatcher_ai_chat_page_link_status(string $status): string
+{
+    $normalized = strtolower(trim($status));
+    if ($normalized === '') {
+        return '';
+    }
+    return in_array($normalized, ['ready', 'auth_required_basic', 'unsupported_auth', 'invalid', 'unreachable', 'thin_content'], true)
+        ? $normalized
+        : 'invalid';
 }
 
 function bugcatcher_ai_chat_fetch_message_attachments(mysqli $conn, array $messageIds): array
@@ -243,6 +277,7 @@ function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistant
             'id' => (int) $row['id'],
             'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
             'project_id' => (int) $row['project_id'],
+            'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
             'target_mode' => (string) $row['target_mode'],
             'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
             'batch_title' => (string) $row['batch_title'],
@@ -275,22 +310,21 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
     $projectId = isset($thread['checklist_project_id']) ? (int) $thread['checklist_project_id'] : 0;
     $existingBatchId = isset($thread['checklist_existing_batch_id']) ? (int) $thread['checklist_existing_batch_id'] : 0;
     $resolvedBatchId = isset($thread['checklist_resolved_batch_id']) ? (int) $thread['checklist_resolved_batch_id'] : 0;
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, (int) $thread['org_id'], $projectId) : null;
     $existingBatch = $existingBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $existingBatchId) : null;
     $resolvedBatch = $resolvedBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $resolvedBatchId) : null;
-    $pageUrl = '';
-    if ($resolvedBatch) {
-        $pageUrl = trim((string) ($resolvedBatch['page_url'] ?? ''));
-    } elseif ($existingBatch) {
-        $pageUrl = trim((string) ($existingBatch['page_url'] ?? ''));
-    } else {
-        $pageUrl = trim((string) ($thread['checklist_page_url'] ?? ''));
-    }
+    $threadPageUrl = trim((string) ($thread['checklist_page_url'] ?? ''));
+    $resolvedBatchPageUrl = trim((string) ($resolvedBatch['page_url'] ?? ''));
+    $existingBatchPageUrl = trim((string) ($existingBatch['page_url'] ?? ''));
+    $pageUrl = $threadPageUrl !== ''
+        ? $threadPageUrl
+        : ($resolvedBatchPageUrl !== '' ? $resolvedBatchPageUrl : $existingBatchPageUrl);
 
     $targetMode = (string) ($thread['checklist_target_mode'] ?? '');
     $isReady = $projectId > 0 && in_array($targetMode, ['new', 'existing'], true);
     if ($isReady && $targetMode === 'existing') {
-        $isReady = $existingBatchId > 0;
+        $isReady = $existingBatchId > 0 && $pageUrl !== '';
     }
     if ($isReady && $targetMode === 'new') {
         $isReady = trim((string) ($thread['checklist_batch_title'] ?? '')) !== ''
@@ -298,9 +332,28 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
             && $pageUrl !== '';
     }
 
+    $warningParts = [];
+    $storedWarning = trim((string) ($thread['page_link_warning'] ?? ''));
+    if ($storedWarning !== '') {
+        $warningParts[] = $storedWarning;
+    }
+    if (
+        $existingBatch
+        && $existingBatchPageUrl !== ''
+        && $threadPageUrl !== ''
+        && strcasecmp($existingBatchPageUrl, $threadPageUrl) !== 0
+    ) {
+        $warningParts[] = 'This link differs from the current checklist batch link and will update the batch after an approved AI item is saved.';
+    }
+
+    $pageLinkStatus = bugcatcher_ai_chat_page_link_status((string) ($thread['page_link_status'] ?? 'invalid'));
+    $hasSavedCredentials = trim((string) ($thread['page_link_basic_auth_username'] ?? '')) !== ''
+        || trim((string) ($thread['page_link_basic_auth_password'] ?? '')) !== '';
+
     return [
         'project_id' => $projectId,
         'project_name' => (string) ($project['name'] ?? ''),
+        'source_mode' => $sourceMode,
         'target_mode' => $targetMode,
         'existing_batch_id' => $existingBatchId > 0 ? $existingBatchId : null,
         'existing_batch_title' => (string) ($existingBatch['title'] ?? ''),
@@ -310,6 +363,9 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
         'module_name' => (string) ($thread['checklist_module_name'] ?? ''),
         'submodule_name' => (string) ($thread['checklist_submodule_name'] ?? ''),
         'page_url' => $pageUrl,
+        'page_link_status' => $pageLinkStatus,
+        'page_link_warning' => trim(implode(' ', array_filter($warningParts))),
+        'has_saved_link_credentials' => $hasSavedCredentials,
         'is_ready' => $isReady,
         'is_locked' => $resolvedBatchId > 0,
     ];
@@ -435,6 +491,7 @@ function bugcatcher_ai_chat_context_from_thread(array $thread): array
 {
     return [
         'project_id' => (int) ($thread['checklist_project_id'] ?? 0),
+        'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
         'target_mode' => (string) ($thread['checklist_target_mode'] ?? ''),
         'existing_batch_id' => (int) ($thread['checklist_existing_batch_id'] ?? 0),
         'batch_title' => trim((string) ($thread['checklist_batch_title'] ?? '')),
@@ -447,12 +504,16 @@ function bugcatcher_ai_chat_context_from_thread(array $thread): array
 function bugcatcher_ai_chat_thread_has_ready_context(array $thread): bool
 {
     $context = bugcatcher_ai_chat_context_from_thread($thread);
-    if ($context['project_id'] <= 0 || !in_array($context['target_mode'], ['new', 'existing'], true)) {
+    if (
+        $context['project_id'] <= 0
+        || !in_array($context['source_mode'], ['screenshot', 'link'], true)
+        || !in_array($context['target_mode'], ['new', 'existing'], true)
+    ) {
         return false;
     }
 
     if ($context['target_mode'] === 'existing') {
-        return $context['existing_batch_id'] > 0;
+        return $context['existing_batch_id'] > 0 && $context['page_url'] !== '';
     }
 
     return $context['batch_title'] !== '' && $context['module_name'] !== '' && $context['page_url'] !== '';
@@ -466,6 +527,7 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
         throw new RuntimeException('Select a valid project in the active organization.');
     }
 
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($payload['source_mode'] ?? 'screenshot'));
     $targetMode = trim((string) ($payload['target_mode'] ?? ''));
     if (!in_array($targetMode, ['new', 'existing'], true)) {
         throw new RuntimeException('Select whether the draft should save to a new or existing checklist batch.');
@@ -478,14 +540,22 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
             throw new RuntimeException('Select a valid existing checklist batch from the chosen project.');
         }
 
+        $requestedPageUrl = bugcatcher_checklist_normalize_page_url(trim((string) ($payload['page_url'] ?? '')));
+        $existingPageUrl = bugcatcher_checklist_normalize_page_url(trim((string) ($batch['page_url'] ?? '')));
+        $pageUrl = $requestedPageUrl !== '' ? $requestedPageUrl : $existingPageUrl;
+        if ($pageUrl === '') {
+            throw new RuntimeException('Link is required and must be a valid http:// or https:// URL for this checklist target.');
+        }
+
         return [
             'project_id' => $projectId,
+            'source_mode' => $sourceMode,
             'target_mode' => 'existing',
             'existing_batch_id' => (int) $batch['id'],
             'batch_title' => trim((string) ($batch['title'] ?? '')),
             'module_name' => trim((string) ($batch['module_name'] ?? '')),
             'submodule_name' => trim((string) ($batch['submodule_name'] ?? '')),
-            'page_url' => trim((string) ($batch['page_url'] ?? '')),
+            'page_url' => $pageUrl,
         ];
     }
 
@@ -503,6 +573,7 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
 
     return [
         'project_id' => $projectId,
+        'source_mode' => $sourceMode,
         'target_mode' => 'new',
         'existing_batch_id' => 0,
         'batch_title' => $batchTitle,
@@ -515,6 +586,8 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
 function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context): bool
 {
     return (int) ($thread['checklist_project_id'] ?? 0) === (int) $context['project_id']
+        && bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'))
+            === bugcatcher_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'))
         && (string) ($thread['checklist_target_mode'] ?? '') === (string) $context['target_mode']
         && (int) ($thread['checklist_existing_batch_id'] ?? 0) === (int) ($context['existing_batch_id'] ?? 0)
         && trim((string) ($thread['checklist_batch_title'] ?? '')) === trim((string) ($context['batch_title'] ?? ''))
@@ -523,10 +596,11 @@ function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context
         && trim((string) ($thread['checklist_page_url'] ?? '')) === trim((string) ($context['page_url'] ?? ''));
 }
 
-function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context): void
+function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context, ?array $currentThread = null): void
 {
     $existingBatchId = (int) ($context['existing_batch_id'] ?? 0);
     $projectId = (int) ($context['project_id'] ?? 0);
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'));
     $targetMode = (string) ($context['target_mode'] ?? '');
     $batchTitle = (string) ($context['batch_title'] ?? '');
     $moduleName = (string) ($context['module_name'] ?? '');
@@ -536,6 +610,7 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
         UPDATE ai_chat_threads
         SET checklist_project_id = ?,
             checklist_target_mode = ?,
+            checklist_source_mode = ?,
             checklist_existing_batch_id = NULLIF(?, 0),
             checklist_batch_title = ?,
             checklist_module_name = ?,
@@ -545,9 +620,10 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
         WHERE id = ?
     ");
     $stmt->bind_param(
-        'isissssi',
+        'ississssi',
         $projectId,
         $targetMode,
+        $sourceMode,
         $existingBatchId,
         $batchTitle,
         $moduleName,
@@ -557,11 +633,56 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
     );
     $stmt->execute();
     $stmt->close();
+
+    $currentSourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($currentThread['checklist_source_mode'] ?? 'screenshot'));
+    $currentPageUrl = trim((string) ($currentThread['checklist_page_url'] ?? ''));
+    if ($currentThread && ($currentSourceMode !== $sourceMode || strcasecmp($currentPageUrl, $pageUrl) !== 0)) {
+        $stmt = $conn->prepare("
+            UPDATE ai_chat_threads
+            SET page_link_status = NULL,
+                page_link_warning = NULL,
+                page_link_basic_auth_username = NULL,
+                page_link_basic_auth_password = NULL,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->bind_param('i', $threadId);
+        $stmt->execute();
+        $stmt->close();
+    }
 }
 
 function bugcatcher_ai_chat_resolve_runtime(mysqli $conn): array
 {
     return bugcatcher_ai_admin_resolve_runtime($conn);
+}
+
+function bugcatcher_ai_chat_resolve_draft_runtime(mysqli $conn, array $thread): array
+{
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
+    $generator = bugcatcher_ai_admin_resolve_persona_runtime(
+        $conn,
+        'checklist_generator',
+        bugcatcher_ai_chat_source_mode_requires_images($sourceMode)
+    );
+
+    $reviewer = null;
+    $reviewerError = '';
+    try {
+        $reviewer = bugcatcher_ai_admin_resolve_persona_runtime($conn, 'checklist_reviewer', false);
+    } catch (Throwable $e) {
+        $reviewerError = $e->getMessage();
+    }
+
+    return [
+        'runtime' => $runtime,
+        'source_mode' => $sourceMode,
+        'generator' => $generator,
+        'reviewer' => $reviewer,
+        'reviewer_error' => $reviewerError,
+        'assistant_name' => (string) ($generator['assistant_name'] ?? $runtime['assistant_name'] ?? 'BugCatcher AI'),
+    ];
 }
 
 function bugcatcher_ai_chat_has_image_context(mysqli $conn, int $threadId): bool
@@ -582,18 +703,360 @@ function bugcatcher_ai_chat_has_image_context(mysqli $conn, int $threadId): bool
     return (bool) $row;
 }
 
-function bugcatcher_ai_chat_build_checklist_system_prompt(array $runtime, array $thread): string
+function bugcatcher_ai_chat_saved_basic_auth_credentials(array $thread): array
 {
-    $parts = [];
-    $basePrompt = trim((string) ($runtime['system_prompt'] ?? ''));
-    if ($basePrompt !== '') {
-        $parts[] = $basePrompt;
+    $username = trim((string) ($thread['page_link_basic_auth_username'] ?? ''));
+    $encryptedPassword = trim((string) ($thread['page_link_basic_auth_password'] ?? ''));
+    $password = $encryptedPassword !== '' ? bugcatcher_openclaw_decrypt_secret($encryptedPassword) : '';
+
+    return [
+        'username' => $username,
+        'password' => $password,
+    ];
+}
+
+function bugcatcher_ai_chat_extract_page_text(string $html): array
+{
+    $title = '';
+    $description = '';
+    $text = '';
+
+    if (!class_exists('DOMDocument')) {
+        $title = trim((string) preg_replace('/\s+/', ' ', html_entity_decode((string) preg_replace('/.*<title[^>]*>(.*?)<\/title>.*/is', '$1', $html), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        $text = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        return [
+            'title' => $title,
+            'description' => $description,
+            'text' => $text,
+        ];
     }
 
-    $parts[] = implode("\n", [
-        'You are BugCatcher AI drafting checklist items for admins and QA Leads.',
-        'This chat is only for creating checklist batch items from screenshots or module images.',
-        'Use the configured batch target exactly as the default scope for every item.',
+    $previous = libxml_use_internal_errors(true);
+    $dom = new DOMDocument();
+    @$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+    $xpath = new DOMXPath($dom);
+
+    foreach (['//script', '//style', '//noscript', '//svg'] as $query) {
+        foreach ($xpath->query($query) ?: [] as $node) {
+            if ($node->parentNode) {
+                $node->parentNode->removeChild($node);
+            }
+        }
+    }
+
+    $titleNode = $xpath->query('//title')->item(0);
+    if ($titleNode) {
+        $title = trim((string) $titleNode->textContent);
+    }
+    if ($title === '') {
+        $metaTitle = $xpath->query("//meta[@property='og:title']/@content")->item(0);
+        if ($metaTitle) {
+            $title = trim((string) $metaTitle->nodeValue);
+        }
+    }
+
+    $metaDescription = $xpath->query("//meta[translate(@name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')='description']/@content")->item(0);
+    if ($metaDescription) {
+        $description = trim((string) $metaDescription->nodeValue);
+    }
+
+    $bodyNode = $xpath->query('//body')->item(0);
+    $text = trim(preg_replace('/\s+/', ' ', html_entity_decode((string) ($bodyNode ? $bodyNode->textContent : strip_tags($html)), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    return [
+        'title' => $title,
+        'description' => $description,
+        'text' => $text,
+    ];
+}
+
+function bugcatcher_ai_chat_is_probable_login_page(string $effectiveUrl, string $html, string $title, string $text): bool
+{
+    $haystack = strtolower($effectiveUrl . "\n" . $html . "\n" . $title . "\n" . $text);
+    $loginMarkers = [
+        'login',
+        'log in',
+        'sign in',
+        'signin',
+        'password',
+        'username',
+        'single sign-on',
+        'sso',
+        'forgot password',
+        'authenticate',
+    ];
+
+    foreach ($loginMarkers as $marker) {
+        if (strpos($haystack, $marker) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAuthUsername = '', string $basicAuthPassword = ''): array
+{
+    $normalizedUrl = bugcatcher_checklist_normalize_page_url($pageUrl);
+    if ($normalizedUrl === '') {
+        return [
+            'page_url' => trim($pageUrl),
+            'status' => 'invalid',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => 'Enter a valid http:// or https:// page link.',
+            'requires_credentials' => false,
+            'final_url' => '',
+            'http_status' => 0,
+            'content_type' => '',
+        ];
+    }
+
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('PHP cURL is required for page link preview.');
+    }
+
+    $finalHeaders = [];
+    $body = '';
+    $curl = curl_init($normalizedUrl);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 5,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_USERAGENT => 'BugCatcherAI/1.0',
+        CURLOPT_HTTPHEADER => [
+            'Accept: text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5',
+        ],
+        CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$finalHeaders): int {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                return strlen($line);
+            }
+            if (stripos($trimmed, 'HTTP/') === 0) {
+                $finalHeaders = [];
+                return strlen($line);
+            }
+            $parts = explode(':', $trimmed, 2);
+            if (count($parts) === 2) {
+                $key = strtolower(trim($parts[0]));
+                $value = trim($parts[1]);
+                $finalHeaders[$key][] = $value;
+            }
+
+            return strlen($line);
+        },
+    ]);
+
+    if ($basicAuthUsername !== '' || $basicAuthPassword !== '') {
+        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+        curl_setopt($curl, CURLOPT_USERPWD, $basicAuthUsername . ':' . $basicAuthPassword);
+    }
+
+    $result = curl_exec($curl);
+    $statusCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $effectiveUrl = trim((string) curl_getinfo($curl, CURLINFO_EFFECTIVE_URL));
+    $contentType = trim((string) curl_getinfo($curl, CURLINFO_CONTENT_TYPE));
+    if ($result === false) {
+        $error = trim((string) curl_error($curl));
+        curl_close($curl);
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'unreachable',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => $error !== '' ? $error : 'The page could not be reached.',
+            'requires_credentials' => false,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    $body = is_string($result) ? $result : '';
+    curl_close($curl);
+
+    $wwwAuthenticate = implode(' ', $finalHeaders['www-authenticate'] ?? []);
+    if ($statusCode === 401 && stripos($wwwAuthenticate, 'basic') !== false) {
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'auth_required_basic',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => ($basicAuthUsername !== '' || $basicAuthPassword !== '')
+                ? 'The provided Basic Auth credentials were rejected.'
+                : 'This page requires HTTP Basic Auth before BugCatcher can read it.',
+            'requires_credentials' => true,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    if ($statusCode === 401 || $statusCode === 403) {
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'unsupported_auth',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => 'This page uses an authentication flow BugCatcher cannot fetch in v1. Use a public URL or the screenshot flow instead.',
+            'requires_credentials' => false,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    if ($statusCode >= 400) {
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'unreachable',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => 'The page returned HTTP ' . $statusCode . '.',
+            'requires_credentials' => false,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    $isHtml = stripos($contentType, 'text/html') !== false || $contentType === '';
+    $isText = stripos($contentType, 'text/plain') !== false;
+    if (!$isHtml && !$isText) {
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'thin_content',
+            'page_title' => '',
+            'excerpt' => '',
+            'warning_message' => 'The page loaded, but it did not return readable HTML content.',
+            'requires_credentials' => false,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    $parsed = $isHtml
+        ? bugcatcher_ai_chat_extract_page_text($body)
+        : [
+            'title' => '',
+            'description' => '',
+            'text' => trim(preg_replace('/\s+/', ' ', $body)),
+        ];
+    $pageTitle = trim((string) ($parsed['title'] ?? ''));
+    $text = trim((string) ($parsed['text'] ?? ''));
+    $description = trim((string) ($parsed['description'] ?? ''));
+    $excerptSource = $text !== '' ? $text : $description;
+    $excerpt = function_exists('mb_substr') ? mb_substr($excerptSource, 0, 600) : substr($excerptSource, 0, 600);
+
+    if ($isHtml && bugcatcher_ai_chat_is_probable_login_page($effectiveUrl, strtolower($body), $pageTitle, $text)) {
+        return [
+            'page_url' => $normalizedUrl,
+            'status' => 'unsupported_auth',
+            'page_title' => $pageTitle,
+            'excerpt' => $excerpt,
+            'warning_message' => 'This page looks like a login screen or SSO gateway. BugCatcher v1 only supports public pages or HTTP Basic Auth.',
+            'requires_credentials' => false,
+            'final_url' => $effectiveUrl,
+            'http_status' => $statusCode,
+            'content_type' => $contentType,
+        ];
+    }
+
+    $warningMessage = '';
+    $status = 'ready';
+    $excerptLength = function_exists('mb_strlen') ? mb_strlen($excerpt) : strlen($excerpt);
+    if ($excerptLength < 120) {
+        $status = 'thin_content';
+        $warningMessage = 'The page loaded but has very little readable text. AI may rely more on your prompt or screenshots.';
+    }
+
+    return [
+        'page_url' => $normalizedUrl,
+        'status' => $status,
+        'page_title' => $pageTitle,
+        'excerpt' => $excerpt,
+        'warning_message' => $warningMessage,
+        'requires_credentials' => false,
+        'final_url' => $effectiveUrl,
+        'http_status' => $statusCode,
+        'content_type' => $contentType,
+    ];
+}
+
+function bugcatcher_ai_chat_store_page_link_preview_state(
+    mysqli $conn,
+    int $threadId,
+    array $preview,
+    string $basicAuthUsername = '',
+    string $basicAuthPassword = ''
+): array {
+    $status = bugcatcher_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
+    $warning = trim((string) ($preview['warning_message'] ?? ''));
+    $pageUrl = bugcatcher_checklist_normalize_page_url((string) ($preview['page_url'] ?? ''));
+    $storeUsername = '';
+    $storePassword = '';
+    if (
+        in_array($status, ['ready', 'thin_content'], true)
+        && $basicAuthUsername !== ''
+        && $basicAuthPassword !== ''
+    ) {
+        $storeUsername = trim($basicAuthUsername);
+        $storePassword = bugcatcher_openclaw_encrypt_secret($basicAuthPassword);
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE ai_chat_threads
+        SET checklist_page_url = NULLIF(?, ''),
+            page_link_status = NULLIF(?, ''),
+            page_link_warning = NULLIF(?, ''),
+            page_link_basic_auth_username = NULLIF(?, ''),
+            page_link_basic_auth_password = NULLIF(?, ''),
+            updated_at = NOW()
+        WHERE id = ?
+    ");
+    $stmt->bind_param('sssssi', $pageUrl, $status, $warning, $storeUsername, $storePassword, $threadId);
+    $stmt->execute();
+    $stmt->close();
+
+    $preview['credentials_saved'] = $storeUsername !== '' && $storePassword !== '';
+    return $preview;
+}
+
+function bugcatcher_ai_chat_fetch_page_context_for_thread(array $thread, bool $required): array
+{
+    $pageUrl = bugcatcher_checklist_normalize_page_url((string) ($thread['checklist_page_url'] ?? ''));
+    if ($pageUrl === '') {
+        if ($required) {
+            throw new RuntimeException('Enter a valid page link before generating checklist items.');
+        }
+
+        return [];
+    }
+
+    $credentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
+    $preview = bugcatcher_ai_chat_fetch_page_preview($pageUrl, $credentials['username'], $credentials['password']);
+    $status = bugcatcher_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
+    if ($required && !bugcatcher_ai_chat_page_link_status_allows_link_draft($status)) {
+        if ($status === 'auth_required_basic') {
+            throw new RuntimeException('This page requires HTTP Basic Auth. Add credentials in the page link step before generating checklist items.');
+        }
+        if ($status === 'unsupported_auth') {
+            throw new RuntimeException('This page uses a login flow BugCatcher cannot fetch in v1. Use a public URL or switch to the screenshot flow.');
+        }
+        throw new RuntimeException(trim((string) ($preview['warning_message'] ?? 'The page could not be analyzed for checklist drafting.')));
+    }
+
+    return $preview;
+}
+
+function bugcatcher_ai_chat_build_shared_schema_prompt(): string
+{
+    return implode("\n", [
         'Return valid JSON only. Do not wrap it in markdown fences.',
         'JSON schema:',
         '{',
@@ -609,32 +1072,108 @@ function bugcatcher_ai_chat_build_checklist_system_prompt(array $runtime, array 
         '    }',
         '  ]',
         '}',
-        'If the screenshot evidence is incomplete, set "items" to an empty array and explain what is missing in "assistant_reply".',
-        'Create focused, non-duplicative checklist items. Prefer 3 to 8 items unless the user asks otherwise.',
-        'Keep titles concise and make descriptions practical for manual QA execution.',
+    ]);
+}
+
+function bugcatcher_ai_chat_build_target_context_lines(array $thread): array
+{
+    return [
         'Target context:',
+        '- Source mode: ' . bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
         '- Project ID: ' . (int) ($thread['checklist_project_id'] ?? 0),
         '- Batch title: ' . trim((string) ($thread['checklist_batch_title'] ?? '')),
         '- Module: ' . trim((string) ($thread['checklist_module_name'] ?? '')),
         '- Submodule: ' . trim((string) ($thread['checklist_submodule_name'] ?? '')),
         '- Target mode: ' . trim((string) ($thread['checklist_target_mode'] ?? 'new')),
-    ]);
+        '- Page link: ' . trim((string) ($thread['checklist_page_url'] ?? '')),
+    ];
+}
 
+function bugcatcher_ai_chat_build_page_context_lines(array $pageContext): array
+{
+    if (!$pageContext) {
+        return [];
+    }
+
+    $lines = ['Fetched page context:'];
+    if (trim((string) ($pageContext['page_title'] ?? '')) !== '') {
+        $lines[] = '- Page title: ' . trim((string) $pageContext['page_title']);
+    }
+    if (trim((string) ($pageContext['excerpt'] ?? '')) !== '') {
+        $lines[] = '- Excerpt: ' . trim((string) $pageContext['excerpt']);
+    }
+    if (trim((string) ($pageContext['warning_message'] ?? '')) !== '') {
+        $lines[] = '- Page warning: ' . trim((string) $pageContext['warning_message']);
+    }
+
+    return $lines;
+}
+
+function bugcatcher_ai_chat_build_generator_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
+{
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $parts = [];
+    $basePrompt = trim((string) ($personaRuntime['system_prompt'] ?? ''));
+    if ($basePrompt !== '') {
+        $parts[] = $basePrompt;
+    }
+
+    $instructions = [
+        'You are the hidden Checklist Generator persona for BugCatcher.',
+        $sourceMode === 'link'
+            ? 'Create checklist items from the fetched page context and the user conversation. No screenshot evidence is available in this run.'
+            : 'Create checklist items from the uploaded screenshots first, then use the fetched page context only as supporting detail when available.',
+        'Use the configured batch target exactly as the default scope for every item.',
+        'If the evidence is incomplete, set "items" to an empty array and explain what is missing in "assistant_reply".',
+        'Create focused, non-duplicative checklist items. Prefer 3 to 8 items unless the user asks otherwise.',
+        'Keep titles concise and make descriptions practical for manual QA execution.',
+        bugcatcher_ai_chat_build_shared_schema_prompt(),
+        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+    ];
+    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    if ($pageLines) {
+        $instructions[] = implode("\n", $pageLines);
+    }
+
+    $parts[] = implode("\n", $instructions);
     return implode("\n\n", array_filter($parts));
 }
 
-function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId, array $runtime, array $thread): array
+function bugcatcher_ai_chat_build_reviewer_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
+{
+    $parts = [];
+    $basePrompt = trim((string) ($personaRuntime['system_prompt'] ?? ''));
+    if ($basePrompt !== '') {
+        $parts[] = $basePrompt;
+    }
+
+    $instructions = [
+        'You are the hidden Checklist Reviewer persona for BugCatcher.',
+        'Review a generator-produced JSON draft, improve coverage, remove duplication, keep the same checklist target, and preserve practical QA wording.',
+        'You may rewrite assistant_reply and items, but keep the final answer in the same JSON schema.',
+        'Do not invent a different project, batch, or page link.',
+        bugcatcher_ai_chat_build_shared_schema_prompt(),
+        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+    ];
+    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    if ($pageLines) {
+        $instructions[] = implode("\n", $pageLines);
+    }
+
+    $parts[] = implode("\n", $instructions);
+    return implode("\n\n", array_filter($parts));
+}
+
+function bugcatcher_ai_chat_build_generator_messages(mysqli $conn, int $threadId, array $personaRuntime, array $thread, array $pageContext): array
 {
     $messages = bugcatcher_ai_chat_fetch_messages($conn, $threadId);
-    $payload = [];
-
-    $payload[] = [
+    $payload = [[
         'role' => 'system',
-        'content' => bugcatcher_ai_chat_build_checklist_system_prompt($runtime, $thread),
-    ];
+        'content' => bugcatcher_ai_chat_build_generator_system_prompt($personaRuntime, $thread, $pageContext),
+    ]];
 
-    $supportsVision = (bool) ($runtime['model']['supports_vision'] ?? false);
-    $providerKey = strtolower(trim((string) ($runtime['provider']['provider_key'] ?? '')));
+    $supportsVision = (bool) ($personaRuntime['model']['supports_vision'] ?? false);
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     foreach ($messages as $message) {
         $content = trim((string) ($message['content'] ?? ''));
         $attachments = $message['attachments'] ?? [];
@@ -644,38 +1183,16 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
         if ($message['role'] === 'assistant' && $content === '' && empty($message['generated_checklist_items'])) {
             continue;
         }
+        if ($content === '' && !$attachments) {
+            continue;
+        }
 
-        if ($message['role'] === 'user' && $supportsVision && $attachments) {
-            if ($providerKey === 'deepseek') {
-                $parts = [];
-                if ($content !== '') {
-                    $parts[] = $content;
-                }
-                $parts[] = 'Review the attached screenshot URLs below as image inputs.';
-                foreach ($attachments as $index => $attachment) {
-                    $originalName = trim((string) ($attachment['original_name'] ?? ('image-' . ($index + 1))));
-                    $imageUrl = trim((string) ($attachment['file_path'] ?? ''));
-                    if ($imageUrl === '') {
-                        continue;
-                    }
-                    $parts[] = sprintf(
-                        'Image %d (%s): ![%s](%s)',
-                        $index + 1,
-                        $originalName,
-                        $originalName,
-                        $imageUrl
-                    );
-                }
-                if (!$parts) {
-                    $parts[] = 'Please review the attached images.';
-                }
-                $payload[] = [
-                    'role' => 'user',
-                    'content' => implode("\n\n", $parts),
-                ];
-                continue;
-            }
-
+        if (
+            $message['role'] === 'user'
+            && $sourceMode === 'screenshot'
+            && $supportsVision
+            && $attachments
+        ) {
             $parts = [];
             if ($content !== '') {
                 $parts[] = ['type' => 'text', 'text' => $content];
@@ -687,7 +1204,7 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
                 ];
             }
             if (!$parts) {
-                $parts[] = ['type' => 'text', 'text' => 'Please review the attached images.'];
+                $parts[] = ['type' => 'text', 'text' => 'Please review the attached screenshots.'];
             }
             $payload[] = [
                 'role' => 'user',
@@ -696,11 +1213,7 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
             continue;
         }
 
-        if ($content === '' && !$attachments) {
-            continue;
-        }
-
-        if ($message['role'] === 'user' && $attachments && !$supportsVision) {
+        if ($message['role'] === 'user' && $attachments) {
             $content = trim($content . "\n\nAttached file(s):\n" . implode("\n", array_map(
                 static fn(array $attachment): string => '- ' . (string) ($attachment['original_name'] ?? 'Attachment'),
                 $attachments
@@ -713,7 +1226,45 @@ function bugcatcher_ai_chat_build_provider_messages(mysqli $conn, int $threadId,
         ];
     }
 
+    if (count($payload) === 1) {
+        $payload[] = [
+            'role' => 'user',
+            'content' => 'Draft checklist items from the configured page link and checklist target.',
+        ];
+    }
+
     return $payload;
+}
+
+function bugcatcher_ai_chat_build_reviewer_messages(array $personaRuntime, array $thread, array $pageContext, array $parsedGenerator): array
+{
+    $candidateJson = json_encode([
+        'assistant_reply' => (string) ($parsedGenerator['assistant_reply'] ?? ''),
+        'items' => array_values(is_array($parsedGenerator['items'] ?? null) ? $parsedGenerator['items'] : []),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    $bodyParts = [
+        'Please review and improve this generator draft while keeping the same checklist scope.',
+    ];
+    if (trim((string) ($pageContext['page_title'] ?? '')) !== '') {
+        $bodyParts[] = 'Page title: ' . trim((string) $pageContext['page_title']);
+    }
+    if (trim((string) ($pageContext['excerpt'] ?? '')) !== '') {
+        $bodyParts[] = 'Page excerpt: ' . trim((string) $pageContext['excerpt']);
+    }
+    $bodyParts[] = 'Candidate JSON:';
+    $bodyParts[] = $candidateJson !== false ? $candidateJson : '{"assistant_reply":"","items":[]}';
+
+    return [
+        [
+            'role' => 'system',
+            'content' => bugcatcher_ai_chat_build_reviewer_system_prompt($personaRuntime, $thread, $pageContext),
+        ],
+        [
+            'role' => 'user',
+            'content' => implode("\n\n", $bodyParts),
+        ],
+    ];
 }
 
 function bugcatcher_ai_chat_stream_event(string $event, array $payload): void
@@ -737,6 +1288,51 @@ function bugcatcher_ai_chat_start_stream_response(): void
     set_time_limit(0);
 }
 
+function bugcatcher_ai_chat_mock_provider_reply(array $messages): string
+{
+    $systemText = '';
+    $lastUserContent = '';
+    foreach ($messages as $message) {
+        if ((string) ($message['role'] ?? '') === 'system' && $systemText === '') {
+            $content = $message['content'] ?? '';
+            $systemText = is_string($content) ? $content : json_encode($content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+        if ((string) ($message['role'] ?? '') === 'user') {
+            $content = $message['content'] ?? '';
+            $lastUserContent = is_string($content) ? $content : json_encode($content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    if (stripos($systemText, 'Checklist Reviewer') !== false && preg_match('/(\{[\s\S]*\})\s*$/', $lastUserContent, $matches)) {
+        $candidate = trim((string) ($matches[1] ?? ''));
+        $decoded = json_decode($candidate, true);
+        if (is_array($decoded)) {
+            if (trim((string) ($decoded['assistant_reply'] ?? '')) === '') {
+                $decoded['assistant_reply'] = 'I reviewed and refined the checklist draft.';
+            }
+            return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{"assistant_reply":"I reviewed and refined the checklist draft.","items":[]}';
+        }
+    }
+
+    return json_encode([
+        'assistant_reply' => 'I drafted 2 checklist items for review.',
+        'items' => [
+            [
+                'title' => 'Open the page successfully',
+                'description' => 'Open the target page and confirm the primary content loads without obvious errors, empty states, or broken structure.',
+                'priority' => 'high',
+                'required_role' => 'QA Tester',
+            ],
+            [
+                'title' => 'Validate key visible content',
+                'description' => 'Verify the most important visible sections, labels, and actions match the expected page purpose and remain usable for manual QA.',
+                'priority' => 'medium',
+                'required_role' => 'QA Tester',
+            ],
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{"assistant_reply":"I drafted 2 checklist items for review.","items":[]}';
+}
+
 function bugcatcher_ai_chat_friendly_provider_error(int $statusCode, string $responseBody): string
 {
     $decoded = json_decode(trim($responseBody), true);
@@ -754,6 +1350,16 @@ function bugcatcher_ai_chat_friendly_provider_error(int $statusCode, string $res
 
 function bugcatcher_ai_chat_stream_provider_reply(array $providerRuntime, array $messages, callable $onDelta): string
 {
+    $providerType = strtolower(trim((string) ($providerRuntime['provider']['provider_type'] ?? '')));
+    $providerKey = strtolower(trim((string) ($providerRuntime['provider']['provider_key'] ?? '')));
+    if ($providerType === 'mock' || $providerKey === 'mock') {
+        $content = bugcatcher_ai_chat_mock_provider_reply($messages);
+        if ($content !== '') {
+            $onDelta($content);
+        }
+        return $content;
+    }
+
     if (!function_exists('curl_init')) {
         throw new RuntimeException('PHP cURL is required for AI chat streaming.');
     }
@@ -1008,10 +1614,10 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
     $duplicates = bugcatcher_openclaw_find_duplicates($conn, (int) $thread['checklist_project_id'], $items);
     $stmt = $conn->prepare("
         INSERT INTO ai_chat_generated_checklist_items
-            (assistant_message_id, source_user_message_id, thread_id, org_id, project_id, target_mode, target_batch_id, batch_title, module_name,
+            (assistant_message_id, source_user_message_id, thread_id, org_id, project_id, source_mode, target_mode, target_batch_id, batch_title, module_name,
              submodule_name, page_url, sequence_no, title, description, priority, required_role, review_status, duplicate_status,
              duplicate_summary, duplicate_matches, created_at, updated_at)
-        VALUES (?, NULLIF(?, 0), ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
+        VALUES (?, NULLIF(?, 0), ?, ?, ?, ?, ?, NULLIF(?, 0), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, 'pending', ?, ?, ?, NOW(), NOW())
     ");
 
     foreach ($items as $index => $item) {
@@ -1020,6 +1626,7 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $threadRowId = (int) ($thread['id'] ?? 0);
         $orgId = (int) ($thread['org_id'] ?? 0);
         $projectId = (int) ($thread['checklist_project_id'] ?? 0);
+        $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
         $targetMode = (string) ($thread['checklist_target_mode'] ?? '');
         $targetBatchId = (string) ($thread['checklist_target_mode'] ?? '') === 'existing'
             ? (int) ($thread['checklist_existing_batch_id'] ?? 0)
@@ -1038,12 +1645,13 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $duplicateMatches = json_encode($duplicateMeta['matches'] ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $stmt->bind_param(
-            'iiiiisissssisssssss',
+            'iiiiississssisssssss',
             $assistantMessageId,
             $sourceUserMessageId,
             $threadRowId,
             $orgId,
             $projectId,
+            $sourceMode,
             $targetMode,
             $targetBatchId,
             $batchTitle,
@@ -1065,6 +1673,52 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
     $stmt->close();
 }
 
+function bugcatcher_ai_chat_record_persona_run(
+    mysqli $conn,
+    int $threadId,
+    int $sourceUserMessageId,
+    int $assistantMessageId,
+    string $personaKey,
+    string $phase,
+    string $sourceMode,
+    int $providerId,
+    int $modelId,
+    string $status,
+    string $rawOutput,
+    $normalizedOutput = null,
+    string $errorMessage = ''
+): void {
+    $normalizedJson = null;
+    if (is_array($normalizedOutput)) {
+        $normalizedJson = json_encode($normalizedOutput, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    } elseif (is_string($normalizedOutput) && trim($normalizedOutput) !== '') {
+        $normalizedJson = $normalizedOutput;
+    }
+
+    $stmt = $conn->prepare("
+        INSERT INTO ai_chat_draft_persona_runs
+            (thread_id, source_user_message_id, assistant_message_id, persona_key, phase, source_mode, provider_config_id, model_id, status, raw_output, normalized_output, error_message)
+        VALUES (?, NULLIF(?, 0), NULLIF(?, 0), ?, ?, ?, NULLIF(?, 0), NULLIF(?, 0), ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))
+    ");
+    $stmt->bind_param(
+        'iiisssiissss',
+        $threadId,
+        $sourceUserMessageId,
+        $assistantMessageId,
+        $personaKey,
+        $phase,
+        $sourceMode,
+        $providerId,
+        $modelId,
+        $status,
+        $rawOutput,
+        $normalizedJson,
+        $errorMessage
+    );
+    $stmt->execute();
+    $stmt->close();
+}
+
 function bugcatcher_ai_chat_generate_checklist_draft(
     mysqli $conn,
     array $thread,
@@ -1075,11 +1729,16 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     if (!bugcatcher_ai_chat_thread_has_ready_context($thread)) {
         throw new RuntimeException('Select a project and checklist batch target before generating draft items.');
     }
-    if (!$hasAttachments && !bugcatcher_ai_chat_has_image_context($conn, (int) $thread['id'])) {
-        throw new RuntimeException('Upload at least one image before generating checklist draft items.');
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    if (
+        bugcatcher_ai_chat_source_mode_requires_images($sourceMode)
+        && !$hasAttachments
+        && !bugcatcher_ai_chat_has_image_context($conn, (int) $thread['id'])
+    ) {
+        throw new RuntimeException('Add at least 1 screenshot before generating checklist items.');
     }
-    if ($messageText === '' && !$hasAttachments) {
-        throw new RuntimeException('Add a message or image before drafting checklist items.');
+    if (bugcatcher_ai_chat_source_mode_requires_images($sourceMode) && $messageText === '' && !$hasAttachments) {
+        throw new RuntimeException('Add a message or screenshot before drafting checklist items.');
     }
 
     $uploadedKeys = [];
@@ -1089,6 +1748,10 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     $rawAssistantContent = '';
     $items = [];
     $threadId = (int) $thread['id'];
+    $pageContext = [];
+    $activeProviderId = (int) ($runtime['generator']['provider']['id'] ?? 0);
+    $activeModelId = (int) ($runtime['generator']['model']['id'] ?? 0);
+    $generatorRunRecorded = false;
 
     $conn->begin_transaction();
     try {
@@ -1107,8 +1770,8 @@ function bugcatcher_ai_chat_generate_checklist_draft(
             INSERT INTO ai_chat_messages (thread_id, role, content, status, provider_config_id, model_id, updated_at)
             VALUES (?, 'assistant', '', 'streaming', ?, ?, NOW())
         ");
-        $providerId = (int) ($runtime['provider']['id'] ?? 0);
-        $modelId = (int) ($runtime['model']['id'] ?? 0);
+        $providerId = (int) ($runtime['generator']['provider']['id'] ?? 0);
+        $modelId = (int) ($runtime['generator']['model']['id'] ?? 0);
         $stmt->bind_param('iii', $threadId, $providerId, $modelId);
         $stmt->execute();
         $assistantMessageId = (int) $stmt->insert_id;
@@ -1134,25 +1797,121 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     }
 
     try {
-        $providerMessages = bugcatcher_ai_chat_build_provider_messages($conn, $threadId, $runtime, $thread);
-        $rawAssistantContent = bugcatcher_ai_chat_stream_provider_reply($runtime, $providerMessages, static function (string $delta): void {
+        $pageContext = bugcatcher_ai_chat_fetch_page_context_for_thread($thread, $sourceMode === 'link');
+        $savedCredentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
+        if ($pageContext) {
+            bugcatcher_ai_chat_store_page_link_preview_state(
+                $conn,
+                $threadId,
+                $pageContext,
+                $savedCredentials['username'],
+                $savedCredentials['password']
+            );
+        }
+
+        $generatorMessages = bugcatcher_ai_chat_build_generator_messages($conn, $threadId, $runtime['generator'], $thread, $pageContext);
+        $rawGeneratorContent = bugcatcher_ai_chat_stream_provider_reply($runtime['generator'], $generatorMessages, static function (string $delta): void {
             // Streaming deltas are not surfaced in the checklist-draft JSON flow.
         });
-        $parsed = bugcatcher_ai_chat_parse_draft_response($rawAssistantContent, $thread);
-        $assistantReply = trim((string) ($parsed['assistant_reply'] ?? ''));
+        $parsed = bugcatcher_ai_chat_parse_draft_response($rawGeneratorContent, $thread);
+        bugcatcher_ai_chat_record_persona_run(
+            $conn,
+            $threadId,
+            $userMessageId,
+            $assistantMessageId,
+            'checklist_generator',
+            'generator',
+            $sourceMode,
+            (int) ($runtime['generator']['provider']['id'] ?? 0),
+            (int) ($runtime['generator']['model']['id'] ?? 0),
+            'completed',
+            $rawGeneratorContent,
+            $parsed
+        );
+        $generatorRunRecorded = true;
+
+        $finalParsed = $parsed;
+        $rawAssistantContent = $rawGeneratorContent;
+        if (is_array($runtime['reviewer'] ?? null)) {
+            try {
+                $reviewerMessages = bugcatcher_ai_chat_build_reviewer_messages($runtime['reviewer'], $thread, $pageContext, $parsed);
+                $rawReviewerContent = bugcatcher_ai_chat_stream_provider_reply($runtime['reviewer'], $reviewerMessages, static function (string $delta): void {
+                    // Hidden reviewer pass has no streamed UI deltas.
+                });
+                $parsedReviewer = bugcatcher_ai_chat_parse_draft_response($rawReviewerContent, $thread);
+                bugcatcher_ai_chat_record_persona_run(
+                    $conn,
+                    $threadId,
+                    $userMessageId,
+                    $assistantMessageId,
+                    'checklist_reviewer',
+                    'reviewer',
+                    $sourceMode,
+                    (int) ($runtime['reviewer']['provider']['id'] ?? 0),
+                    (int) ($runtime['reviewer']['model']['id'] ?? 0),
+                    'completed',
+                    $rawReviewerContent,
+                    $parsedReviewer
+                );
+
+                $finalParsed = $parsedReviewer;
+                $rawAssistantContent = $rawReviewerContent;
+                $activeProviderId = (int) ($runtime['reviewer']['provider']['id'] ?? $activeProviderId);
+                $activeModelId = (int) ($runtime['reviewer']['model']['id'] ?? $activeModelId);
+            } catch (Throwable $reviewError) {
+                bugcatcher_ai_chat_record_persona_run(
+                    $conn,
+                    $threadId,
+                    $userMessageId,
+                    $assistantMessageId,
+                    'checklist_reviewer',
+                    'reviewer',
+                    $sourceMode,
+                    (int) ($runtime['reviewer']['provider']['id'] ?? 0),
+                    (int) ($runtime['reviewer']['model']['id'] ?? 0),
+                    'failed',
+                    '',
+                    null,
+                    $reviewError->getMessage()
+                );
+            }
+        } elseif (trim((string) ($runtime['reviewer_error'] ?? '')) !== '') {
+            bugcatcher_ai_chat_record_persona_run(
+                $conn,
+                $threadId,
+                $userMessageId,
+                $assistantMessageId,
+                'checklist_reviewer',
+                'reviewer',
+                $sourceMode,
+                0,
+                0,
+                'skipped',
+                '',
+                null,
+                (string) $runtime['reviewer_error']
+            );
+        }
+
+        $assistantReply = trim((string) ($finalParsed['assistant_reply'] ?? ''));
         if ($assistantReply === '') {
             $assistantReply = trim($rawAssistantContent);
         }
-        $items = is_array($parsed['items'] ?? null) ? $parsed['items'] : [];
+        $items = is_array($finalParsed['items'] ?? null) ? $finalParsed['items'] : [];
         $thread['source_user_message_id'] = $userMessageId;
 
         $conn->begin_transaction();
         $stmt = $conn->prepare("
             UPDATE ai_chat_messages
-            SET content = ?, status = 'completed', error_message = NULL, updated_at = NOW()
+            SET content = ?,
+                status = 'completed',
+                error_message = NULL,
+                provider_config_id = NULLIF(?, 0),
+                model_id = NULLIF(?, 0),
+                updated_at = NOW()
             WHERE id = ?
         ");
-        $stmt->bind_param('si', $assistantReply, $assistantMessageId);
+        $stmt->bind_param('siii', $assistantReply, $activeProviderId, $activeModelId, $assistantMessageId);
         $stmt->execute();
         $stmt->close();
 
@@ -1161,6 +1920,23 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         $conn->commit();
     } catch (Throwable $e) {
         $friendly = $e->getMessage() !== '' ? $e->getMessage() : 'AI chat could not complete the reply. Please try again.';
+        if (!$generatorRunRecorded) {
+            bugcatcher_ai_chat_record_persona_run(
+                $conn,
+                $threadId,
+                $userMessageId,
+                $assistantMessageId,
+                'checklist_generator',
+                'generator',
+                $sourceMode,
+                (int) ($runtime['generator']['provider']['id'] ?? 0),
+                (int) ($runtime['generator']['model']['id'] ?? 0),
+                'failed',
+                $rawAssistantContent,
+                null,
+                $friendly
+            );
+        }
         $stmt = $conn->prepare("
             UPDATE ai_chat_messages
             SET content = ?, status = 'failed', error_message = ?, updated_at = NOW()
@@ -1218,6 +1994,7 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
         'id' => (int) $row['id'],
         'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
         'project_id' => (int) $row['project_id'],
+        'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
         'target_mode' => (string) $row['target_mode'],
         'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
         'batch_title' => (string) $row['batch_title'],
@@ -1357,6 +2134,35 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     return $itemId;
 }
 
+function bugcatcher_ai_chat_sync_batch_page_url_from_generated_item(mysqli $conn, array $generatedItem, array $batch, int $actorUserId): void
+{
+    $newPageUrl = bugcatcher_checklist_normalize_page_url((string) ($generatedItem['page_url'] ?? ''));
+    if ($newPageUrl === '') {
+        return;
+    }
+
+    $currentPageUrl = bugcatcher_checklist_normalize_page_url((string) ($batch['page_url'] ?? ''));
+    if ($currentPageUrl !== '' && strcasecmp($currentPageUrl, $newPageUrl) === 0) {
+        return;
+    }
+
+    $batchId = (int) ($batch['id'] ?? 0);
+    if ($batchId <= 0) {
+        return;
+    }
+
+    $stmt = $conn->prepare("
+        UPDATE checklist_batches
+        SET page_url = ?,
+            updated_by = ?,
+            updated_at = NOW()
+        WHERE id = ?
+    ");
+    $stmt->bind_param('sii', $newPageUrl, $actorUserId, $batchId);
+    $stmt->execute();
+    $stmt->close();
+}
+
 function bugcatcher_ai_chat_fetch_message_attachments_for_message(mysqli $conn, int $messageId): array
 {
     if ($messageId <= 0) {
@@ -1440,6 +2246,12 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['GET']);
     [, $org] = bc_v1_ai_chat_context($conn);
+    $snapshot = bugcatcher_ai_admin_runtime_snapshot($conn);
+    $readiness = $snapshot['readiness'] ?? [
+        'link' => ['enabled' => false, 'warning_message' => ''],
+        'screenshot' => ['enabled' => false, 'warning_message' => ''],
+    ];
+    $personas = $snapshot['personas'] ?? [];
 
     try {
         $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
@@ -1456,6 +2268,26 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
                 'model_id' => (string) $runtime['model']['model_id'],
                 'supports_vision' => (bool) ($runtime['model']['supports_vision'] ?? false),
             ],
+            'source_modes' => [
+                'link' => [
+                    'enabled' => (bool) ($readiness['link']['enabled'] ?? false),
+                    'warning_message' => (string) ($readiness['link']['warning_message'] ?? ''),
+                ],
+                'screenshot' => [
+                    'enabled' => (bool) ($readiness['screenshot']['enabled'] ?? false),
+                    'warning_message' => (string) ($readiness['screenshot']['warning_message'] ?? ''),
+                ],
+            ],
+            'personas' => array_values(array_map(static function (array $persona): array {
+                return [
+                    'persona_key' => (string) ($persona['persona_key'] ?? ''),
+                    'display_name' => (string) ($persona['display_name'] ?? ''),
+                    'is_enabled' => (bool) ($persona['is_enabled'] ?? false),
+                    'provider_name' => (string) ($persona['provider_name'] ?? ''),
+                    'model_name' => (string) ($persona['model_name'] ?? ''),
+                    'supports_vision' => (bool) ($persona['supports_vision'] ?? false),
+                ];
+            }, $personas)),
             'org_id' => (int) $org['org_id'],
         ]);
     } catch (Throwable $e) {
@@ -1463,6 +2295,26 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
             'enabled' => false,
             'assistant_name' => (string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'),
             'error_message' => $e->getMessage(),
+            'source_modes' => [
+                'link' => [
+                    'enabled' => (bool) ($readiness['link']['enabled'] ?? false),
+                    'warning_message' => (string) ($readiness['link']['warning_message'] ?? ''),
+                ],
+                'screenshot' => [
+                    'enabled' => (bool) ($readiness['screenshot']['enabled'] ?? false),
+                    'warning_message' => (string) ($readiness['screenshot']['warning_message'] ?? ''),
+                ],
+            ],
+            'personas' => array_values(array_map(static function (array $persona): array {
+                return [
+                    'persona_key' => (string) ($persona['persona_key'] ?? ''),
+                    'display_name' => (string) ($persona['display_name'] ?? ''),
+                    'is_enabled' => (bool) ($persona['is_enabled'] ?? false),
+                    'provider_name' => (string) ($persona['provider_name'] ?? ''),
+                    'model_name' => (string) ($persona['model_name'] ?? ''),
+                    'supports_vision' => (bool) ($persona['supports_vision'] ?? false),
+                ];
+            }, $personas)),
             'org_id' => (int) $org['org_id'],
         ]);
     }
@@ -1645,7 +2497,7 @@ function bc_v1_ai_chat_threads_id_draft_context_patch(mysqli $conn, array $param
         bc_v1_json_error(409, 'draft_context_locked', 'This chat already saved approved checklist items. Start a new chat to change the checklist target.');
     }
 
-    bugcatcher_ai_chat_upsert_thread_context($conn, $threadId, $context);
+    bugcatcher_ai_chat_upsert_thread_context($conn, $threadId, $context, $thread);
     bugcatcher_ai_chat_update_thread_title_from_context($conn, $threadId, (string) $context['batch_title']);
 
     $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
@@ -1654,6 +2506,61 @@ function bc_v1_ai_chat_threads_id_draft_context_patch(mysqli $conn, array $param
     }
 
     bc_v1_json_success([
+        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+    ]);
+}
+
+function bc_v1_ai_chat_threads_id_page_link_preview_post(mysqli $conn, array $params): void
+{
+    bc_v1_require_method(['POST']);
+    [$actor, $org] = bc_v1_ai_chat_context($conn);
+    $threadId = ctype_digit((string) ($params['id'] ?? '')) ? (int) $params['id'] : 0;
+    if ($threadId <= 0) {
+        bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
+    }
+
+    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    if (!$thread) {
+        bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
+    }
+
+    $payload = bc_v1_request_data();
+    $pageUrl = trim((string) ($payload['page_url'] ?? ''));
+    $basicAuthUsername = trim((string) ($payload['basic_auth_username'] ?? ''));
+    $basicAuthPassword = trim((string) ($payload['basic_auth_password'] ?? ''));
+    $savedCredentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
+    $useSavedCredentials = $basicAuthUsername === '' && $basicAuthPassword === '';
+    $effectiveUsername = $useSavedCredentials ? $savedCredentials['username'] : $basicAuthUsername;
+    $effectivePassword = $useSavedCredentials ? $savedCredentials['password'] : $basicAuthPassword;
+
+    try {
+        $preview = bugcatcher_ai_chat_fetch_page_preview($pageUrl, $effectiveUsername, $effectivePassword);
+        $preview = bugcatcher_ai_chat_store_page_link_preview_state(
+            $conn,
+            $threadId,
+            $preview,
+            $effectiveUsername,
+            $effectivePassword
+        );
+    } catch (Throwable $e) {
+        bc_v1_json_error(422, 'page_link_preview_failed', $e->getMessage());
+    }
+
+    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    if (!$freshThread) {
+        bc_v1_json_error(500, 'thread_reload_failed', 'Unable to reload the AI chat thread.');
+    }
+
+    bc_v1_json_success([
+        'page_link_preview' => [
+            'page_url' => (string) ($preview['page_url'] ?? ''),
+            'status' => (string) ($preview['status'] ?? ''),
+            'page_title' => (string) ($preview['page_title'] ?? ''),
+            'excerpt' => (string) ($preview['excerpt'] ?? ''),
+            'warning_message' => (string) ($preview['warning_message'] ?? ''),
+            'requires_credentials' => (bool) ($preview['requires_credentials'] ?? false),
+            'credentials_saved' => (bool) ($preview['credentials_saved'] ?? false),
+        ],
         'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
     ]);
 }
@@ -1677,7 +2584,7 @@ function bc_v1_ai_chat_threads_id_checklist_drafts_post(mysqli $conn, array $par
     $hasAttachments = !empty($_FILES['attachments']) && is_array($_FILES['attachments']['name'] ?? null);
 
     try {
-        $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
+        $runtime = bugcatcher_ai_chat_resolve_draft_runtime($conn, $thread);
         $result = bugcatcher_ai_chat_generate_checklist_draft($conn, $thread, $runtime, $messageText, $hasAttachments);
     } catch (Throwable $e) {
         bc_v1_json_error(422, 'draft_generation_failed', $e->getMessage());
@@ -1713,6 +2620,8 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
     try {
         $conn->begin_transaction();
         $batch = bugcatcher_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId);
+        bugcatcher_ai_chat_sync_batch_page_url_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
+        $batch = bugcatcher_checklist_fetch_batch($conn, (int) $generatedItem['org_id'], (int) $batch['id']) ?: $batch;
         $itemId = bugcatcher_ai_chat_create_item_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
         bugcatcher_ai_chat_promote_message_attachments_to_batch(
             $conn,
@@ -1813,7 +2722,7 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
     $hasAttachments = !empty($_FILES['attachments']) && is_array($_FILES['attachments']['name'] ?? null);
 
     try {
-        $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
+        $runtime = bugcatcher_ai_chat_resolve_draft_runtime($conn, $thread);
         $result = bugcatcher_ai_chat_generate_checklist_draft($conn, $thread, $runtime, $messageText, $hasAttachments);
     } catch (Throwable $e) {
         bc_v1_json_error(422, 'draft_generation_failed', $e->getMessage());
@@ -1824,7 +2733,7 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
         'thread_id' => $threadId,
         'user_message_id' => (int) ($result['user_message_id'] ?? 0),
         'assistant_message_id' => (int) ($result['assistant_message_id'] ?? 0),
-        'assistant_name' => (string) $runtime['assistant_name'],
+        'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI')),
     ]);
 
     $assistantContent = '';

@@ -5,6 +5,16 @@ export type ApiEnvelope<T> =
   | { ok: false; error: { code: string; message: string; details?: unknown } };
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type MultipartValue =
+  | string
+  | number
+  | boolean
+  | {
+      name: string;
+      mimeType: string;
+      buffer: Buffer;
+    };
+export type MultipartPayload = Record<string, MultipartValue>;
 
 export async function parseJson<T>(res: APIResponse): Promise<T> {
   const text = (await res.text()).replace(/^\uFEFF/, "");
@@ -44,6 +54,20 @@ export async function apiPostJson<T>(
 ): Promise<{ res: APIResponse; body: T }> {
   const res = await request.post(url, {
     data: payload,
+    headers,
+  });
+  const body = await parseJson<T>(res);
+  return { res, body };
+}
+
+export async function apiPostMultipart<T>(
+  request: APIRequestContext,
+  url: string,
+  multipart: MultipartPayload,
+  headers?: Record<string, string>
+): Promise<{ res: APIResponse; body: T }> {
+  const res = await request.post(url, {
+    multipart,
     headers,
   });
   const body = await parseJson<T>(res);

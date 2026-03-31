@@ -31,7 +31,8 @@ function bc_v1_admin_ai_runtime_put(mysqli $conn, array $params): void
             bc_v1_get_int($payload, 'default_provider_config_id', 0),
             bc_v1_get_int($payload, 'default_model_id', 0),
             trim((string) ($payload['assistant_name'] ?? '')),
-            trim((string) ($payload['system_prompt'] ?? ''))
+            trim((string) ($payload['system_prompt'] ?? '')),
+            is_array($payload['personas'] ?? null) ? $payload['personas'] : []
         );
     } catch (Throwable $e) {
         bc_v1_json_error(422, 'ai_runtime_save_failed', $e->getMessage());

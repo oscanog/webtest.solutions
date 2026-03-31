@@ -442,6 +442,65 @@ CREATE TABLE IF NOT EXISTS ai_runtime_config (
     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS ai_runtime_personas (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  persona_key VARCHAR(60) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  provider_config_id INT(11) DEFAULT NULL,
+  model_id INT(11) DEFAULT NULL,
+  assistant_name VARCHAR(120) DEFAULT NULL,
+  system_prompt TEXT DEFAULT NULL,
+  created_by INT(11) NOT NULL,
+  updated_by INT(11) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_ai_runtime_personas_key (persona_key),
+  KEY idx_ai_runtime_personas_provider (provider_config_id),
+  KEY idx_ai_runtime_personas_model (model_id),
+  KEY idx_ai_runtime_personas_created_by (created_by),
+  KEY idx_ai_runtime_personas_updated_by (updated_by),
+  CONSTRAINT fk_ai_runtime_personas_provider
+    FOREIGN KEY (provider_config_id) REFERENCES ai_provider_configs(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_ai_runtime_personas_model
+    FOREIGN KEY (model_id) REFERENCES ai_models(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_ai_runtime_personas_created_by
+    FOREIGN KEY (created_by) REFERENCES users(id),
+  CONSTRAINT fk_ai_runtime_personas_updated_by
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS ai_chat_draft_persona_runs (
+  id INT(11) NOT NULL AUTO_INCREMENT,
+  thread_id INT(11) NOT NULL,
+  source_user_message_id INT(11) DEFAULT NULL,
+  assistant_message_id INT(11) DEFAULT NULL,
+  persona_key VARCHAR(60) NOT NULL,
+  phase ENUM('generator', 'reviewer') NOT NULL,
+  source_mode ENUM('screenshot', 'link') NOT NULL DEFAULT 'screenshot',
+  provider_config_id INT(11) DEFAULT NULL,
+  model_id INT(11) DEFAULT NULL,
+  status ENUM('completed', 'failed', 'skipped') NOT NULL DEFAULT 'completed',
+  raw_output LONGTEXT DEFAULT NULL,
+  normalized_output LONGTEXT DEFAULT NULL,
+  error_message TEXT DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_ai_chat_draft_persona_runs_thread (thread_id, id),
+  KEY idx_ai_chat_draft_persona_runs_persona (persona_key, phase),
+  KEY idx_ai_chat_draft_persona_runs_message (assistant_message_id),
+  CONSTRAINT fk_ai_chat_draft_persona_runs_provider
+    FOREIGN KEY (provider_config_id) REFERENCES ai_provider_configs(id)
+    ON DELETE SET NULL,
+  CONSTRAINT fk_ai_chat_draft_persona_runs_model
+    FOREIGN KEY (model_id) REFERENCES ai_models(id)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS openclaw_requests (
   id INT(11) NOT NULL AUTO_INCREMENT,
   guild_id VARCHAR(64) DEFAULT NULL,
@@ -858,6 +917,34 @@ INSERT INTO ai_runtime_config (
   'BugCatcher AI', 'You are BugCatcher AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',
   1, 1
 );
+
+INSERT INTO ai_runtime_personas (
+  id, persona_key, display_name, is_enabled, provider_config_id, model_id, assistant_name, system_prompt, created_by, updated_by
+) VALUES
+  (
+    1,
+    'checklist_generator',
+    'Checklist Generator',
+    1,
+    NULL,
+    NULL,
+    'BugCatcher AI',
+    'You draft practical QA checklist items from the provided product context.',
+    1,
+    1
+  ),
+  (
+    2,
+    'checklist_reviewer',
+    'Checklist Reviewer',
+    1,
+    NULL,
+    NULL,
+    'BugCatcher AI Reviewer',
+    'You review AI-generated checklist drafts, remove duplication, fix weak coverage, and improve clarity for manual QA execution.',
+    1,
+    1
+  );
 
 INSERT INTO openclaw_control_plane_state (
   id, config_version, last_runtime_reload_requested_at, last_runtime_reload_requested_by, last_runtime_reload_reason

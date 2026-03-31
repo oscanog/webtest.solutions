@@ -28,7 +28,8 @@ try {
                 ai_post_int('default_provider_config_id'),
                 ai_post_int('default_model_id'),
                 trim((string) ($_POST['assistant_name'] ?? '')),
-                trim((string) ($_POST['system_prompt'] ?? ''))
+                trim((string) ($_POST['system_prompt'] ?? '')),
+                is_array($_POST['personas'] ?? null) ? $_POST['personas'] : []
             );
             $flash = 'AI runtime settings saved.';
         } elseif ($action === 'save_provider') {
@@ -77,11 +78,16 @@ $snapshot = bugcatcher_ai_admin_runtime_snapshot($conn);
 $runtime = $snapshot['runtime'];
 $providers = $snapshot['providers'];
 $models = $snapshot['models'];
+$personas = $snapshot['personas'] ?? [];
+$readiness = $snapshot['readiness'] ?? [];
 $enabledProviders = array_values(array_filter($providers, static function (array $provider): bool {
     return (int) ($provider['is_enabled'] ?? 0) === 1;
 }));
 $enabledModels = array_values(array_filter($models, static function (array $model): bool {
     return (int) ($model['is_enabled'] ?? 0) === 1;
+}));
+$enabledPersonas = array_values(array_filter($personas, static function (array $persona): bool {
+    return (int) ($persona['is_enabled'] ?? 0) === 1;
 }));
 
 $context = [
@@ -105,6 +111,17 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
     <div class="bc-stat"><span>AI enabled</span><strong><?= !empty($runtime['is_enabled']) ? 'Yes' : 'No' ?></strong></div>
     <div class="bc-stat"><span>Providers</span><strong><?= count($enabledProviders) ?>/<?= count($providers) ?></strong></div>
     <div class="bc-stat"><span>Models</span><strong><?= count($enabledModels) ?>/<?= count($models) ?></strong></div>
+</div>
+
+<div class="bc-grid cols-2">
+    <div class="bc-stat"><span>Persona profiles</span><strong><?= count($enabledPersonas) ?>/<?= count($personas) ?></strong></div>
+    <div class="bc-stat">
+        <span>Draft readiness</span>
+        <strong>
+            Link: <?= !empty($readiness['link']['enabled']) ? 'Ready' : 'Blocked' ?>
+            | Screenshot: <?= !empty($readiness['screenshot']['enabled']) ? 'Ready' : 'Blocked' ?>
+        </strong>
+    </div>
 </div>
 
 <div class="bc-panel">
@@ -146,6 +163,67 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         </div>
         <div class="bc-field full">
             <button type="submit" class="bc-btn">Save AI Runtime</button>
+        </div>
+    </form>
+</div>
+
+<div class="bc-panel">
+    <h2>Hidden Draft Personas</h2>
+    <p class="bc-meta">These personas run behind the scenes for checklist drafting. Generator creates the first pass, reviewer hardens it before the user sees the result.</p>
+    <form method="post" class="bc-form-grid">
+        <input type="hidden" name="action" value="save_runtime">
+        <input type="hidden" name="is_enabled" value="<?= !empty($runtime['is_enabled']) ? '1' : '0' ?>">
+        <input type="hidden" name="default_provider_config_id" value="<?= (int) ($runtime['default_provider_config_id'] ?? 0) ?>">
+        <input type="hidden" name="default_model_id" value="<?= (int) ($runtime['default_model_id'] ?? 0) ?>">
+        <input type="hidden" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'BugCatcher AI')) ?>">
+        <input type="hidden" name="system_prompt" value="<?= bugcatcher_html((string) ($runtime['system_prompt'] ?? '')) ?>">
+        <?php foreach ($personas as $persona): ?>
+            <div class="bc-field full" style="padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt);">
+                <h3 style="margin-top: 0; margin-bottom: 0.35rem;"><?= bugcatcher_html((string) ($persona['display_name'] ?? 'Persona')) ?></h3>
+                <p class="bc-meta" style="margin-top: 0;">Key: <?= bugcatcher_html((string) ($persona['persona_key'] ?? '')) ?></p>
+                <div class="bc-form-grid">
+                    <div class="bc-field">
+                        <input type="hidden" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][is_enabled]" value="0">
+                        <label>
+                            <input type="checkbox" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][is_enabled]" value="1" <?= !empty($persona['is_enabled']) ? 'checked' : '' ?>>
+                            Enabled
+                        </label>
+                    </div>
+                    <div class="bc-field">
+                        <label>Provider</label>
+                        <select class="bc-select" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][provider_config_id]">
+                            <option value="0">Select provider</option>
+                            <?php foreach ($providers as $provider): ?>
+                                <option value="<?= (int) $provider['id'] ?>" <?= (int) ($persona['provider_config_id'] ?? 0) === (int) $provider['id'] ? 'selected' : '' ?>>
+                                    <?= bugcatcher_html($provider['display_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="bc-field">
+                        <label>Model</label>
+                        <select class="bc-select" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][model_id]">
+                            <option value="0">Select model</option>
+                            <?php foreach ($models as $model): ?>
+                                <option value="<?= (int) $model['id'] ?>" <?= (int) ($persona['model_id'] ?? 0) === (int) $model['id'] ? 'selected' : '' ?>>
+                                    <?= bugcatcher_html(($model['provider_name'] ?? 'Provider') . ' - ' . $model['display_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="bc-field full">
+                        <label>Assistant name</label>
+                        <input class="bc-input" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][assistant_name]" value="<?= bugcatcher_html((string) ($persona['assistant_name'] ?? '')) ?>">
+                    </div>
+                    <div class="bc-field full">
+                        <label>System prompt</label>
+                        <textarea class="bc-textarea" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][system_prompt]"><?= bugcatcher_html((string) ($persona['system_prompt'] ?? '')) ?></textarea>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <div class="bc-field full">
+            <button type="submit" class="bc-btn">Save Persona Settings</button>
         </div>
     </form>
 </div>
