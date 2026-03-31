@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/app/checklist_lib.php';
 require_once dirname(__DIR__) . '/app/checklist_shell.php';
 
 $context = bugcatcher_require_org_context($conn);
+$isChecklistManager = bugcatcher_checklist_is_manager_role((string) $context['org_role']);
 $projectId = bugcatcher_get_int('project_id');
 $status = $_GET['status'] ?? '';
 $search = trim($_GET['q'] ?? '');
@@ -16,10 +17,14 @@ if (!in_array($status, array_merge([''], BUGCATCHER_BATCH_STATUSES), true)) {
 $projects = bugcatcher_checklist_fetch_projects($conn, $context['org_id'], true);
 $batches = bugcatcher_checklist_fetch_batches($conn, $context['org_id'], $projectId, $status, $search);
 
-bugcatcher_shell_start('Checklist', 'checklist', $context, [
-    ['href' => '/melvin/checklist_batch.php', 'label' => 'New Batch'],
+$actions = [
     ['href' => '/melvin/project_list.php', 'label' => 'Projects', 'variant' => 'secondary'],
-]);
+];
+if ($isChecklistManager) {
+    array_unshift($actions, ['href' => '/melvin/checklist_batch.php', 'label' => 'New Batch']);
+}
+
+bugcatcher_shell_start('Checklist', 'checklist', $context, $actions);
 ?>
 
 <div class="bc-panel">
