@@ -672,6 +672,7 @@ test("ai chat bootstrap and page link preview statuses support saved basic auth 
   const thread = await createThread(`AI Chat Preview ${Date.now()}`);
   const readyUrl = previewFixtureUrl("ready.html");
   const loginUrl = previewFixtureUrl("login.html");
+  const publicPortalUrl = previewFixtureUrl("public-portal-links.html");
   const basicAuthUrl = previewFixtureUrl("basic-auth.php");
 
   const readyPreview = await previewPageLink(thread.id, {
@@ -697,6 +698,12 @@ test("ai chat bootstrap and page link preview statuses support saved basic auth 
   });
   expect(loginPreview.page_link_preview.status).toBe("unsupported_auth");
   expect(loginPreview.page_link_preview.warning_message).toContain("login screen");
+
+  const publicPortalPreview = await previewPageLink(thread.id, {
+    page_url: publicPortalUrl,
+  });
+  expect(publicPortalPreview.page_link_preview.status).toBe("ready");
+  expect(publicPortalPreview.page_link_preview.page_title).toContain("Public Campus Homepage");
 
   const basicRequiredPreview = await previewPageLink(thread.id, {
     page_url: basicAuthUrl,

@@ -772,9 +772,115 @@ function bugcatcher_ai_chat_extract_page_text(string $html): array
     ];
 }
 
-function bugcatcher_ai_chat_is_probable_login_page(string $effectiveUrl, string $html, string $title, string $text): bool
+function bugcatcher_ai_chat_marker_count(string $haystack, array $markers): int
 {
-    $haystack = strtolower($effectiveUrl . "\n" . $html . "\n" . $title . "\n" . $text);
+    $count = 0;
+    foreach ($markers as $marker) {
+        if (strpos($haystack, $marker) !== false) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+function bugcatcher_ai_chat_has_password_field(string $html, string $htmlHaystack): bool
+{
+    return preg_match('/<input[^>]+type=["\']?password\b/i', $html) === 1
+        || strpos($htmlHaystack, 'current-password') !== false
+        || preg_match('/\b(name|id|autocomplete)=["\']?(password|passcode|passwd|current-password)\b/i', $html) === 1;
+}
+
+function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHaystack, string $textHaystack): bool
+{
+    if (preg_match('/<form\b/i', $html) !== 1) {
+        return false;
+    }
+
+    $identifierMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+        'autocomplete="username"',
+        "autocomplete='username'",
+        'name="username"',
+        "name='username'",
+        'name="userid"',
+        "name='userid'",
+        'name="email"',
+        "name='email'",
+        'type="email"',
+        "type='email'",
+    ]);
+    $authActionMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+        'action="/login',
+        "action='/login",
+        'action="/signin',
+        "action='/signin",
+        'action="/sso',
+        "action='/sso",
+        'action="/oauth',
+        "action='/oauth",
+    ]);
+    $submitMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+        'type="submit"',
+        "type='submit'",
+    ]);
+    $buttonMarkerCount = bugcatcher_ai_chat_marker_count($textHaystack, [
+        'login',
+        'log in',
+        'sign in',
+        'signin',
+        'single sign-on',
+        'sso',
+        'continue with google',
+        'continue with microsoft',
+        'continue with azure',
+        'continue with okta',
+        'forgot password',
+        'reset password',
+    ]);
+    $hasPasswordField = bugcatcher_ai_chat_has_password_field($html, $htmlHaystack);
+
+    if ($hasPasswordField && ($identifierMarkerCount >= 1 || $authActionMarkerCount >= 1 || $submitMarkerCount >= 1 || $buttonMarkerCount >= 2)) {
+        return true;
+    }
+
+    return !$hasPasswordField
+        && $identifierMarkerCount >= 1
+        && $authActionMarkerCount >= 1
+        && $buttonMarkerCount >= 3;
+}
+
+function bugcatcher_ai_chat_detect_auth_surface(string $effectiveUrl, string $html, string $title, string $text): array
+{
+    $urlHaystack = strtolower($effectiveUrl);
+    $titleHaystack = strtolower($title);
+    $textHaystack = strtolower($text);
+    $htmlHaystack = strtolower($html);
+    $urlAndTitle = $urlHaystack . "\n" . $titleHaystack;
+    $combined = $urlAndTitle . "\n" . $textHaystack . "\n" . $htmlHaystack;
+
+    if (preg_match('/(wp-login\.php|login\.microsoftonline\.com|accounts\.google\.com|auth0\.com|okta\.com|onelogin\.com|\/sso\b|\/oauth\b|\/saml\b)/i', $effectiveUrl) === 1) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'known_auth_route',
+            'confidence' => 'high',
+        ];
+    }
+
+    $hasPasswordField = bugcatcher_ai_chat_has_password_field($html, $htmlHaystack);
+    $hasAuthFormSignature = bugcatcher_ai_chat_has_auth_form_signature($html, $htmlHaystack, $textHaystack);
+    $urlTitleMarkers = [
+        '/login',
+        '/signin',
+        '/sign-in',
+        '/auth',
+        'login',
+        'log in',
+        'sign in',
+        'signin',
+        'single sign-on',
+        'sso',
+        'authenticate',
+    ];
     $loginMarkers = [
         'login',
         'log in',
@@ -782,19 +888,76 @@ function bugcatcher_ai_chat_is_probable_login_page(string $effectiveUrl, string 
         'signin',
         'password',
         'username',
+        'email address',
         'single sign-on',
         'sso',
         'forgot password',
         'authenticate',
+        'continue with google',
+        'continue with microsoft',
     ];
 
-    foreach ($loginMarkers as $marker) {
-        if (strpos($haystack, $marker) !== false) {
-            return true;
-        }
+    $urlTitleCount = bugcatcher_ai_chat_marker_count($urlAndTitle, $urlTitleMarkers);
+    $loginMarkerCount = bugcatcher_ai_chat_marker_count($combined, $loginMarkers);
+    $ssoMarkerCount = bugcatcher_ai_chat_marker_count($combined, [
+        'single sign-on',
+        'sso',
+        'continue with google',
+        'continue with microsoft',
+        'continue with azure',
+        'continue with okta',
+        'continue with apple',
+        'identity provider',
+        'federated login',
+        'authenticate',
+    ]);
+    $hasActionControls = preg_match('/<(button|a)\b/i', $html) === 1;
+
+    if ($hasPasswordField && $hasAuthFormSignature) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'password_form',
+            'confidence' => 'high',
+        ];
     }
 
-    return false;
+    if ($hasPasswordField && ($urlTitleCount >= 1 || $loginMarkerCount >= 3)) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'password_prompt',
+            'confidence' => 'high',
+        ];
+    }
+
+    if ($hasAuthFormSignature && $urlTitleCount >= 1 && $loginMarkerCount >= 3) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'credential_form_markers',
+            'confidence' => 'medium',
+        ];
+    }
+
+    if ($hasAuthFormSignature && $urlTitleCount >= 2 && $ssoMarkerCount >= 2) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'sso_gateway',
+            'confidence' => 'medium',
+        ];
+    }
+
+    if (!$hasPasswordField && !$hasAuthFormSignature && $hasActionControls && $urlTitleCount >= 2 && $ssoMarkerCount >= 3) {
+        return [
+            'requires_auth' => true,
+            'reason_code' => 'hosted_sso_gateway',
+            'confidence' => 'medium',
+        ];
+    }
+
+    return [
+        'requires_auth' => false,
+        'reason_code' => '',
+        'confidence' => 'none',
+    ];
 }
 
 function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAuthUsername = '', string $basicAuthPassword = ''): array
@@ -953,7 +1116,10 @@ function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAut
     $excerptSource = $text !== '' ? $text : $description;
     $excerpt = function_exists('mb_substr') ? mb_substr($excerptSource, 0, 600) : substr($excerptSource, 0, 600);
 
-    if ($isHtml && bugcatcher_ai_chat_is_probable_login_page($effectiveUrl, strtolower($body), $pageTitle, $text)) {
+    $authSurface = $isHtml
+        ? bugcatcher_ai_chat_detect_auth_surface($effectiveUrl, $body, $pageTitle, $text)
+        : ['requires_auth' => false];
+    if ($isHtml && !empty($authSurface['requires_auth'])) {
         return [
             'page_url' => $normalizedUrl,
             'status' => 'unsupported_auth',
