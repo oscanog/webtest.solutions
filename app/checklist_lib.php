@@ -84,6 +84,25 @@ function bugcatcher_checklist_normalize_page_url(?string $value): string
     return $trimmed;
 }
 
+function bugcatcher_checklist_batch_source_mode(array $batch): ?string
+{
+    if ((string) ($batch['source_type'] ?? '') !== 'bot' || (string) ($batch['source_channel'] ?? '') !== 'api') {
+        return null;
+    }
+
+    if (preg_match('/^ai-chat:\d+:(screenshot|link)$/', (string) ($batch['source_reference'] ?? ''), $matches) === 1) {
+        return $matches[1];
+    }
+
+    return null;
+}
+
+function bugcatcher_checklist_enrich_batch_row(array $batch): array
+{
+    $batch['source_mode'] = bugcatcher_checklist_batch_source_mode($batch);
+    return $batch;
+}
+
 function bugcatcher_checklist_full_title(string $moduleName, ?string $submoduleName, string $title): string
 {
     $parts = [$moduleName];
@@ -126,7 +145,7 @@ function bugcatcher_checklist_fetch_projects(mysqli $conn, int $orgId, bool $inc
     $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     $stmt->close();
 
-    return $rows;
+    return array_map('bugcatcher_checklist_enrich_batch_row', $rows);
 }
 
 function bugcatcher_checklist_fetch_project(mysqli $conn, int $orgId, int $projectId): ?array
@@ -145,7 +164,7 @@ function bugcatcher_checklist_fetch_project(mysqli $conn, int $orgId, int $proje
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    return $row ?: null;
+    return $row ? bugcatcher_checklist_enrich_batch_row($row) : null;
 }
 
 function bugcatcher_checklist_fetch_org_members(mysqli $conn, int $orgId, ?array $roles = null): array
@@ -276,7 +295,7 @@ function bugcatcher_checklist_fetch_batch(mysqli $conn, int $orgId, int $batchId
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    return $row ?: null;
+    return $row ? bugcatcher_checklist_enrich_batch_row($row) : null;
 }
 
 function bugcatcher_checklist_find_batch_by_exact_target(

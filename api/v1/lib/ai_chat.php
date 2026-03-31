@@ -2665,7 +2665,7 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
     ];
 }
 
-function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $item, int $actorUserId): array
+function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $item, int $actorUserId, string $actorOrgRole = ''): array
 {
     $project = bugcatcher_checklist_fetch_project($conn, (int) $item['org_id'], (int) $item['project_id']);
     if (!$project) {
@@ -2702,10 +2702,14 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
         return $existing;
     }
 
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($item['source_mode'] ?? 'screenshot'));
+    $sourceReference = sprintf('ai-chat:%d:%s', (int) ($item['thread_id'] ?? 0), $sourceMode);
+    $assignedQaLeadId = $actorOrgRole === 'QA Lead' ? $actorUserId : 0;
     $stmt = $conn->prepare("
         INSERT INTO checklist_batches
-            (org_id, project_id, title, module_name, submodule_name, status, created_by, updated_by, page_url)
-        VALUES (?, ?, ?, ?, NULLIF(?, ''), 'open', ?, ?, NULLIF(?, ''))
+            (org_id, project_id, title, module_name, submodule_name, source_type, source_channel, source_reference,
+             status, created_by, updated_by, assigned_qa_lead_id, page_url)
+        VALUES (?, ?, ?, ?, NULLIF(?, ''), 'bot', 'api', ?, 'open', ?, ?, NULLIF(?, 0), NULLIF(?, ''))
     ");
     $submoduleName = trim((string) ($item['submodule_name'] ?? ''));
     $pageUrl = trim((string) ($item['page_url'] ?? ''));
@@ -2714,14 +2718,16 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
     $batchTitle = (string) ($item['batch_title'] ?? '');
     $moduleName = (string) ($item['module_name'] ?? '');
     $stmt->bind_param(
-        'iisssiis',
+        'iissssiiis',
         $orgId,
         $projectId,
         $batchTitle,
         $moduleName,
         $submoduleName,
+        $sourceReference,
         $actorUserId,
         $actorUserId,
+        $assignedQaLeadId,
         $pageUrl
     );
     $stmt->execute();
@@ -3268,7 +3274,7 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
 
     try {
         $conn->begin_transaction();
-        $batch = bugcatcher_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId);
+        $batch = bugcatcher_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId, (string) ($org['org_role'] ?? ''));
         bugcatcher_ai_chat_sync_batch_page_url_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
         $batch = bugcatcher_checklist_fetch_batch($conn, (int) $generatedItem['org_id'], (int) $batch['id']) ?: $batch;
         $itemId = bugcatcher_ai_chat_create_item_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
