@@ -1637,6 +1637,81 @@ function bugcatcher_ai_chat_build_reasoning_messages(array $personaRuntime, arra
     ];
 }
 
+function bugcatcher_ai_chat_build_estimate_messages(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
+{
+    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $instructions = [
+        'You are BugCatcher AI Checklist Estimate.',
+        'Return only JSON with this exact shape: {"planned_count": number, "coverage_summary": "short text"}.',
+        'planned_count must be an integer between 1 and 12 based on the evidence and requested scope.',
+        'coverage_summary must be one short plain-text sentence explaining the rough coverage areas you expect to draft.',
+        'Do not include markdown, extra keys, or commentary outside the JSON object.',
+        $sourceMode === 'link'
+            ? 'Estimate how many checklist items are likely from the page link evidence and the user request.'
+            : 'Estimate how many checklist items are likely from the screenshots, page link evidence, and the user request.',
+        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+    ];
+
+    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    if ($pageLines) {
+        $instructions[] = implode("\n", $pageLines);
+    }
+
+    return [
+        [
+            'role' => 'system',
+            'content' => implode("\n\n", array_filter([
+                trim((string) ($personaRuntime['system_prompt'] ?? '')),
+                implode("\n", $instructions),
+            ])),
+        ],
+        [
+            'role' => 'user',
+            'content' => $messageText !== '' ? $messageText : 'Estimate the likely checklist count from the available evidence.',
+        ],
+    ];
+}
+
+function bugcatcher_ai_chat_parse_progress_estimate(string $rawContent): array
+{
+    $jsonPayload = bugcatcher_ai_chat_extract_json_payload($rawContent);
+    if ($jsonPayload === '') {
+        return ['planned_count' => null, 'coverage_summary' => ''];
+    }
+
+    $decoded = json_decode($jsonPayload, true);
+    if (!is_array($decoded)) {
+        return ['planned_count' => null, 'coverage_summary' => ''];
+    }
+
+    $plannedCount = isset($decoded['planned_count']) ? (int) $decoded['planned_count'] : 0;
+    if ($plannedCount <= 0) {
+        $plannedCount = null;
+    } elseif ($plannedCount > 12) {
+        $plannedCount = 12;
+    }
+
+    $coverageSummary = bugcatcher_ai_chat_normalize_multiline_text((string) ($decoded['coverage_summary'] ?? ''));
+    if ($coverageSummary !== '') {
+        $coverageSummary = function_exists('mb_substr') ? mb_substr($coverageSummary, 0, 220) : substr($coverageSummary, 0, 220);
+    }
+
+    return [
+        'planned_count' => $plannedCount,
+        'coverage_summary' => $coverageSummary,
+    ];
+}
+
+function bugcatcher_ai_chat_estimate_draft_progress(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
+{
+    $estimateMessages = bugcatcher_ai_chat_build_estimate_messages($personaRuntime, $thread, $pageContext, $messageText);
+    $rawEstimate = bugcatcher_ai_chat_stream_provider_reply($personaRuntime, $estimateMessages, static function (string $delta): void {
+        // Estimate output is emitted as one parsed progress event only.
+    });
+
+    return bugcatcher_ai_chat_parse_progress_estimate($rawEstimate);
+}
+
 function bugcatcher_ai_chat_stream_live_reasoning(array $personaRuntime, array $thread, array $pageContext, string $messageText, ?callable $onDelta = null): string
 {
     $reasoningMessages = bugcatcher_ai_chat_build_reasoning_messages($personaRuntime, $thread, $pageContext, $messageText);
@@ -1692,6 +1767,13 @@ function bugcatcher_ai_chat_mock_provider_reply(array $messages): string
             }
             return json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{"assistant_reply":"I reviewed and refined the checklist draft.","items":[]}';
         }
+    }
+
+    if (stripos($systemText, 'Checklist Estimate') !== false) {
+        return json_encode([
+            'planned_count' => 4,
+            'coverage_summary' => 'I expect a small set covering core page load, navigation, content sections, and basic action checks.',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{"planned_count":4,"coverage_summary":"I expect a small set covering core page load, navigation, content sections, and basic action checks."}';
     }
 
     return json_encode([
@@ -2222,6 +2304,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     $rawAssistantContent = '';
     $items = [];
     $assistantStatus = 'completed';
+    $progressEstimate = ['planned_count' => null, 'coverage_summary' => ''];
     $threadId = (int) $thread['id'];
     $pageContext = [];
     $activeProviderId = (int) ($runtime['generator']['provider']['id'] ?? 0);
@@ -2339,6 +2422,19 @@ function bugcatcher_ai_chat_generate_checklist_draft(
                 'source_mode' => $sourceMode,
             ]);
             $draftingStageEmitted = true;
+        }
+
+        try {
+            $progressEstimate = bugcatcher_ai_chat_estimate_draft_progress($runtime['generator'], $thread, $pageContext, $messageText);
+        } catch (Throwable $estimateError) {
+            $progressEstimate = ['planned_count' => null, 'coverage_summary' => ''];
+        }
+        if ($progressEstimate['planned_count'] !== null || trim((string) ($progressEstimate['coverage_summary'] ?? '')) !== '') {
+            bugcatcher_ai_chat_emit_draft_event($onEvent, 'progress', [
+                'planned_count' => $progressEstimate['planned_count'],
+                'coverage_summary' => (string) ($progressEstimate['coverage_summary'] ?? ''),
+                'source_mode' => $sourceMode,
+            ]);
         }
 
         if (!$draftingStageEmitted) {
@@ -2507,6 +2603,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         'user_message_id' => $userMessageId,
         'assistant_message_id' => $assistantMessageId,
         'assistant_status' => $assistantStatus,
+        'final_count' => count($items),
     ];
 }
 
@@ -3325,6 +3422,7 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
             'assistant_message_id' => (int) ($result['assistant_message_id'] ?? 0),
             'thread' => $result['thread'] ?? null,
             'reused' => !empty($result['reused']),
+            'final_count' => isset($result['final_count']) ? (int) $result['final_count'] : null,
         ]);
     } catch (Throwable $e) {
         $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
