@@ -131,7 +131,7 @@ $metaRows = [
     <title>Issue Detail · BugCatcher</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 
@@ -139,14 +139,16 @@ $metaRows = [
     <?php bugcatcher_render_sidebar('issues', $current_username, $current_role, (string) ($membership['role'] ?? ''), null); ?>
 
     <main class="main">
-        <div class="topbar">
-            <div>
-                <h1>Issue #<?= (int) $issueId ?></h1>
-                <span><?= htmlspecialchars((string) $issue['title']) ?></span>
-            </div>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all')) ?>"
-                class="btn-green">Back to Issues</a>
-        </div>
+        <?php bugcatcher_render_page_header(
+            'Issue #' . (int) $issueId,
+            $current_username,
+            $current_role,
+            (string) ($membership['role'] ?? ''),
+            (string) $issue['title'],
+            [
+                ['href' => '/zen/dashboard.php?page=issues&view=kanban&status=all', 'label' => 'Back to Issues', 'variant' => 'secondary'],
+            ]
+        ); ?>
 
         <div class="issue-detail-grid">
             <section class="issue-container issue-detail-main">
@@ -233,7 +235,8 @@ $metaRows = [
         </div>
     </main>
 
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
 </body>
 
 </html>

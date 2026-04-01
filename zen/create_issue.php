@@ -50,7 +50,7 @@ if ($selectedProjectId <= 0 && $projects) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
     <title>New Issue · BugCatcher</title>
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 
@@ -58,11 +58,16 @@ if ($selectedProjectId <= 0 && $projects) {
     <?php bugcatcher_render_sidebar('issues', $current_username, $current_role, (string) ($mem['role'] ?? ''), null); ?>
 
     <main class="main">
-        <div class="topbar">
-            <h1>New Issue</h1>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all')) ?>"
-                class="btn-green create-issue-back-link">Back</a>
-        </div>
+        <?php bugcatcher_render_page_header(
+            'New Issue',
+            $current_username,
+            $current_role,
+            (string) ($mem['role'] ?? ''),
+            '',
+            [
+                ['href' => '/zen/dashboard.php?page=issues&view=kanban&status=all', 'label' => 'Back', 'variant' => 'secondary'],
+            ]
+        ); ?>
 
         <div class="issue-container">
             <div class="issue issue-form-shell">
@@ -205,7 +210,8 @@ if ($selectedProjectId <= 0 && $projects) {
         updateSubmitState();
     </script>
 
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
     <script>
         const imagesInput = document.getElementById("imagesInput");
         const imgPreview = document.getElementById("imgPreview");

@@ -125,7 +125,78 @@ function bugcatcher_notification_shape_for_user(mysqli $conn, int $userId, array
 {
     $shape = bugcatcher_notification_shape($row);
     $shape['link_path'] = bugcatcher_notification_resolve_link_path($conn, $userId, $row);
+    $shape['legacy_path'] = bugcatcher_notification_legacy_destination($shape['link_path']);
     return $shape;
+}
+
+function bugcatcher_notification_legacy_fallback_path(): string
+{
+    return bugcatcher_path('app/notifications.php');
+}
+
+function bugcatcher_notification_legacy_destination(string $linkPath): string
+{
+    $normalized = bugcatcher_notification_normalize_path($linkPath);
+    $path = (string) (parse_url($normalized, PHP_URL_PATH) ?? '');
+    $query = (string) (parse_url($normalized, PHP_URL_QUERY) ?? '');
+
+    if ($path === '/app/notifications') {
+        $target = bugcatcher_notification_legacy_fallback_path();
+        return $query !== '' ? $target . '?' . $query : $target;
+    }
+
+    if ($path === '/app/organizations') {
+        return bugcatcher_path('zen/organization.php');
+    }
+
+    if ($path === '/app/projects') {
+        return bugcatcher_path('melvin/project_list.php');
+    }
+
+    if ($path === '/app/checklist') {
+        return bugcatcher_path('melvin/checklist_list.php');
+    }
+
+    if ($path === '/app/reports') {
+        return bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all');
+    }
+
+    if (preg_match('#^/app/reports/(\d+)$#', $path, $matches)) {
+        return bugcatcher_path('zen/issue_detail.php?id=' . (int) $matches[1]);
+    }
+
+    if (preg_match('#^/app/projects/(\d+)$#', $path, $matches)) {
+        return bugcatcher_path('melvin/project_detail.php?id=' . (int) $matches[1]);
+    }
+
+    if (preg_match('#^/app/checklist/batches/(\d+)$#', $path, $matches)) {
+        return bugcatcher_path('melvin/checklist_batch.php?id=' . (int) $matches[1]);
+    }
+
+    if (preg_match('#^/app/checklist/items/(\d+)$#', $path, $matches)) {
+        return bugcatcher_path('melvin/checklist_item.php?id=' . (int) $matches[1]);
+    }
+
+    return bugcatcher_notification_legacy_fallback_path();
+}
+
+function bugcatcher_notifications_bootstrap(
+    mysqli $conn,
+    int $userId,
+    int $limit = 10,
+    string $state = 'all'
+): array {
+    $data = bugcatcher_notifications_list($conn, $userId, $state, $limit);
+
+    return [
+        'items' => array_map(static function (array $item): array {
+            return bugcatcher_augment_datetime_iso_fields($item);
+        }, $data['items']),
+        'unread_count' => (int) ($data['unread_count'] ?? 0),
+        'total_count' => (int) ($data['total_count'] ?? 0),
+        'state' => $state,
+        'limit' => max(1, min(100, $limit)),
+    ];
 }
 
 function bugcatcher_realtime_notifications_enabled(): bool

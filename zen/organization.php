@@ -574,7 +574,7 @@ if ($activeOrg) {
     <title>BugCatcher - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=3')) ?>">
 </head>
 
@@ -582,10 +582,16 @@ if ($activeOrg) {
     <?php bugcatcher_render_sidebar('organization', $current_username, $current_role, (string) ($activeOrg['my_role'] ?? ''), (string) ($activeOrg['name'] ?? '')); ?>
 
     <main class="main">
-        <div class="topbar">
-            <h1>Organization</h1>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>" class="btn">Back to Dashboard</a>
-        </div>
+        <?php bugcatcher_render_page_header(
+            'Organization',
+            $current_username,
+            $current_role,
+            (string) ($activeOrg['my_role'] ?? ''),
+            '',
+            [
+                ['href' => '/zen/dashboard.php?page=dashboard', 'label' => 'Back to Dashboard', 'variant' => 'secondary'],
+            ]
+        ); ?>
 
         <?php if ($error): ?>
             <div class="bc-alert error"><?= h($error) ?></div>
@@ -917,7 +923,8 @@ if ($activeOrg) {
             });
         })();
     </script>
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
 </body>
 
 </html>

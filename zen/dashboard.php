@@ -15,6 +15,9 @@ $view = $_GET['view'] ?? 'kanban';               // kanban | list
 $status = $_GET['status'] ?? 'all';              // all | open | closed
 $author = $_GET['author'] ?? '';                 // user id
 $label = $_GET['label'] ?? '';                  // label id
+$rankingPage = isset($_GET['ranking_page']) && ctype_digit((string) $_GET['ranking_page'])
+  ? max(1, (int) $_GET['ranking_page'])
+  : 1;
 $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
 
 if ($orgId <= 0) {
@@ -1102,8 +1105,14 @@ $rankingStmt->execute();
 $rankingRows = $rankingStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $rankingStmt->close();
 
-$topTenRanking = array_slice($rankingRows, 0, 10);
-$remainingRanking = array_slice($rankingRows, 10);
+$rankingPageSize = 10;
+$rankingTotal = count($rankingRows);
+$rankingPageCount = max(1, (int) ceil($rankingTotal / $rankingPageSize));
+$rankingPage = min($rankingPage, $rankingPageCount);
+$rankingOffset = ($rankingPage - 1) * $rankingPageSize;
+$leaderboardRows = array_slice($rankingRows, $rankingOffset, $rankingPageSize);
+$leaderboardStart = $rankingTotal > 0 ? ($rankingOffset + 1) : 0;
+$leaderboardEnd = min($rankingOffset + $rankingPageSize, $rankingTotal);
 
 // ---- Issues query (prepared + optional author/label filters) ----
 $statusSql = bugcatcher_issue_workflow_filter_sql('issues.workflow_status', $status);
@@ -1173,6 +1182,14 @@ function issues_url_clear($status, $view)
     'page' => 'issues',
     'view' => $view,
     'status' => $status
+  ]));
+}
+
+function leaderboard_url(int $rankingPage): string
+{
+  return bugcatcher_path("zen/dashboard.php?" . http_build_query([
+    'page' => 'dashboard',
+    'ranking_page' => max(1, $rankingPage),
   ]));
 }
 
@@ -1298,7 +1315,7 @@ unset($row);
   <title>BugCatcher</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
   <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 
@@ -1308,40 +1325,43 @@ unset($row);
   <main class="main">
 
     <?php if ($page === 'dashboard'): ?>
-      <div class="topbar">
-        <h1>Dashboard</h1>
-        <div class="topbar-right">
-          <span>Welcome, <?= htmlspecialchars($current_username) ?> (<?= htmlspecialchars((string) ($myOrgRole['role'] ?? $current_role)) ?>)</span>
-          <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="topbar-logout">Logout</a>
-        </div>
-      </div>
+      <?php bugcatcher_render_page_header(
+        'Dashboard',
+        $current_username,
+        $current_role,
+        (string) ($myOrgRole['role'] ?? '')
+      ); ?>
 
       <div class="leaderboard-card">
         <div class="leaderboard-head">
           <div>
-            <h2>Top 10 in <?= htmlspecialchars($orgName) ?></h2>
-            <div class="leaderboard-sub">Based on the number of closed issues completed by role</div>
+            <h2>Leaderboard in <?= htmlspecialchars($orgName) ?></h2>
+            <div class="leaderboard-sub">
+              Showing ranks <?= (int) $leaderboardStart ?>-<?= (int) $leaderboardEnd ?> of <?= (int) $rankingTotal ?>
+              based on the number of closed issues completed by role
+            </div>
           </div>
         </div>
 
-        <?php if (!empty($topTenRanking)): ?>
+        <?php if (!empty($leaderboardRows)): ?>
           <div class="leaderboard-list">
-            <?php foreach ($topTenRanking as $index => $rankUser): ?>
+            <?php foreach ($leaderboardRows as $index => $rankUser): ?>
               <?php
+              $rankNumber = $leaderboardStart + $index;
               $rankClass = '';
-              if ($index === 0)
+              if ($rankNumber === 1)
                 $rankClass = 'rank-gold';
-              elseif ($index === 1)
+              elseif ($rankNumber === 2)
                 $rankClass = 'rank-silver';
-              elseif ($index === 2)
+              elseif ($rankNumber === 3)
                 $rankClass = 'rank-bronze';
               ?>
               <div class="leaderboard-row <?= $rankClass ?>">
-                <?php if ($index === 0): ?>
+                <?php if ($rankNumber === 1): ?>
                   <span class="leaderboard-crown">&#128081;</span>
                 <?php endif; ?>
                 <div class="leaderboard-left">
-                  <span class="leaderboard-rank">#<?= $index + 1 ?></span>
+                  <span class="leaderboard-rank">#<?= $rankNumber ?></span>
                   <span class="leaderboard-avatar"><?= strtoupper(substr($rankUser['username'], 0, 1)) ?></span>
                   <div class="leaderboard-userinfo">
                     <div class="leaderboard-name"><?= htmlspecialchars($rankUser['username']) ?></div>
@@ -1353,38 +1373,37 @@ unset($row);
             <?php endforeach; ?>
           </div>
 
-          <?php if (!empty($remainingRanking)): ?>
+          <?php if ($rankingPageCount > 1): ?>
             <div class="leaderboard-footer">
-              <button type="button" class="leaderboard-viewmore-btn" id="viewMoreRankingBtn">View More</button>
-            </div>
-            <div class="leaderboard-all" id="allRankingWrap" style="display:none;">
-              <div class="leaderboard-all-top">
-                <div class="leaderboard-all-title">More ranked members</div>
-                <div class="leaderboard-all-controls">
-                  <input type="text" id="moreRankingSearch" class="leaderboard-search-input" placeholder="Search user..."
-                    autocomplete="off">
-                  <select id="moreRankingSort" class="leaderboard-sort-select">
-                    <option value="desc">Highest to Lowest</option>
-                    <option value="asc">Lowest to Highest</option>
-                  </select>
+              <div class="leaderboard-pagination">
+                <a
+                  href="<?= htmlspecialchars(leaderboard_url(max(1, $rankingPage - 1))) ?>"
+                  class="leaderboard-page-btn <?= $rankingPage <= 1 ? 'is-disabled' : '' ?>"
+                  <?= $rankingPage <= 1 ? 'aria-disabled="true" tabindex="-1"' : '' ?>
+                >
+                  Previous
+                </a>
+                <div class="leaderboard-page-list">
+                  <?php
+                  $pageStart = max(1, $rankingPage - 2);
+                  $pageEnd = min($rankingPageCount, $rankingPage + 2);
+                  for ($pageNumber = $pageStart; $pageNumber <= $pageEnd; $pageNumber++):
+                    ?>
+                    <a
+                      href="<?= htmlspecialchars(leaderboard_url($pageNumber)) ?>"
+                      class="leaderboard-page-btn <?= $pageNumber === $rankingPage ? 'is-active' : '' ?>"
+                    >
+                      <?= $pageNumber ?>
+                    </a>
+                  <?php endfor; ?>
                 </div>
-              </div>
-              <div id="moreRankingList">
-                <?php foreach ($remainingRanking as $index => $rankUser): ?>
-                  <div class="leaderboard-row more-ranking-row" data-closed-total="<?= (int) $rankUser['closed_total'] ?>"
-                    data-username="<?= htmlspecialchars(strtolower($rankUser['username']), ENT_QUOTES) ?>"
-                    data-role="<?= htmlspecialchars(strtolower($rankUser['role']), ENT_QUOTES) ?>">
-                    <div class="leaderboard-left">
-                      <span class="leaderboard-rank more-ranking-number">#<?= $index + 11 ?></span>
-                      <span class="leaderboard-avatar"><?= strtoupper(substr($rankUser['username'], 0, 1)) ?></span>
-                      <div class="leaderboard-userinfo">
-                        <div class="leaderboard-name"><?= htmlspecialchars($rankUser['username']) ?></div>
-                        <div class="leaderboard-role"><?= htmlspecialchars($rankUser['role']) ?></div>
-                      </div>
-                    </div>
-                    <div class="leaderboard-score"><?= (int) $rankUser['closed_total'] ?> closed</div>
-                  </div>
-                <?php endforeach; ?>
+                <a
+                  href="<?= htmlspecialchars(leaderboard_url(min($rankingPageCount, $rankingPage + 1))) ?>"
+                  class="leaderboard-page-btn <?= $rankingPage >= $rankingPageCount ? 'is-disabled' : '' ?>"
+                  <?= $rankingPage >= $rankingPageCount ? 'aria-disabled="true" tabindex="-1"' : '' ?>
+                >
+                  Next
+                </a>
               </div>
             </div>
           <?php endif; ?>
@@ -1394,9 +1413,12 @@ unset($row);
       </div>
 
     <?php else: ?>
-      <div class="topbar">
-        <h1>Issues</h1>
-      </div>
+      <?php bugcatcher_render_page_header(
+        'Issues',
+        $current_username,
+        $current_role,
+        (string) ($myOrgRole['role'] ?? '')
+      ); ?>
     <?php endif; ?>
 
     <?php if ($page === 'issues'): ?>
@@ -2011,7 +2033,8 @@ unset($row);
     <?php endif; ?>
   </main>
 
-  <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>
+  <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
+  <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
   <script>
     // Toggle dropdown open/close
     document.querySelectorAll(".gh-dd-btn").forEach(btn => {
@@ -2052,107 +2075,6 @@ unset($row);
       setupSearch("author");
     <?php endif; ?>
     setupSearch("labels");
-
-    const viewMoreRankingBtn = document.getElementById("viewMoreRankingBtn");
-    const allRankingWrap = document.getElementById("allRankingWrap");
-
-    if (viewMoreRankingBtn && allRankingWrap) {
-      viewMoreRankingBtn.addEventListener("click", () => {
-        const isHidden = allRankingWrap.style.display === "none" || allRankingWrap.style.display === "";
-        allRankingWrap.style.display = isHidden ? "block" : "none";
-        viewMoreRankingBtn.textContent = isHidden ? "View Less" : "View More";
-      });
-    }
-
-    const moreRankingSort = document.getElementById("moreRankingSort");
-    const moreRankingSearch = document.getElementById("moreRankingSearch");
-    const moreRankingList = document.getElementById("moreRankingList");
-
-    function renumberMoreRankingRows(order = "desc") {
-      if (!moreRankingList) return;
-
-      const rows = Array.from(moreRankingList.querySelectorAll(".more-ranking-row"));
-      const startRank = 11;
-      const endRank = 10 + rows.length;
-
-      rows.forEach((row, index) => {
-        const num = row.querySelector(".more-ranking-number");
-        if (!num) return;
-
-        const rankNumber = (order === "asc") ? (endRank - index) : (startRank + index);
-        row.dataset.rankNumber = rankNumber;
-        num.textContent = `#${rankNumber}`;
-      });
-    }
-
-    function sortMoreRanking(order) {
-      if (!moreRankingList) return;
-
-      const rows = Array.from(moreRankingList.querySelectorAll(".more-ranking-row"));
-      rows.sort((a, b) => {
-        const aTotal = parseInt(a.dataset.closedTotal || "0", 10);
-        const bTotal = parseInt(b.dataset.closedTotal || "0", 10);
-        const aName = (a.dataset.username || "").toLowerCase();
-        const bName = (b.dataset.username || "").toLowerCase();
-
-        if (order === "asc") {
-          if (aTotal !== bTotal) return aTotal - bTotal;
-          return aName.localeCompare(bName);
-        }
-        if (aTotal !== bTotal) return bTotal - aTotal;
-        return aName.localeCompare(bName);
-      });
-
-      rows.forEach(row => moreRankingList.appendChild(row));
-      renumberMoreRankingRows(order);
-      filterMoreRankingRows();
-    }
-
-    function filterMoreRankingRows() {
-      if (!moreRankingList) return;
-
-      const q = (moreRankingSearch?.value || "").trim().toLowerCase();
-      const rows = Array.from(moreRankingList.querySelectorAll(".more-ranking-row"));
-      let hasVisible = false;
-
-      rows.forEach(row => {
-        const username = (row.dataset.username || "").toLowerCase();
-        const role = (row.dataset.role || "").toLowerCase();
-        const rank = String(row.dataset.rankNumber || "");
-
-        const match = (q === "" || username.includes(q) || role.includes(q) || rank.includes(q));
-        row.style.display = match ? "flex" : "none";
-        if (match)
-          hasVisible = true;
-      });
-
-      let empty = document.getElementById("moreRankingEmpty");
-      if (!empty) {
-        empty = document.createElement("div");
-        empty.id = "moreRankingEmpty";
-        empty.className = "leaderboard-empty";
-        empty.textContent = "No matching ranked member found.";
-        empty.style.display = "none";
-        moreRankingList.insertAdjacentElement("afterend", empty);
-      }
-
-      empty.style.display = hasVisible ? "none" : "block";
-    }
-
-    if (moreRankingSort) {
-      moreRankingSort.addEventListener("change", () => {
-        sortMoreRanking(moreRankingSort.value);
-      });
-    }
-
-    if (moreRankingSearch) {
-      moreRankingSearch.addEventListener("input", () => {
-        filterMoreRankingRows();
-      });
-    }
-
-    renumberMoreRankingRows("desc");
-    filterMoreRankingRows();
 
     function setModalState(modalId, open) {
       const modal = document.getElementById(modalId);
