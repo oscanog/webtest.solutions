@@ -574,7 +574,7 @@ if ($activeOrg) {
     <title>BugCatcher - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=2')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=3')) ?>">
 </head>
 

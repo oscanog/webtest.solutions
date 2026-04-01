@@ -16,7 +16,7 @@ function bugcatcher_shell_start(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
         <title><?= htmlspecialchars($pageTitle) ?> | BugCatcher</title>
-        <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=2')) ?>">
+        <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=3')) ?>">
     </head>
     <body>
     <?php bugcatcher_render_sidebar(

@@ -86,6 +86,18 @@ async function firstIssueDetailHref(page: Page): Promise<string | null> {
   return page.locator("[data-issue-link]").first().getAttribute("data-issue-link");
 }
 
+async function injectSidebarOverflow(page: Page): Promise<void> {
+  await page.locator(".bc-nav").evaluate((nav) => {
+    for (let index = 0; index < 24; index += 1) {
+      const link = document.createElement("a");
+      link.href = "#overflow-" + index;
+      link.textContent = "Overflow Nav " + index;
+      link.dataset.testOverflow = "1";
+      nav.appendChild(link);
+    }
+  });
+}
+
 test.describe("legacy internal shell", () => {
   test.skip(cfg.isProduction, localOnlyMessage);
 
@@ -128,7 +140,7 @@ test.describe("legacy internal shell", () => {
       await expect(page.locator(".bc-nav a.active")).toHaveText(route.activeNav);
 
       const hrefs = await stylesheetHrefs(page);
-      expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=2"))).toBeTruthy();
+      expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=3"))).toBeTruthy();
       expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBe(route.expectsIssuesTheme);
     }
   });
@@ -141,7 +153,7 @@ test.describe("legacy internal shell", () => {
     await expect(page.locator(".bc-nav a.active")).toHaveText("Issues");
 
     let hrefs = await stylesheetHrefs(page);
-    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=2"))).toBeTruthy();
+    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=3"))).toBeTruthy();
     expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBeTruthy();
 
     await page.goto("zen/dashboard.php?page=issues&view=kanban&status=all");
@@ -154,8 +166,42 @@ test.describe("legacy internal shell", () => {
     await expect(page.getByRole("link", { name: "Back to Issues", exact: true })).toBeVisible();
 
     hrefs = await stylesheetHrefs(page);
-    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=2"))).toBeTruthy();
+    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=3"))).toBeTruthy();
     expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBeTruthy();
+  });
+
+  test("sidebar keeps the footer visible while nav scrolls independently", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await loginAs(page, localAccounts.superAdmin.email, localAccounts.superAdmin.password);
+    await page.goto("zen/dashboard.php?page=issues&view=kanban&status=all");
+
+    await injectSidebarOverflow(page);
+
+    const sidebarMetrics = await page.locator(".bc-sidebar").evaluate((sidebar) => {
+      const style = window.getComputedStyle(sidebar);
+      const nav = sidebar.querySelector(".bc-nav");
+      const footer = sidebar.querySelector(".bc-userbox");
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const footerRect = footer?.getBoundingClientRect();
+
+      return {
+        position: style.position,
+        height: Math.round(sidebarRect.height),
+        viewportHeight: window.innerHeight,
+        navScrollable: !!nav && nav.scrollHeight > nav.clientHeight,
+        navOverflowY: nav ? window.getComputedStyle(nav).overflowY : "",
+        footerVisible:
+          !!footerRect &&
+          footerRect.bottom <= sidebarRect.bottom + 1 &&
+          footerRect.top >= sidebarRect.top - 1,
+      };
+    });
+
+    expect(sidebarMetrics.position).toBe("sticky");
+    expect(sidebarMetrics.height).toBe(sidebarMetrics.viewportHeight);
+    expect(sidebarMetrics.navScrollable).toBeTruthy();
+    expect(["auto", "scroll"]).toContain(sidebarMetrics.navOverflowY);
+    expect(sidebarMetrics.footerVisible).toBeTruthy();
   });
 
   test("mobile drawer opens and closes from the shared sidebar controls", async ({ page }) => {
@@ -173,6 +219,29 @@ test.describe("legacy internal shell", () => {
     await toggle.click();
     await expect(sidebar).toHaveClass(/is-open/);
     await expect(backdrop).toHaveClass(/is-visible/);
+
+    await injectSidebarOverflow(page);
+
+    const mobileMetrics = await page.locator(".bc-sidebar").evaluate((sidebar) => {
+      const nav = sidebar.querySelector(".bc-nav");
+      const footer = sidebar.querySelector(".bc-userbox");
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const footerRect = footer?.getBoundingClientRect();
+
+      return {
+        height: Math.round(sidebarRect.height),
+        viewportHeight: window.innerHeight,
+        navScrollable: !!nav && nav.scrollHeight > nav.clientHeight,
+        footerVisible:
+          !!footerRect &&
+          footerRect.bottom <= sidebarRect.bottom + 1 &&
+          footerRect.top >= sidebarRect.top - 1,
+      };
+    });
+
+    expect(mobileMetrics.height).toBe(mobileMetrics.viewportHeight);
+    expect(mobileMetrics.navScrollable).toBeTruthy();
+    expect(mobileMetrics.footerVisible).toBeTruthy();
 
     await page.keyboard.press("Escape");
     await expect(sidebar).not.toHaveClass(/is-open/);
