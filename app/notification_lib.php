@@ -2,6 +2,17 @@
 
 declare(strict_types=1);
 
+function bugcatcher_notification_stmt_bind_params(mysqli_stmt $stmt, string $types, array $params): void
+{
+    $refs = [];
+    foreach ($params as $key => $value) {
+        $refs[$key] = &$params[$key];
+    }
+
+    array_unshift($refs, $types);
+    call_user_func_array([$stmt, 'bind_param'], $refs);
+}
+
 function bugcatcher_notification_normalize_path(string $path): string
 {
     $trimmed = trim($path);
@@ -125,7 +136,10 @@ function bugcatcher_notification_shape_for_user(mysqli $conn, int $userId, array
 {
     $shape = bugcatcher_notification_shape($row);
     $shape['link_path'] = bugcatcher_notification_resolve_link_path($conn, $userId, $row);
-    $shape['legacy_path'] = bugcatcher_notification_legacy_destination($shape['link_path']);
+    $shape['legacy_path'] = bugcatcher_notification_legacy_destination(
+        $shape['link_path'],
+        isset($shape['org_id']) ? (int) $shape['org_id'] : 0
+    );
     return $shape;
 }
 
@@ -134,47 +148,64 @@ function bugcatcher_notification_legacy_fallback_path(): string
     return bugcatcher_path('app/notifications.php');
 }
 
-function bugcatcher_notification_legacy_destination(string $linkPath): string
+function bugcatcher_notification_legacy_destination(string $linkPath, int $orgId = 0): string
 {
     $normalized = bugcatcher_notification_normalize_path($linkPath);
     $path = (string) (parse_url($normalized, PHP_URL_PATH) ?? '');
     $query = (string) (parse_url($normalized, PHP_URL_QUERY) ?? '');
+    $queryParts = [];
+    parse_str($query, $queryParts);
+    if ($orgId > 0 && !array_key_exists('org_id', $queryParts)) {
+        $queryParts['org_id'] = $orgId;
+    }
+
+    $suffix = $queryParts ? ('?' . http_build_query($queryParts)) : '';
 
     if ($path === '/app/notifications') {
         $target = bugcatcher_notification_legacy_fallback_path();
-        return $query !== '' ? $target . '?' . $query : $target;
+        return $target . $suffix;
     }
 
     if ($path === '/app/organizations') {
-        return bugcatcher_path('zen/organization.php');
+        return bugcatcher_path('zen/organization.php') . $suffix;
     }
 
     if ($path === '/app/projects') {
-        return bugcatcher_path('melvin/project_list.php');
+        return bugcatcher_path('melvin/project_list.php') . $suffix;
     }
 
     if ($path === '/app/checklist') {
-        return bugcatcher_path('melvin/checklist_list.php');
+        return bugcatcher_path('melvin/checklist_list.php') . $suffix;
     }
 
     if ($path === '/app/reports') {
-        return bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all');
+        $issueQuery = array_merge([
+            'page' => 'issues',
+            'view' => 'kanban',
+            'status' => 'all',
+        ], $queryParts);
+
+        return bugcatcher_path('zen/dashboard.php?' . http_build_query($issueQuery));
     }
 
     if (preg_match('#^/app/reports/(\d+)$#', $path, $matches)) {
-        return bugcatcher_path('zen/issue_detail.php?id=' . (int) $matches[1]);
+        $issueQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
+        return bugcatcher_path('zen/issue_detail.php?' . http_build_query($issueQuery));
     }
 
     if (preg_match('#^/app/projects/(\d+)$#', $path, $matches)) {
-        return bugcatcher_path('melvin/project_detail.php?id=' . (int) $matches[1]);
+        $projectQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
+        return bugcatcher_path('melvin/project_detail.php?' . http_build_query($projectQuery));
     }
 
     if (preg_match('#^/app/checklist/batches/(\d+)$#', $path, $matches)) {
-        return bugcatcher_path('melvin/checklist_batch.php?id=' . (int) $matches[1]);
+        $batchQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
+        return bugcatcher_path('melvin/checklist_batch.php?' . http_build_query($batchQuery));
     }
 
     if (preg_match('#^/app/checklist/items/(\d+)$#', $path, $matches)) {
-        return bugcatcher_path('melvin/checklist_item.php?id=' . (int) $matches[1]);
+        $itemQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
+        return bugcatcher_path('melvin/checklist_item.php?' . http_build_query($itemQuery));
     }
 
     return bugcatcher_notification_legacy_fallback_path();
@@ -455,7 +486,7 @@ function bugcatcher_notification_user_ids_for_org_roles(mysqli $conn, int $orgId
         FROM org_members
         WHERE org_id = ? AND role IN ({$placeholders})
     ");
-    bc_v1_stmt_bind($stmt, $types, $params);
+    bugcatcher_notification_stmt_bind_params($stmt, $types, $params);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();

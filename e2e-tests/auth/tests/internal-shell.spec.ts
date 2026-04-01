@@ -265,7 +265,7 @@ test.describe("legacy internal shell", () => {
       }
 
       const hrefs = await stylesheetHrefs(page);
-      expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=5"))).toBeTruthy();
+      expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=7"))).toBeTruthy();
       expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBe(route.expectsIssuesTheme);
       expect(hrefs.some((href) => href.includes("app/legacy_notifications.css?v=1"))).toBe(
         "expectsNotificationsTheme" in route ? Boolean(route.expectsNotificationsTheme) : false
@@ -283,7 +283,7 @@ test.describe("legacy internal shell", () => {
     await expect(page.locator(".bc-session")).not.toContainText("Back");
 
     let hrefs = await stylesheetHrefs(page);
-    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=5"))).toBeTruthy();
+    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=7"))).toBeTruthy();
     expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBeTruthy();
 
     await page.goto("zen/dashboard.php?page=issues&view=kanban&status=all");
@@ -300,7 +300,7 @@ test.describe("legacy internal shell", () => {
     await expect(page.locator(".bc-session")).not.toContainText("Back to Issues");
 
     hrefs = await stylesheetHrefs(page);
-    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=5"))).toBeTruthy();
+    expect(hrefs.some((href) => href.includes("app/legacy_theme.css?v=7"))).toBeTruthy();
     expect(hrefs.some((href) => href.includes("app/legacy_issues.css?v=2"))).toBeTruthy();
   });
 
@@ -369,6 +369,88 @@ test.describe("legacy internal shell", () => {
     await expect(page.locator(".bc-session")).not.toContainText("Open Checklist");
   });
 
+  test("checklist list adds the centralized items table without removing the batch cards", async ({
+    page,
+  }) => {
+    await loginAs(page, localAccounts.user.email, localAccounts.user.password);
+    await page.goto("melvin/checklist_list.php?project_id=1");
+
+    const checklistItemsPanel = page.locator("[data-checklist-table]");
+    await expectSharedSessionHeader(page, "Checklist");
+    await expect(checklistItemsPanel).toBeVisible();
+    await expect(checklistItemsPanel).toContainText("Checklist Items");
+    await expect(checklistItemsPanel).toContainText("Inline QA Tester actions enabled");
+    await expect(checklistItemsPanel.locator("thead")).toContainText("Batch");
+    await expect(checklistItemsPanel.locator("thead")).toContainText("Project");
+    await expect(checklistItemsPanel.locator("thead")).toContainText("Action");
+    await expect(checklistItemsPanel.locator("[data-checklist-assignment-form]").first()).toBeVisible();
+
+    const batchCardsBefore = await page.locator(".bc-list .bc-list-item").count();
+    expect(batchCardsBefore).toBeGreaterThan(0);
+    await expect(page.locator(".bc-panel").nth(1)).toContainText("Batch status");
+
+    await checklistItemsPanel.locator("#item_assignment").selectOption("unassigned");
+    await checklistItemsPanel.getByRole("button", { name: "Apply Filters", exact: true }).click();
+
+    await expect(page).toHaveURL(/project_id=1/);
+    await expect(page).toHaveURL(/item_assignment=unassigned/);
+    expect(await page.locator(".bc-list .bc-list-item").count()).toBe(batchCardsBefore);
+
+    await checklistItemsPanel.getByRole("link", { name: "Clear Filters", exact: true }).click();
+    await expect(page).toHaveURL(/project_id=1/);
+    await expect(page).not.toHaveURL(/item_assignment=unassigned/);
+    expect(await page.locator(".bc-list .bc-list-item").count()).toBe(batchCardsBefore);
+  });
+
+  test("checklist list stays read-only for non-manager roles", async ({ page }) => {
+    await loginAs(page, localAccounts.admin.email, localAccounts.admin.password);
+    await page.goto("melvin/checklist_list.php");
+
+    const checklistItemsPanel = page.locator("[data-checklist-table]");
+    await expectSharedSessionHeader(page, "Checklist");
+    await expect(checklistItemsPanel).toBeVisible();
+    await expect(checklistItemsPanel).toContainText("Read-only view");
+    await expect(checklistItemsPanel.locator("thead")).not.toContainText("Action");
+    await expect(checklistItemsPanel.locator("[data-checklist-assignment-form]")).toHaveCount(0);
+    await expect(page.locator(".bc-list .bc-list-item").first()).toBeVisible();
+  });
+
+  test("checklist assignment updates inline without reloading and shows toasts", async ({
+    page,
+  }) => {
+    await loginAs(page, localAccounts.user.email, localAccounts.user.password);
+    await page.goto("melvin/checklist_list.php");
+
+    const checklistItemsPanel = page.locator("[data-checklist-table]");
+    const row = checklistItemsPanel.locator("[data-checklist-row]").filter({ hasText: "Unassigned" }).first();
+    await expect(row).toBeVisible();
+
+    const select = row.locator('select[name="assigned_to_user_id"]');
+    const assigneeLabel = row.locator("[data-checklist-assignee-label]");
+    const originalUrl = page.url();
+    const originalValue = await select.inputValue();
+    const optionValues = await select.locator("option").evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        value: node.getAttribute("value") || "",
+        label: (node.textContent || "").trim(),
+      }))
+    );
+    const targetOption = optionValues.find((option) => option.value !== "" && option.value !== "0" && option.value !== originalValue);
+    expect(targetOption).toBeTruthy();
+
+    await select.selectOption(String(targetOption?.value));
+    await expect(assigneeLabel).toContainText(String(targetOption?.label));
+    await expect(page.locator(".bc-toast-root")).toContainText("Tester assigned");
+    await expect(page.locator(".bc-toast-root")).toContainText("QA Tester assignment updated.");
+    await expect(page).toHaveURL(originalUrl);
+
+    await row.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(assigneeLabel).toContainText("Unassigned");
+    await expect(page.locator(".bc-toast-root")).toContainText("Assignment cleared");
+    await expect(page.locator(".bc-toast-root")).toContainText("QA Tester assignment cleared.");
+    await expect(page).toHaveURL(originalUrl);
+  });
+
   test("dashboard leaderboard uses 10-item pagination instead of show more", async ({ page }) => {
     await loginAs(page, localAccounts.superAdmin.email, localAccounts.superAdmin.password);
 
@@ -422,7 +504,7 @@ test.describe("legacy internal shell", () => {
         .first();
       await dropdownLink.click();
 
-      await expect(page).toHaveURL(/\/zen\/issue_detail\.php\?id=\d+$/);
+      await expect(page).toHaveURL(/\/zen\/issue_detail\.php\?id=\d+&org_id=\d+$/);
       await expect(page.locator(".bc-notifications-badge").first()).toContainText("0");
 
       await page.goto("app/notifications.php");
@@ -476,7 +558,7 @@ test.describe("legacy internal shell", () => {
       await expect(projectNotification).toBeVisible();
       await projectNotification.click();
 
-      await expect(page).toHaveURL(new RegExp(`/melvin/project_detail\\.php\\?id=${legacyProjectId}$`));
+      await expect(page).toHaveURL(new RegExp(`/melvin/project_detail\\.php\\?id=${legacyProjectId}&org_id=\\d+$`));
     } finally {
       if (superAdminToken && originalProject) {
         await apiPatchProject(request, superAdminToken, legacyProjectId, {

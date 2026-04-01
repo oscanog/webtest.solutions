@@ -43,20 +43,34 @@ function checklist_api_require_methods(array $allowedMethods): string
 
 function checklist_api_json_body(bool $required = false): array
 {
-    $raw = file_get_contents('php://input');
-    if (!is_string($raw) || trim($raw) === '') {
+    static $loaded = false;
+    static $decodedBody = null;
+    static $isEmpty = false;
+
+    if (!$loaded) {
+        $raw = file_get_contents('php://input');
+        $loaded = true;
+        $isEmpty = !is_string($raw) || trim($raw) === '';
+
+        if (!$isEmpty) {
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                checklist_api_json_error(400, 'invalid_json', 'Request body must be valid JSON.');
+            }
+            $decodedBody = $decoded;
+        } else {
+            $decodedBody = [];
+        }
+    }
+
+    if ($isEmpty) {
         if ($required) {
             checklist_api_json_error(400, 'invalid_json', 'Request body must be valid JSON.');
         }
         return [];
     }
 
-    $decoded = json_decode($raw, true);
-    if (!is_array($decoded)) {
-        checklist_api_json_error(400, 'invalid_json', 'Request body must be valid JSON.');
-    }
-
-    return $decoded;
+    return is_array($decodedBody) ? $decodedBody : [];
 }
 
 function checklist_api_get_int(array $source, string $key, int $default = 0): int

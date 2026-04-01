@@ -31,11 +31,33 @@ function bugcatcher_fetch_org_membership(mysqli $conn, int $orgId, int $userId):
     return $row ?: null;
 }
 
+function bugcatcher_sync_active_org_from_request(mysqli $conn): int
+{
+    global $current_user_id;
+
+    $requestedOrgId = bugcatcher_get_int('org_id');
+    if ($requestedOrgId > 0 && (int) $current_user_id > 0) {
+        $membership = bugcatcher_fetch_org_membership($conn, $requestedOrgId, (int) $current_user_id);
+        if ($membership) {
+            $_SESSION['active_org_id'] = $requestedOrgId;
+
+            $stmt = $conn->prepare("UPDATE users SET last_active_org_id = ? WHERE id = ?");
+            $stmt->bind_param('ii', $requestedOrgId, $current_user_id);
+            $stmt->execute();
+            $stmt->close();
+
+            return $requestedOrgId;
+        }
+    }
+
+    return (int) ($_SESSION['active_org_id'] ?? 0);
+}
+
 function bugcatcher_require_org_context(mysqli $conn): array
 {
     global $current_user_id, $current_username, $current_role;
 
-    $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
+    $orgId = bugcatcher_sync_active_org_from_request($conn);
     if ($orgId <= 0) {
         header("Location: " . bugcatcher_path('zen/organization.php'));
         exit;

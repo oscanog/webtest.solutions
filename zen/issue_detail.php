@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/db.php';
 require_once dirname(__DIR__) . '/app/legacy_issue_helpers.php';
+require_once dirname(__DIR__) . '/app/auth_org.php';
 require_once dirname(__DIR__) . '/app/sidebar.php';
 
 function issue_badge_class(string $workflowStatus): string
@@ -29,7 +30,7 @@ function issue_badge_class(string $workflowStatus): string
     }
 }
 
-$orgId = (int) ($_SESSION['active_org_id'] ?? 0);
+$orgId = bugcatcher_sync_active_org_from_request($conn);
 if ($orgId <= 0) {
     header("Location: " . bugcatcher_path('zen/organization.php'));
     exit;
@@ -131,7 +132,7 @@ $metaRows = [
     <title>Issue Detail · BugCatcher</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=7')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 

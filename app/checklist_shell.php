@@ -17,7 +17,7 @@ function bugcatcher_shell_start(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
         <title><?= htmlspecialchars($pageTitle) ?> | BugCatcher</title>
-        <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=5')) ?>">
+        <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=7')) ?>">
         <?php foreach ($extraStyles as $href): ?>
             <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_href((string) $href)) ?>">
         <?php endforeach; ?>
@@ -48,6 +48,7 @@ function bugcatcher_shell_end(array $extraScripts = []): void
     ?>
         </section>
     </main>
+    <script src="<?= htmlspecialchars(bugcatcher_path('app/toast.js?v=1')) ?>"></script>
     <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
     <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
     <?php foreach ($extraScripts as $src): ?>

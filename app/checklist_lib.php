@@ -273,6 +273,214 @@ function bugcatcher_checklist_fetch_batches(
     return $rows;
 }
 
+function bugcatcher_checklist_fetch_batch_options(mysqli $conn, int $orgId): array
+{
+    bugcatcher_checklist_ensure_schema($conn);
+
+    $stmt = $conn->prepare("
+        SELECT cb.id,
+               cb.title,
+               cb.module_name,
+               cb.submodule_name,
+               cb.status,
+               p.name AS project_name
+        FROM checklist_batches cb
+        JOIN projects p ON p.id = cb.project_id
+        WHERE cb.org_id = ?
+        ORDER BY cb.created_at DESC, cb.id DESC
+    ");
+    $stmt->bind_param("i", $orgId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    $stmt->close();
+
+    return $rows;
+}
+
+function bugcatcher_checklist_normalize_item_filters(array $filters): array
+{
+    $assignment = (string) ($filters['assignment'] ?? '');
+    $issue = (string) ($filters['issue'] ?? '');
+
+    return [
+        'q' => trim((string) ($filters['q'] ?? '')),
+        'project_id' => max(0, (int) ($filters['project_id'] ?? 0)),
+        'batch_id' => max(0, (int) ($filters['batch_id'] ?? 0)),
+        'status' => in_array((string) ($filters['status'] ?? ''), BUGCATCHER_CHECKLIST_STATUSES, true)
+            ? (string) $filters['status']
+            : '',
+        'assignment' => in_array($assignment, ['', 'assigned', 'unassigned'], true)
+            ? $assignment
+            : '',
+        'priority' => in_array((string) ($filters['priority'] ?? ''), BUGCATCHER_CHECKLIST_PRIORITIES, true)
+            ? (string) $filters['priority']
+            : '',
+        'issue' => in_array($issue, ['', 'with_issue', 'without_issue'], true)
+            ? $issue
+            : '',
+    ];
+}
+
+function bugcatcher_checklist_build_org_item_filter_sql(array $filters, string &$types, array &$params): string
+{
+    $filters = bugcatcher_checklist_normalize_item_filters($filters);
+    $sql = '';
+
+    if ((int) $filters['project_id'] > 0) {
+        $sql .= " AND ci.project_id = ?";
+        $types .= "i";
+        $params[] = (int) $filters['project_id'];
+    }
+
+    if ((int) $filters['batch_id'] > 0) {
+        $sql .= " AND ci.batch_id = ?";
+        $types .= "i";
+        $params[] = (int) $filters['batch_id'];
+    }
+
+    if ((string) $filters['status'] !== '') {
+        $sql .= " AND ci.status = ?";
+        $types .= "s";
+        $params[] = (string) $filters['status'];
+    }
+
+    if ((string) $filters['priority'] !== '') {
+        $sql .= " AND ci.priority = ?";
+        $types .= "s";
+        $params[] = (string) $filters['priority'];
+    }
+
+    if ((string) $filters['assignment'] === 'assigned') {
+        $sql .= " AND ci.assigned_to_user_id IS NOT NULL AND ci.assigned_to_user_id > 0";
+    } elseif ((string) $filters['assignment'] === 'unassigned') {
+        $sql .= " AND (ci.assigned_to_user_id IS NULL OR ci.assigned_to_user_id = 0)";
+    }
+
+    if ((string) $filters['issue'] === 'with_issue') {
+        $sql .= " AND ci.issue_id IS NOT NULL AND ci.issue_id > 0";
+    } elseif ((string) $filters['issue'] === 'without_issue') {
+        $sql .= " AND (ci.issue_id IS NULL OR ci.issue_id = 0)";
+    }
+
+    if ((string) $filters['q'] !== '') {
+        $needle = '%' . (string) $filters['q'] . '%';
+        $sql .= "
+            AND (
+                ci.title LIKE ?
+                OR ci.full_title LIKE ?
+                OR ci.description LIKE ?
+                OR ci.required_role LIKE ?
+                OR assignee.username LIKE ?
+                OR cb.title LIKE ?
+                OR cb.module_name LIKE ?
+                OR cb.submodule_name LIKE ?
+                OR p.name LIKE ?
+            )
+        ";
+        $types .= "sssssssss";
+        array_push($params, $needle, $needle, $needle, $needle, $needle, $needle, $needle, $needle, $needle);
+    }
+
+    return $sql;
+}
+
+function bugcatcher_checklist_fetch_org_items_overview(
+    mysqli $conn,
+    int $orgId,
+    array $filters = [],
+    int $page = 1,
+    int $perPage = 25
+): array {
+    $filters = bugcatcher_checklist_normalize_item_filters($filters);
+    $page = max(1, $page);
+    $perPage = max(1, min(100, $perPage));
+
+    $baseFrom = "
+        FROM checklist_items ci
+        JOIN checklist_batches cb ON cb.id = ci.batch_id
+        JOIN projects p ON p.id = ci.project_id
+        LEFT JOIN users assignee ON assignee.id = ci.assigned_to_user_id
+        WHERE ci.org_id = ?
+    ";
+
+    $totalStmt = $conn->prepare("SELECT COUNT(*) AS total_count FROM checklist_items WHERE org_id = ?");
+    $totalStmt->bind_param("i", $orgId);
+    $totalStmt->execute();
+    $totalRow = $totalStmt->get_result()->fetch_assoc();
+    $totalStmt->close();
+    $totalCount = (int) ($totalRow['total_count'] ?? 0);
+
+    $countTypes = "i";
+    $countParams = [$orgId];
+    $filterSql = bugcatcher_checklist_build_org_item_filter_sql($filters, $countTypes, $countParams);
+
+    $summaryStmt = $conn->prepare("
+        SELECT COUNT(*) AS visible_total,
+               SUM(CASE WHEN ci.assigned_to_user_id IS NOT NULL AND ci.assigned_to_user_id > 0 THEN 1 ELSE 0 END) AS assigned_count,
+               SUM(CASE WHEN ci.assigned_to_user_id IS NULL OR ci.assigned_to_user_id = 0 THEN 1 ELSE 0 END) AS unassigned_count,
+               SUM(CASE WHEN ci.status = 'open' THEN 1 ELSE 0 END) AS open_count
+        {$baseFrom}
+        {$filterSql}
+    ");
+    bugcatcher_stmt_bind_params($summaryStmt, $countTypes, $countParams);
+    $summaryStmt->execute();
+    $summaryRow = $summaryStmt->get_result()->fetch_assoc() ?: [];
+    $summaryStmt->close();
+
+    $visibleTotal = (int) ($summaryRow['visible_total'] ?? 0);
+    $pageCount = max(1, (int) ceil($visibleTotal / $perPage));
+    if ($page > $pageCount) {
+        $page = $pageCount;
+    }
+    $offset = ($page - 1) * $perPage;
+
+    $listTypes = "i";
+    $listParams = [$orgId];
+    $listFilterSql = bugcatcher_checklist_build_org_item_filter_sql($filters, $listTypes, $listParams);
+    $listTypes .= "ii";
+    $listParams[] = $perPage;
+    $listParams[] = $offset;
+
+    $listStmt = $conn->prepare("
+        SELECT ci.*,
+               cb.title AS batch_title,
+               cb.status AS batch_status,
+               cb.module_name AS batch_module_name,
+               cb.submodule_name AS batch_submodule_name,
+               p.name AS project_name,
+               assignee.username AS assigned_to_name
+        {$baseFrom}
+        {$listFilterSql}
+        ORDER BY COALESCE(ci.updated_at, ci.created_at) DESC, ci.id DESC
+        LIMIT ? OFFSET ?
+    ");
+    bugcatcher_stmt_bind_params($listStmt, $listTypes, $listParams);
+    $listStmt->execute();
+    $result = $listStmt->get_result();
+    $items = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    $listStmt->close();
+
+    return [
+        'filters' => $filters,
+        'items' => $items,
+        'summary' => [
+            'total' => $totalCount,
+            'visible' => $visibleTotal,
+            'assigned' => (int) ($summaryRow['assigned_count'] ?? 0),
+            'unassigned' => (int) ($summaryRow['unassigned_count'] ?? 0),
+            'open' => (int) ($summaryRow['open_count'] ?? 0),
+        ],
+        'pagination' => [
+            'page' => $page,
+            'per_page' => $perPage,
+            'page_count' => $pageCount,
+            'total' => $visibleTotal,
+            'offset' => $offset,
+        ],
+    ];
+}
+
 function bugcatcher_checklist_fetch_batch(mysqli $conn, int $orgId, int $batchId): ?array
 {
     bugcatcher_checklist_ensure_schema($conn);
