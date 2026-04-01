@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/db.php';
 require_once dirname(__DIR__) . '/app/legacy_issue_helpers.php';
+require_once dirname(__DIR__) . '/app/sidebar.php';
 
 if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) {
   $_SESSION['org_error'] = "You haven't joined an organization to access this, please do it first.";
@@ -9,7 +10,7 @@ if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) 
 }
 
 // ---- Params ----
-$page = 'dashboard';
+$page = $_GET['page'] ?? 'dashboard';
 $view = $_GET['view'] ?? 'kanban';               // kanban | list
 $status = $_GET['status'] ?? 'all';              // all | open | closed
 $author = $_GET['author'] ?? '';                 // user id
@@ -34,6 +35,7 @@ $orgName = trim((string) ($rowOrg['name'] ?? 'Organization'));
 $isOrgOwner = ($orgOwnerId > 0 && $orgOwnerId === (int) $current_user_id);
 
 // normalize
+$page = ($page === 'issues') ? 'issues' : 'dashboard';
 $view = ($view === 'list') ? 'list' : 'kanban';
 $status = bugcatcher_issue_workflow_filter($status);
 $author = ($author !== '' && ctype_digit((string) $author)) ? (int) $author : '';
@@ -145,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     bugcatcher_issue_create_from_form($conn, $orgId, (int) $current_user_id, $_POST, $_FILES);
 
     header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-      'page' => 'dashboard',
+      'page' => 'issues',
       'view' => $view,
       'status' => $status,
       'author' => $author,
@@ -294,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 
   // Back to list (preserve filters)
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -392,7 +394,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
 
   // Back to list
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -477,7 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -541,7 +543,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -625,7 +627,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -709,7 +711,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -793,7 +795,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -850,7 +852,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -923,7 +925,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
     'author' => $author,
@@ -979,7 +981,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
   $stmt->close();
 
   header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => 'closed',
     'author' => $author,
@@ -1153,7 +1155,7 @@ $stmt->close();
 function issues_url($status, $author, $label, $view)
 {
   $qs = [
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status,
   ];
@@ -1168,7 +1170,7 @@ function issues_url($status, $author, $label, $view)
 function issues_url_clear($status, $view)
 {
   return bugcatcher_path("zen/dashboard.php?" . http_build_query([
-    'page' => 'dashboard',
+    'page' => 'issues',
     'view' => $view,
     'status' => $status
   ]));
@@ -1296,41 +1298,12 @@ unset($row);
   <title>BugCatcher</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=13')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=2')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 
 <body>
-
-  <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar"
-    aria-controls="zen-sidebar" aria-expanded="false" aria-label="Open navigation menu">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
-
-  <aside class="sidebar" id="zen-sidebar" data-drawer data-drawer-breakpoint="900">
-    <div class="logo">BugCatcher</div>
-    <nav class="nav">
-      <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>" class="<?= $page === 'dashboard' ? 'active' : '' ?>">Dashboard</a>
-      <?php if ($scope === 'admin'): ?>
-        <a href="#">Manage Users</a>
-        <a href="#">All Reports</a>
-      <?php endif; ?>
-      <a href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php')) ?>">Organization</a>
-      <a href="<?= htmlspecialchars(bugcatcher_path('melvin/project_list.php')) ?>">Projects</a>
-      <a href="<?= htmlspecialchars(bugcatcher_path('melvin/checklist_list.php')) ?>">Checklist</a>
-      <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
-        <a href="<?= htmlspecialchars(bugcatcher_path('super-admin/ai.php')) ?>">AI Admin</a>
-      <?php endif; ?>
-      <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="nav-logout">Logout</a>
-    </nav>
-    <div class="sidebar-userbox">
-      Logged in as<br>
-      <strong><?= htmlspecialchars($current_username) ?></strong><br>
-      <span class="sidebar-role">(<?= htmlspecialchars($current_role) ?>)</span>
-    </div>
-  </aside>
+  <?php bugcatcher_render_sidebar($page, $current_username, $current_role, (string) ($myOrgRole['role'] ?? ''), $orgName); ?>
 
   <main class="main">
 
@@ -1338,7 +1311,7 @@ unset($row);
       <div class="topbar">
         <h1>Dashboard</h1>
         <div class="topbar-right">
-          <span>Welcome, <?= htmlspecialchars($current_username) ?> (<?= htmlspecialchars($current_role) ?>)</span>
+          <span>Welcome, <?= htmlspecialchars($current_username) ?> (<?= htmlspecialchars((string) ($myOrgRole['role'] ?? $current_role)) ?>)</span>
           <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="topbar-logout">Logout</a>
         </div>
       </div>
@@ -1420,16 +1393,13 @@ unset($row);
         <?php endif; ?>
       </div>
 
-      <div class="topbar topbar-secondary">
-        <h1 class="topbar-subtitle">Issues</h1>
-      </div>
     <?php else: ?>
       <div class="topbar">
         <h1>Issues</h1>
       </div>
     <?php endif; ?>
 
-    <!-- Issues list (shown on dashboard too, but links go to page=issues) -->
+    <?php if ($page === 'issues'): ?>
     <div class="issue-container issue-board-shell">
       <div class="issues-hero">
         <div>
@@ -1966,7 +1936,7 @@ unset($row);
         </div>
 
         <?php if ($createIssueError !== ''): ?>
-          <div class="issue-form-alert">
+          <div class="bc-alert error">
             <?= htmlspecialchars($createIssueError) ?>
           </div>
         <?php endif; ?>
@@ -2038,6 +2008,7 @@ unset($row);
         </form>
       </div>
     </div>
+    <?php endif; ?>
   </main>
 
   <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=1')) ?>"></script>

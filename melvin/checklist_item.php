@@ -224,7 +224,7 @@ bugcatcher_shell_start('Checklist Item', 'checklist', $context, [
             <?php else: ?>
                 <p class="bc-meta">Current state: <?= bugcatcher_html(ucfirst(str_replace('_', ' ', $item['status']))) ?></p>
             <?php endif; ?>
-            <?php if ((int) $item['issue_id'] > 0): ?><div class="bc-alert warn">Linked issue #<?= (int) $item['issue_id'] ?> exists. It remains open even if this checklist item later passes. <a href="<?= bugcatcher_html(bugcatcher_path('zen/dashboard.php?page=dashboard&status=open')) ?>">Open dashboard</a></div><?php endif; ?>
+            <?php if ((int) $item['issue_id'] > 0): ?><div class="bc-alert warn">Linked issue #<?= (int) $item['issue_id'] ?> exists. It remains open even if this checklist item later passes. <a href="<?= bugcatcher_html(bugcatcher_path('zen/dashboard.php?page=issues&status=open')) ?>">Open issues</a></div><?php endif; ?>
         </div>
 
         <div class="bc-panel">

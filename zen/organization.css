@@ -1,440 +1,101 @@
-/* ---------- Base styles moved from <style> ---------- */
-
-.card {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 12px;
+.organization-grid {
+  align-items: start;
 }
 
-.row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+.organization-card {
+  min-height: 100%;
 }
 
-.col {
-  flex: 1;
-  min-width: 260px;
+.card-title,
+.transfer-title,
+.members-title {
+  margin: 0 0 0.5rem;
+  color: var(--text);
 }
 
-.inp {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #0b0f14;
-  color: #c9d1d9;
-  outline: none;
-}
-
-.btn {
-  display: inline-block;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #161b22;
-  color: #c9d1d9;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.btn-green {
-  background: #2da44e;
-  border-color: #2da44e;
-  color: #fff;
-  text-decoration: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-weight: 700;
-  display: inline-block;
-}
-
-.muted {
-  color: #8b949e;
-}
-
-.err {
-  color: #ff7b72;
-  margin-top: 10px;
-}
-
-.ok {
-  color: #3fb950;
-  margin-top: 10px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-}
-
-th,
-td {
-  border-bottom: 1px solid #30363d;
-  padding: 10px;
-  text-align: left;
-}
-
-th {
-  color: #8b949e;
-  font-weight: 600;
-}
-
-.gh-dd {
-  position: relative;
-}
-
-.gh-dd-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #161b22;
-  color: #c9d1d9;
-  cursor: pointer;
-  width: 100%;
-  justify-content: space-between;
-}
-
-.gh-dd-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 12px;
-  padding: 10px;
-  z-index: 50;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
-
-.gh-dd.open .gh-dd-menu {
-  display: block;
-}
-
-.gh-dd-header {
-  color: #8b949e;
-  font-weight: 600;
-  font-size: 12px;
-  margin-bottom: 8px;
-}
-
-.gh-dd-search input {
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #0b0f14;
-  color: #c9d1d9;
-  outline: none;
-  margin-bottom: 10px;
-}
-
-.gh-dd-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 10px;
-  color: #c9d1d9;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.gh-dd-item:hover {
-  background: #161b22;
-}
-
-.avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #30363d;
-  font-weight: 700;
-  font-size: 12px;
-  flex: 0 0 auto;
-}
-
-.txt {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-}
-
-.sub {
-  color: #8b949e;
-  font-size: 12px;
-}
-
-.caret {
-  opacity: 0.8;
-}
-
-.split {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-
-.split > .card {
-  flex: 1;
-  min-width: 260px;
-}
-
-/* Delete confirmation glow states */
-.inp-danger {
-  border-color: #cf222e !important;
-  box-shadow: 0 0 0 2px rgba(207, 34, 46, 0.4);
-}
-
-.inp-success {
-  border-color: #2da44e !important;
-  box-shadow: 0 0 0 2px rgba(45, 164, 78, 0.4);
-}
-
-/* ---------- Inline-style cleanup helpers ---------- */
-
-/* Sidebar */
-.nav-logout {
-  color: #ff7b72;
-}
-.sidebar-userbox {
-  margin-top: auto;
-  color: #8b949e;
-  font-size: 12px;
-}
-.sidebar-userbox-role {
-  text-transform: uppercase;
-  font-size: 10px;
-}
-
-/* Card headings */
-.card-title {
-  margin: 0 0 8px;
-  color: #fff;
-}
 .card-subtitle {
-  margin: 0 0 12px;
+  margin: 0 0 1rem;
 }
 
-/* Join card */
 .join-tip {
   margin-top: 10px;
   font-size: 12px;
 }
 
-/* Org switcher */
 .orgs-label {
   margin-bottom: 8px;
 }
+
 .orgs-links {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
+
 .org-link-active {
-  border-color: #2da44e !important;
+  border-color: var(--accent) !important;
+  background: rgba(9, 105, 218, 0.08) !important;
+  color: var(--accent) !important;
 }
 
-/* Active org summary */
 .org-name {
   margin: 0 0 6px;
-  color: #fff;
+  color: var(--text);
 }
 
-/* Danger (delete) card */
 .danger-card {
-  border-color: #cf222e !important;
   margin-top: 12px;
+  border-color: rgba(207, 34, 46, 0.28);
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
 }
+
 .danger-title {
   margin: 0 0 8px;
-  color: #ff7b72;
+  color: var(--danger);
 }
 
-/* Delete button state classes */
 .btn-danger-disabled {
-  border-color: #cf222e !important;
-  color: #ff7b72 !important;
-  opacity: 0.5;
+  border-color: var(--danger) !important;
+  color: var(--danger) !important;
+  opacity: 0.55;
   cursor: not-allowed;
 }
+
 .btn-danger-enabled {
   opacity: 1 !important;
   cursor: pointer !important;
+  background: var(--danger) !important;
+  color: #fff !important;
 }
 
-/* Delete confirm input */
 .delete-confirm-input {
   text-transform: uppercase;
 }
 
-/* Transfer ownership card */
-.transfer-title {
-  margin: 0 0 10px;
-  color: #fff;
+.inp-danger {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.2);
 }
 
-/* Members card title */
-.members-title {
-  margin: 0 0 10px;
-  color: #fff;
-}
-.row-white {
-  color: #fff;
+.inp-success {
+  border-color: #2da44e !important;
+  box-shadow: 0 0 0 3px rgba(45, 164, 78, 0.18);
 }
 
-/* Kick button */
-.btn-kick {
-  padding: 6px 10px;
-  border-color: #cf222e;
-  color: #ff7b72;
-}
-
-/* Utility */
-.mt-12 {
-  margin-top: 12px;
-}
-.m-0 {
-  margin: 0;
-}
-.w-100 {
-  width: 100%;
-}
-.no-border {
-  border: 0;
-}
-.bg-transparent {
-  background: transparent;
-}
-.opacity-70 {
-  opacity: 0.7;
-}
-.cursor-default {
-  cursor: default;
-}
-.dd-list-scroll {
-  max-height: 260px;
-  overflow: auto;
-}
-
-/* =========================
-   Role badges w/ CSS-only icons
-   ========================= */
-
-.role-badge {
-  display: inline-flex;
+.org-member-role-controls {
+  display: flex;
+  gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.org-inline-form {
+  display: flex;
   gap: 8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(0,0,0,.03);
-  color: #1f2328;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-/* Icon slot */
-.role-badge::before {
-  content: "👤";                 /* default */
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(0,0,0,.08);
-  border: 1px solid rgba(0,0,0,.10);
-  font-size: 12px;
-  line-height: 1;
-}
-
-/* Dark mode friendly */
-@media (prefers-color-scheme: dark) {
-  .role-badge {
-    border-color: rgba(255,255,255,.10);
-    background: rgba(255,255,255,.06);
-    color: rgba(255,255,255,.92);
-  }
-  .role-badge::before {
-    background: rgba(255,255,255,.12);
-    border-color: rgba(255,255,255,.14);
-  }
-}
-
-/* ===== Role colors (same idea as before) ===== */
-
-.role-owner {
-  background: rgba(245, 158, 11, .12);
-  border-color: rgba(245, 158, 11, .30);
-  color: #7c4a00;
-}
-.role-member {
-  background: rgba(148, 163, 184, .18);
-  border-color: rgba(148, 163, 184, .35);
-  color: #334155;
-}
-.role-project-manager {
-  background: rgba(59, 130, 246, .14);
-  border-color: rgba(59, 130, 246, .30);
-  color: #0b3a82;
-}
-.role-qa-lead {
-  background: rgba(168, 85, 247, .14);
-  border-color: rgba(168, 85, 247, .30);
-  color: #4b1b82;
-}
-.role-senior-developer {
-  background: rgba(34, 197, 94, .14);
-  border-color: rgba(34, 197, 94, .30);
-  color: #0f5a2a;
-}
-.role-junior-developer {
-  background: rgba(16, 185, 129, .12);
-  border-color: rgba(16, 185, 129, .28);
-  color: #0a4a35;
-}
-.role-senior-qa {
-  background: rgba(236, 72, 153, .14);
-  border-color: rgba(236, 72, 153, .30);
-  color: #7a1b4e;
-}
-.role-qa-tester {
-  background: rgba(244, 63, 94, .12);
-  border-color: rgba(244, 63, 94, .28);
-  color: #7a1023;
-}
-
-/* ===== Icons per role (CSS-only via content) ===== */
-
-.role-owner::before { content: "👑"; }
-.role-member::before { content: "👤"; }
-
-.role-project-manager::before { content: "📋"; } /* planning / board */
-.role-qa-lead::before { content: "🧪"; }         /* QA / testing */
-
-.role-senior-developer::before { content: "💻"; } /* dev */
-.role-junior-developer::before { content: "🧑‍💻"; } /* junior dev */
-
-.role-senior-qa::before { content: "🔍"; }       /* review / QA */
-.role-qa-tester::before { content: "✅"; }       /* checks */
-
-/* Optional: role dropdown nicer */
 .members-role-select {
   min-width: 190px;
   padding: 8px 10px;
@@ -445,33 +106,149 @@ th {
   overflow-x: auto;
 }
 
-@media (max-width: 900px) {
-  .main {
-    padding: 4.4rem 1rem 1.2rem;
-    gap: 1rem;
-  }
+.organization-members-table td {
+  vertical-align: middle;
+}
 
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.6rem;
-  }
+.btn-kick {
+  padding: 6px 10px;
+  border-color: var(--danger);
+  color: var(--danger);
+}
 
-  .topbar .btn {
-    width: 100%;
-    text-align: center;
-  }
+.btn-kick:hover {
+  background: var(--danger-soft);
+}
 
-  .split {
-    flex-direction: column;
-  }
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.03);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
 
-  .split > .card {
-    min-width: 100%;
-  }
+.role-badge .dot {
+  display: none;
+}
 
+.role-badge::before {
+  content: "USR";
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.role-owner {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #7c4a00;
+}
+
+.role-member {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: #334155;
+}
+
+.role-project-manager {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #0b3a82;
+}
+
+.role-qa-lead {
+  background: rgba(168, 85, 247, 0.14);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #5b21b6;
+}
+
+.role-senior-developer {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #166534;
+}
+
+.role-junior-developer {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #065f46;
+}
+
+.role-senior-qa {
+  background: rgba(236, 72, 153, 0.14);
+  border-color: rgba(236, 72, 153, 0.3);
+  color: #9d174d;
+}
+
+.role-qa-tester {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.28);
+  color: #9f1239;
+}
+
+.role-owner::before {
+  content: "OWN";
+}
+
+.role-member::before {
+  content: "MEM";
+}
+
+.role-project-manager::before {
+  content: "PM";
+}
+
+.role-qa-lead::before {
+  content: "QAL";
+}
+
+.role-senior-developer::before {
+  content: "SD";
+}
+
+.role-junior-developer::before {
+  content: "JD";
+}
+
+.role-senior-qa::before {
+  content: "SQA";
+}
+
+.role-qa-tester::before {
+  content: "QAT";
+}
+
+@media (max-width: 960px) {
   .orgs-links .btn {
     width: 100%;
+  }
+
+  .org-member-role-controls {
+    align-items: flex-start;
+  }
+
+  .org-inline-form {
+    width: 100%;
+  }
+
+  .members-role-select {
+    width: 100%;
+    min-width: 0;
   }
 
   .org-members-table-wrap table {
@@ -480,15 +257,7 @@ th {
 }
 
 @media (max-width: 520px) {
-  .main {
-    padding: 4rem 0.75rem 1rem;
-  }
-
-  .card {
-    padding: 12px;
-  }
-
-  .members-role-select {
-    min-width: 170px;
+  .role-badge {
+    max-width: 100%;
   }
 }

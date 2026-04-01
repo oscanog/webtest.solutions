@@ -2,21 +2,70 @@
 
 require_once __DIR__ . '/bootstrap.php';
 
+function bugcatcher_sidebar_definitions(): array
+{
+    return [
+        [
+            'key' => 'dashboard',
+            'label' => 'Dashboard',
+            'href' => bugcatcher_path('zen/dashboard.php?page=dashboard'),
+            'roles' => null,
+        ],
+        [
+            'key' => 'issues',
+            'label' => 'Issues',
+            'href' => bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all'),
+            'roles' => null,
+        ],
+        [
+            'key' => 'organization',
+            'label' => 'Organization',
+            'href' => bugcatcher_path('zen/organization.php'),
+            'roles' => null,
+        ],
+        [
+            'key' => 'projects',
+            'label' => 'Projects',
+            'href' => bugcatcher_path('melvin/project_list.php'),
+            'roles' => null,
+        ],
+        [
+            'key' => 'checklist',
+            'label' => 'Checklist',
+            'href' => bugcatcher_path('melvin/checklist_list.php'),
+            'roles' => null,
+        ],
+        [
+            'key' => 'super_admin',
+            'label' => 'AI Admin',
+            'href' => bugcatcher_path('super-admin/ai.php'),
+            'roles' => ['super_admin'],
+        ],
+    ];
+}
+
+function bugcatcher_sidebar_items(string $currentRole): array
+{
+    $normalizedRole = bugcatcher_normalize_system_role($currentRole);
+
+    return array_values(array_filter(
+        bugcatcher_sidebar_definitions(),
+        static function (array $item) use ($normalizedRole): bool {
+            $roles = $item['roles'] ?? null;
+            return $roles === null || in_array($normalizedRole, $roles, true);
+        }
+    ));
+}
+
 function bugcatcher_sidebar_href(string $activePage): string
 {
-    switch ($activePage) {
-        case 'super_admin':
-            return bugcatcher_path('super-admin/ai.php');
-        case 'projects':
-            return bugcatcher_path('melvin/project_list.php');
-        case 'checklist':
-            return bugcatcher_path('melvin/checklist_list.php');
-        case 'organization':
-            return bugcatcher_path('zen/organization.php');
-        case 'dashboard':
-        default:
-            return bugcatcher_path('zen/dashboard.php?page=dashboard');
+    foreach (bugcatcher_sidebar_definitions() as $item) {
+        if (($item['key'] ?? '') === $activePage) {
+            return (string) ($item['href'] ?? bugcatcher_path('zen/dashboard.php?page=dashboard'));
+        }
     }
+
+    return bugcatcher_path('zen/dashboard.php?page=dashboard');
 }
 
 function bugcatcher_render_sidebar(
@@ -27,15 +76,7 @@ function bugcatcher_render_sidebar(
     ?string $orgName = null
 ): void {
     $sidebarId = 'bc-sidebar';
-    $nav = [
-        'dashboard' => ['label' => 'Dashboard', 'href' => bugcatcher_path('zen/dashboard.php?page=dashboard')],
-        'organization' => ['label' => 'Organization', 'href' => bugcatcher_path('zen/organization.php')],
-        'projects' => ['label' => 'Projects', 'href' => bugcatcher_path('melvin/project_list.php')],
-        'checklist' => ['label' => 'Checklist', 'href' => bugcatcher_path('melvin/checklist_list.php')],
-    ];
-    if (bugcatcher_is_super_admin_role($currentRole)) {
-        $nav['super_admin'] = ['label' => 'AI Admin', 'href' => bugcatcher_path('super-admin/ai.php')];
-    }
+    $nav = bugcatcher_sidebar_items($currentRole);
     ?>
     <button
         type="button"
@@ -59,9 +100,10 @@ function bugcatcher_render_sidebar(
     >
         <div class="bc-logo">BugCatcher</div>
         <nav class="bc-nav">
-            <?php foreach ($nav as $key => $item): ?>
-                <a href="<?= htmlspecialchars($item['href']) ?>" class="<?= $activePage === $key ? 'active' : '' ?>">
-                    <?= htmlspecialchars($item['label']) ?>
+            <?php foreach ($nav as $item): ?>
+                <?php $key = (string) ($item['key'] ?? ''); ?>
+                <a href="<?= htmlspecialchars((string) ($item['href'] ?? '#')) ?>" class="<?= $activePage === $key ? 'active' : '' ?>">
+                    <?= htmlspecialchars((string) ($item['label'] ?? 'Page')) ?>
                 </a>
             <?php endforeach; ?>
             <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="logout">Logout</a>

@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/db.php';
 require_once dirname(__DIR__) . '/app/legacy_issue_helpers.php';
+require_once dirname(__DIR__) . '/app/sidebar.php';
 
 function issue_badge_class(string $workflowStatus): string
 {
@@ -130,33 +131,12 @@ $metaRows = [
     <title>Issue Detail · BugCatcher</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=13')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=2')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
 </head>
 
 <body>
-    <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar-detail"
-        aria-controls="zen-sidebar-detail" aria-expanded="false" aria-label="Open navigation menu">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
-    <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
-
-    <aside class="sidebar" id="zen-sidebar-detail" data-drawer data-drawer-breakpoint="900">
-        <div class="logo">BugCatcher</div>
-        <nav class="nav">
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard&view=kanban&status=all')) ?>">Dashboard</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php')) ?>">Organization</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/project_list.php')) ?>">Projects</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/checklist_list.php')) ?>">Checklist</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="nav-logout">Logout</a>
-        </nav>
-        <div class="sidebar-userbox">
-            Logged in as<br>
-            <strong><?= htmlspecialchars($current_username) ?></strong><br>
-            <span class="sidebar-role">(<?= htmlspecialchars($current_role) ?>)</span>
-        </div>
-    </aside>
+    <?php bugcatcher_render_sidebar('issues', $current_username, $current_role, (string) ($membership['role'] ?? ''), null); ?>
 
     <main class="main">
         <div class="topbar">
@@ -164,7 +144,7 @@ $metaRows = [
                 <h1>Issue #<?= (int) $issueId ?></h1>
                 <span><?= htmlspecialchars((string) $issue['title']) ?></span>
             </div>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard&view=kanban&status=all')) ?>"
+            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all')) ?>"
                 class="btn-green">Back to Issues</a>
         </div>
 

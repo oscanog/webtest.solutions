@@ -178,9 +178,9 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         <input type="hidden" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'BugCatcher AI')) ?>">
         <input type="hidden" name="system_prompt" value="<?= bugcatcher_html((string) ($runtime['system_prompt'] ?? '')) ?>">
         <?php foreach ($personas as $persona): ?>
-            <div class="bc-field full" style="padding: 1rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt);">
-                <h3 style="margin-top: 0; margin-bottom: 0.35rem;"><?= bugcatcher_html((string) ($persona['display_name'] ?? 'Persona')) ?></h3>
-                <p class="bc-meta" style="margin-top: 0;">Key: <?= bugcatcher_html((string) ($persona['persona_key'] ?? '')) ?></p>
+            <div class="bc-field full bc-subpanel">
+                <h3 class="m-0"><?= bugcatcher_html((string) ($persona['display_name'] ?? 'Persona')) ?></h3>
+                <p class="bc-meta m-0">Key: <?= bugcatcher_html((string) ($persona['persona_key'] ?? '')) ?></p>
                 <div class="bc-form-grid">
                     <div class="bc-field">
                         <input type="hidden" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][is_enabled]" value="0">

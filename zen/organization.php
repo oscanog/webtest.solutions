@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/db.php';
+require_once dirname(__DIR__) . '/app/sidebar.php';
 
 $page = 'organization';
 
@@ -573,42 +574,12 @@ if ($activeOrg) {
     <title>BugCatcher - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.css?v=5')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=1')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=2')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=3')) ?>">
 </head>
 
 <body>
-    <button type="button" class="mobile-nav-toggle" data-drawer-toggle data-drawer-target="zen-sidebar-org"
-        aria-controls="zen-sidebar-org" aria-expanded="false" aria-label="Open navigation menu">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
-    <div class="mobile-nav-backdrop" data-drawer-backdrop hidden></div>
-
-    <aside class="sidebar" id="zen-sidebar-org" data-drawer data-drawer-breakpoint="900">
-        <div class="logo">BugCatcher</div>
-        <nav class="nav">
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/dashboard.php?page=dashboard')) ?>">Dashboard</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php')) ?>" class="active">Organization</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/project_list.php')) ?>">Projects</a>
-            <a href="<?= htmlspecialchars(bugcatcher_path('melvin/checklist_list.php')) ?>">Checklist</a>
-            <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
-                <a href="#">Manage Users</a>
-                <a href="#">All Reports</a>
-            <?php endif; ?>
-            <?php if (bugcatcher_is_super_admin_role($current_role)): ?>
-                <a href="<?= htmlspecialchars(bugcatcher_path('super-admin/ai.php')) ?>">AI Admin</a>
-            <?php endif; ?>
-            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="nav-logout">Logout</a>
-        </nav>
-
-        <div class="sidebar-userbox">
-            Logged in as<br>
-            <strong><?= h($current_username) ?></strong><br>
-            <span class="sidebar-userbox-role">(<?= h($current_role) ?>)</span>
-        </div>
-    </aside>
+    <?php bugcatcher_render_sidebar('organization', $current_username, $current_role, (string) ($activeOrg['my_role'] ?? ''), (string) ($activeOrg['name'] ?? '')); ?>
 
     <main class="main">
         <div class="topbar">
@@ -617,15 +588,15 @@ if ($activeOrg) {
         </div>
 
         <?php if ($error): ?>
-            <div class="err"><?= h($error) ?></div>
+            <div class="bc-alert error"><?= h($error) ?></div>
         <?php endif; ?>
         <?php if ($success): ?>
-            <div class="ok"><?= h($success) ?></div>
+            <div class="bc-alert success"><?= h($success) ?></div>
         <?php endif; ?>
 
-        <div class="split">
+        <div class="bc-grid cols-2 organization-grid">
             <!-- Create -->
-            <div class="card">
+            <div class="bc-card organization-card">
                 <h2 class="card-title">Create an Organization</h2>
                 <p class="muted card-subtitle">
                     You will become the owner and members can join by selecting your organization.
@@ -645,7 +616,7 @@ if ($activeOrg) {
             </div>
 
             <!-- Join -->
-            <div class="card">
+            <div class="bc-card organization-card">
                 <h2 class="card-title">Join an Organization</h2>
                 <p class="muted card-subtitle">Search and join from the list.</p>
 
@@ -705,7 +676,7 @@ if ($activeOrg) {
         <?php if ($isInOrg): ?>
 
             <?php if (!empty($userOrgs)): ?>
-                <div class="card">
+                <div class="bc-card">
                     <div class="muted orgs-label">Your Organizations</div>
                     <div class="orgs-links">
                         <?php foreach ($userOrgs as $o): ?>
@@ -718,7 +689,7 @@ if ($activeOrg) {
                 </div>
             <?php endif; ?>
 
-            <div class="card">
+            <div class="bc-card">
                 <h2 class="org-name"><?= h($activeOrg['name']) ?></h2>
                 <div class="muted">
                     Owner: <strong><?= h($owner['username'] ?? 'Unknown') ?></strong>
@@ -734,7 +705,7 @@ if ($activeOrg) {
                 </form>
 
                 <?php if ($isOwner): ?>
-                    <div class="card danger-card">
+                    <div class="bc-card danger-card">
                         <h3 class="danger-title">Delete Organization</h3>
                         <p class="muted card-subtitle">
                             This action cannot be undone. This will permanently delete the organization and remove all members.
@@ -761,7 +732,7 @@ if ($activeOrg) {
             </div>
 
             <?php if ($isOwner && !empty($members)): ?>
-                <div class="card">
+                <div class="bc-card">
                     <h3 class="transfer-title">Transfer Ownership</h3>
                     <p class="muted card-subtitle">Select a member to become the new owner.</p>
 
@@ -789,10 +760,10 @@ if ($activeOrg) {
                 </div>
             <?php endif; ?>
 
-            <div class="card">
+            <div class="bc-card">
                 <h3 class="members-title">Members</h3>
-                <div class="org-members-table-wrap">
-                <table>
+                <div class="bc-table-wrap org-members-table-wrap">
+                <table class="bc-table organization-members-table">
                     <thead>
                         <tr>
                             <th>User</th>
@@ -805,17 +776,17 @@ if ($activeOrg) {
                     </thead>
                     <tbody>
                         <?php foreach ($members as $m): ?>
-                            <tr class="row-white">
+                            <tr>
                                 <td><?= h($m['username']) ?></td>
                                 <td>
                                     <?php if ($isOwner && $m['role'] !== 'owner' && (int) $m['id'] !== (int) $current_user_id): ?>
-                                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                        <div class="org-member-role-controls">
                                             <span class="role-badge <?= h(role_class($m['role'])) ?>">
                                                 <span class="dot"></span>
                                                 <?= h($m['role']) ?>
                                             </span>
 
-                                            <form method="POST" class="m-0" style="display:flex; gap:8px; align-items:center;">
+                                            <form method="POST" class="m-0 org-inline-form">
                                                 <input type="hidden" name="action" value="change_role">
                                                 <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
                                                 <input type="hidden" name="target_user_id" value="<?= (int) $m['id'] ?>">
