@@ -13,7 +13,7 @@ if ($method === 'GET') {
     $attachments = bugcatcher_checklist_fetch_item_attachments($conn, $itemId);
     $response = [
         'item' => $item,
-        'attachments' => $attachments,
+        'attachments' => bugcatcher_checklist_shape_attachments($attachments),
     ];
     if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
         $response['assignable_testers'] = array_map(static function (array $member): array {

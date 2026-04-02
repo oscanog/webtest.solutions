@@ -12,7 +12,7 @@ if ($method === 'GET') {
     $response = [
         'batch' => $batch,
         'items' => $items,
-        'attachments' => $attachments,
+        'attachments' => bugcatcher_checklist_shape_attachments($attachments),
     ];
     if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
         $response['assignable_qa_leads'] = array_map(static function (array $member): array {

@@ -55,5 +55,5 @@ $attachments = bugcatcher_checklist_fetch_item_attachments($conn, $itemId);
 checklist_api_json_response(200, [
     'uploaded_count' => $uploadedCount,
     'failed' => $failed,
-    'attachments' => $attachments,
+    'attachments' => bugcatcher_checklist_shape_attachments($attachments),
 ]);

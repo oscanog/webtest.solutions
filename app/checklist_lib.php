@@ -60,6 +60,72 @@ function bugcatcher_checklist_require_manager(array $context): void
     }
 }
 
+function bugcatcher_checklist_is_project_manager_role(string $orgRole): bool
+{
+    return $orgRole === 'Project Manager';
+}
+
+function bugcatcher_checklist_can_transition_status(string $currentStatus, string $nextStatus, string $orgRole): bool
+{
+    if ($nextStatus === $currentStatus) {
+        return true;
+    }
+
+    if (bugcatcher_checklist_is_project_manager_role($orgRole)) {
+        return in_array($nextStatus, BUGCATCHER_CHECKLIST_STATUSES, true);
+    }
+
+    if (
+        in_array($currentStatus, ['open', 'in_progress'], true) &&
+        in_array($nextStatus, ['in_progress', 'passed', 'failed', 'blocked'], true)
+    ) {
+        return true;
+    }
+
+    if (
+        in_array($currentStatus, ['failed', 'blocked'], true) &&
+        in_array($nextStatus, ['in_progress', 'passed'], true) &&
+        bugcatcher_checklist_is_manager_role($orgRole)
+    ) {
+        return true;
+    }
+
+    return false;
+}
+
+function bugcatcher_checklist_resolve_status_timestamps(string $nextStatus, ?string $startedAt, ?string $completedAt): array
+{
+    $normalizedStartedAt = trim((string) $startedAt);
+    $normalizedCompletedAt = trim((string) $completedAt);
+    $timestamp = date('Y-m-d H:i:s');
+
+    if ($nextStatus === 'open') {
+        return [
+            'started_at' => null,
+            'completed_at' => null,
+        ];
+    }
+
+    if ($nextStatus === 'in_progress') {
+        return [
+            'started_at' => $normalizedStartedAt !== '' ? $normalizedStartedAt : $timestamp,
+            'completed_at' => null,
+        ];
+    }
+
+    if (in_array($nextStatus, ['passed', 'failed', 'blocked'], true)) {
+        return [
+            'started_at' => $normalizedStartedAt !== '' ? $normalizedStartedAt : null,
+            'completed_at' => $timestamp,
+        ];
+    }
+
+    return [
+        'started_at' => $normalizedStartedAt !== '' ? $normalizedStartedAt : null,
+        'completed_at' => $normalizedCompletedAt !== '' ? $normalizedCompletedAt : null,
+    ];
+}
+
 function bugcatcher_checklist_normalize_enum(string $value, array $allowed, string $default): string
 {
     return in_array($value, $allowed, true) ? $value : $default;
@@ -620,6 +686,41 @@ function bugcatcher_checklist_fetch_item_attachments(mysqli $conn, int $itemId):
     $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     $stmt->close();
     return $rows;
+}
+
+function bugcatcher_attachment_public_url(string $storedPath): string
+{
+    $storedPath = trim(str_replace('\\', '/', $storedPath));
+    if ($storedPath === '') {
+        return '';
+    }
+
+    if (preg_match('#^(?:[a-z][a-z0-9+.-]*:)?//#i', $storedPath)) {
+        return $storedPath;
+    }
+
+    $normalizedPath = ltrim($storedPath, '/');
+    $baseUrl = bugcatcher_base_url();
+    if ($baseUrl !== '') {
+        return $baseUrl . '/' . $normalizedPath;
+    }
+
+    return '/' . $normalizedPath;
+}
+
+function bugcatcher_checklist_shape_attachment(array $attachment): array
+{
+    $shaped = $attachment;
+    $shaped['file_url'] = bugcatcher_attachment_public_url((string) ($attachment['file_path'] ?? ''));
+    return $shaped;
+}
+
+function bugcatcher_checklist_shape_attachments(array $attachments): array
+{
+    return array_map(
+        static fn(array $attachment): array => bugcatcher_checklist_shape_attachment($attachment),
+        $attachments
+    );
 }
 
 function bugcatcher_checklist_fetch_attachment(mysqli $conn, int $attachmentId, int $itemId): ?array

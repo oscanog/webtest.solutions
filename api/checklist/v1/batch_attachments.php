@@ -49,5 +49,5 @@ $attachments = bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId);
 checklist_api_json_response(200, [
     'uploaded_count' => $uploadedCount,
     'failed' => $failed,
-    'attachments' => $attachments,
+    'attachments' => bugcatcher_checklist_shape_attachments($attachments),
 ]);

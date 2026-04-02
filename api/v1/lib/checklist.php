@@ -146,7 +146,7 @@ function bc_v1_checklist_batch_get(mysqli $conn, array $params): void
         'org' => $org,
         'batch' => $batch,
         'items' => $items,
-        'attachments' => bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId),
+        'attachments' => bugcatcher_checklist_shape_attachments(bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId)),
         'assignable_qa_leads' => bugcatcher_checklist_is_manager_role((string) $org['org_role'])
             ? array_map(static function (array $member): array {
                 return [
@@ -201,7 +201,7 @@ function bc_v1_checklist_item_get(mysqli $conn, array $params): void
     $response = [
         'org' => $org,
         'item' => $item,
-        'attachments' => bugcatcher_checklist_fetch_item_attachments($conn, $itemId),
+        'attachments' => bugcatcher_checklist_shape_attachments(bugcatcher_checklist_fetch_item_attachments($conn, $itemId)),
     ];
     if (bugcatcher_checklist_is_manager_role((string) $org['org_role'])) {
         $response['assignable_testers'] = array_map(static function (array $member): array {
