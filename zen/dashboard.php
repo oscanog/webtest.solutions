@@ -1327,8 +1327,9 @@ unset($row);
   <title>BugCatcher</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=7')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
+  <?php bugcatcher_render_theme_bootstrap(); ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">
 </head>
 
 <body>
@@ -1450,7 +1451,7 @@ unset($row);
               class="view-switcher-link <?= $view === 'list' ? 'active' : '' ?>">List</a>
           </div>
 
-          <button type="button" class="btn-green issue-create-trigger" data-modal-open="createIssueModal" <?= $projectOptions ? '' : 'disabled' ?>>
+          <button type="button" class="btn-green bc-btn bc-btn--primary issue-create-trigger" data-modal-open="createIssueModal" <?= $projectOptions ? '' : 'disabled' ?>>
             Create Issue
           </button>
         </div>
@@ -1461,25 +1462,25 @@ unset($row);
 
           <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
             <!-- Author dropdown -->
-            <div class="gh-dd" data-dd="author">
-              <button type="button" class="gh-dd-btn">
+            <div class="gh-dd bc-dropdown" data-dd="author" data-dropdown>
+              <button type="button" class="gh-dd-btn bc-dropdown__trigger" data-dropdown-trigger aria-expanded="false">
                 Author <span class="caret">▾</span>
               </button>
 
-              <div class="gh-dd-menu">
+              <div class="gh-dd-menu bc-dropdown__menu">
                 <div class="gh-dd-header">Filter by author</div>
-                <div class="gh-dd-search">
-                  <input type="text" placeholder="Filter authors" data-search="author">
+                <div class="gh-dd-search bc-dropdown__search">
+                  <input type="text" placeholder="Filter authors" data-search="author" data-dropdown-search>
                 </div>
 
-                <div class="gh-dd-list" data-list="author">
-                  <a class="gh-dd-item" href="<?= issues_url($status, '', $label, $view) ?>">
+                <div class="gh-dd-list bc-dropdown__list" data-list="author">
+                  <a class="gh-dd-item bc-dropdown__item" data-static-option="true" href="<?= issues_url($status, '', $label, $view) ?>">
                     <span class="chk <?= ($author === '' ? 'on' : '') ?>"></span>
                     <span class="txt">Any author</span>
                   </a>
 
                   <?php foreach ($usersArr as $u): ?>
-                    <a class="gh-dd-item" data-text="<?= htmlspecialchars(strtolower($u['username'])) ?>"
+                    <a class="gh-dd-item bc-dropdown__item" data-text="<?= htmlspecialchars(strtolower($u['username'])) ?>"
                       href="<?= issues_url($status, (int) $u['id'], $label, $view) ?>">
                       <span class="chk <?= ((string) $author === (string) $u['id'] ? 'on' : '') ?>"></span>
                       <span class="avatar"><?= strtoupper(substr($u['username'], 0, 1)) ?></span>
@@ -1492,19 +1493,19 @@ unset($row);
           <?php endif; ?>
 
           <!-- Labels dropdown -->
-          <div class="gh-dd" data-dd="labels">
-            <button type="button" class="gh-dd-btn">
+          <div class="gh-dd bc-dropdown" data-dd="labels" data-dropdown>
+            <button type="button" class="gh-dd-btn bc-dropdown__trigger" data-dropdown-trigger aria-expanded="false">
               Labels <span class="caret">▾</span>
             </button>
 
-            <div class="gh-dd-menu">
+            <div class="gh-dd-menu bc-dropdown__menu">
               <div class="gh-dd-header">Filter by label</div>
-              <div class="gh-dd-search">
-                <input type="text" placeholder="Filter labels" data-search="labels">
+              <div class="gh-dd-search bc-dropdown__search">
+                <input type="text" placeholder="Filter labels" data-search="labels" data-dropdown-search>
               </div>
 
-              <div class="gh-dd-list" data-list="labels">
-                <a class="gh-dd-item" href="<?= issues_url($status, $author, '', $view) ?>">
+              <div class="gh-dd-list bc-dropdown__list" data-list="labels">
+                <a class="gh-dd-item bc-dropdown__item" data-static-option="true" href="<?= issues_url($status, $author, '', $view) ?>">
                   <span class="chk <?= ($label === '' ? 'on' : '') ?>"></span>
                   <span class="txt">No labels</span>
                 </a>
@@ -1513,7 +1514,7 @@ unset($row);
                   <?php
                   $t = strtolower(($l['name'] ?? '') . ' ' . ($l['description'] ?? ''));
                   ?>
-                  <a class="gh-dd-item" data-text="<?= htmlspecialchars($t) ?>"
+                  <a class="gh-dd-item bc-dropdown__item" data-text="<?= htmlspecialchars($t) ?>"
                     href="<?= issues_url($status, $author, (int) $l['id'], $view) ?>">
                     <span class="chk <?= ((string) $label === (string) $l['id'] ? 'on' : '') ?>"></span>
                     <span class="dot" style="background:<?= htmlspecialchars($l['color'] ?? '#bbb') ?>"></span>
@@ -1530,7 +1531,7 @@ unset($row);
           </div>
 
           <!-- Clear filters -->
-          <button type="button" class="gh-clear-btn" onclick="window.location.href='<?= issues_url_clear($status, $view) ?>'">
+          <button type="button" class="gh-clear-btn bc-btn bc-btn--ghost" onclick="window.location.href='<?= issues_url_clear($status, $view) ?>'">
             Clear Filters
           </button>
 
@@ -1716,7 +1717,7 @@ unset($row);
                   <input type="hidden" name="org_id" value="<?= (int) $orgId ?>">
                   <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
-                  <button class="btn btn-delete" type="submit">DELETE</button>
+                  <button class="btn btn-delete bc-btn bc-btn--danger" type="submit">DELETE</button>
                 </form>
               <?php endif; ?>
 
@@ -1729,7 +1730,7 @@ unset($row);
                 <?php if (!$hasSenior && in_array(($row['assign_status'] ?? 'unassigned'), ['unassigned', 'rejected'], true)): ?>
                   <!-- PM assigns Senior -->
                   <?php if (empty($seniorDevs)): ?>
-                    <button class="btn btn-disabled" type="button" disabled>No Senior Dev</button>
+                    <button class="btn btn-disabled bc-btn bc-btn--quiet" type="button" disabled>No Senior Dev</button>
                   <?php else: ?>
                     <form method="POST" class="assign-form">
                       <input type="hidden" name="action" value="assign_dev">
@@ -1737,14 +1738,14 @@ unset($row);
                       <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
                       <div class="assign-bar">
-                        <select name="dev_id" class="assign-select" required>
+                        <select name="dev_id" class="assign-select bc-select" required>
                           <option value="">Assign to...</option>
                           <?php foreach ($seniorDevs as $d): ?>
                             <option value="<?= (int) $d['id'] ?>"><?= htmlspecialchars($d['username']) ?></option>
                           <?php endforeach; ?>
                         </select>
 
-                        <button class="btn btn-assign" type="submit">
+                        <button class="btn btn-assign bc-btn bc-btn--primary" type="submit">
                           <span class="btn-assign-icon">➜</span> ASSIGN
                         </button>
                       </div>
@@ -1777,7 +1778,7 @@ unset($row);
                       $txt = 'PENDING';
                     }
                     ?>
-                    <button class="btn btn-pending" type="button" disabled><?= $txt ?></button>
+                    <button class="btn btn-pending bc-btn bc-btn--quiet" type="button" disabled><?= $txt ?></button>
                     <?php
                   }
                   ?>
@@ -1788,7 +1789,7 @@ unset($row);
                     <input type="hidden" name="action" value="pm_close">
                     <input type="hidden" name="org_id" value="<?= (int) $orgId ?>">
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
-                    <button class="btn btn-done" type="submit">CLOSE</button>
+                    <button class="btn btn-done bc-btn bc-btn--primary" type="submit">CLOSE</button>
                   </form>
                 <?php endif; ?>
 
@@ -1797,7 +1798,7 @@ unset($row);
               <?php if ($isAssignedToMeAsSenior && $isJuniorUnassigned): ?>
                 <!-- Senior assigns Junior -->
                 <?php if (empty($juniorDevs)): ?>
-                  <button class="btn btn-disabled" type="button" disabled>No Junior Dev</button>
+                  <button class="btn btn-disabled bc-btn bc-btn--quiet" type="button" disabled>No Junior Dev</button>
                 <?php else: ?>
                   <form method="POST" class="assign-form">
                     <input type="hidden" name="action" value="assign_junior">
@@ -1805,14 +1806,14 @@ unset($row);
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
                     <div class="assign-bar">
-                      <select name="junior_id" class="assign-select" required>
+                      <select name="junior_id" class="assign-select bc-select" required>
                         <option value="">Assign Junior...</option>
                         <?php foreach ($juniorDevs as $j): ?>
                           <option value="<?= (int) $j['id'] ?>"><?= htmlspecialchars($j['username']) ?></option>
                         <?php endforeach; ?>
                       </select>
 
-                      <button class="btn btn-assign" type="submit">
+                      <button class="btn btn-assign bc-btn bc-btn--primary" type="submit">
                         <span class="btn-assign-icon">➜</span> ASSIGN
                       </button>
                     </div>
@@ -1827,16 +1828,16 @@ unset($row);
                     <input type="hidden" name="org_id" value="<?= (int) $orgId ?>">
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
-                    <button class="btn btn-done" type="submit">DONE</button>
+                    <button class="btn btn-done bc-btn bc-btn--primary" type="submit">DONE</button>
                   </form>
                 <?php elseif (($row['assign_status'] ?? '') === 'done_by_junior' || ($row['assign_status'] ?? '') === 'with_qa'): ?>
-                  <button class="btn btn-pending" type="button" disabled>DONE</button>
+                  <button class="btn btn-pending bc-btn bc-btn--quiet" type="button" disabled>DONE</button>
                 <?php endif; ?>
               <?php endif; ?>
 
               <?php if ($isAssignedToMeAsSenior && $qaUnassigned && $isReadyForQA && ($row['status'] ?? '') === 'open'): ?>
                 <?php if (empty($qaTesters)): ?>
-                  <button class="btn btn-disabled" type="button" disabled>No QA Tester</button>
+                  <button class="btn btn-disabled bc-btn bc-btn--quiet" type="button" disabled>No QA Tester</button>
                 <?php else: ?>
                   <form method="POST" class="assign-form">
                     <input type="hidden" name="action" value="assign_qa">
@@ -1844,7 +1845,7 @@ unset($row);
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
                     <div class="assign-bar">
-                      <select name="qa_id" class="assign-select" required>
+                      <select name="qa_id" class="assign-select bc-select" required>
                         <option value="">Assign QA...</option>
                         <?php foreach ($qaTesters as $q): ?>
                           <option value="<?= (int) $q['id'] ?>">
@@ -1853,19 +1854,19 @@ unset($row);
                         <?php endforeach; ?>
                       </select>
 
-                      <button class="btn btn-assign" type="submit">
+                      <button class="btn btn-assign bc-btn bc-btn--primary" type="submit">
                         ANALYZE
                       </button>
                     </div>
                   </form>
                 <?php endif; ?>
               <?php elseif ($isAssignedToMeAsSenior && ($row['assign_status'] ?? '') === 'with_qa'): ?>
-                <button class="btn btn-pending" type="button" disabled>WITH QA</button>
+                <button class="btn btn-pending bc-btn bc-btn--quiet" type="button" disabled>WITH QA</button>
               <?php endif; ?>
 
               <?php if ($isAssignedToMeAsQA && $seniorQaUnassigned && $isReadyToReport && ($row['status'] ?? '') === 'open'): ?>
                 <?php if (empty($seniorQAs)): ?>
-                  <button class="btn btn-disabled" type="button" disabled>No Senior QA</button>
+                  <button class="btn btn-disabled bc-btn bc-btn--quiet" type="button" disabled>No Senior QA</button>
                 <?php else: ?>
                   <form method="POST" class="assign-form">
                     <input type="hidden" name="action" value="report_senior_qa">
@@ -1873,7 +1874,7 @@ unset($row);
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
                     <div class="assign-bar">
-                      <select name="senior_qa_id" class="assign-select" required>
+                      <select name="senior_qa_id" class="assign-select bc-select" required>
                         <option value="">Senior QA...</option>
                         <?php foreach ($seniorQAs as $sq): ?>
                           <option value="<?= (int) $sq['id'] ?>">
@@ -1882,19 +1883,19 @@ unset($row);
                         <?php endforeach; ?>
                       </select>
 
-                      <button class="btn btn-assign" type="submit">
+                      <button class="btn btn-assign bc-btn bc-btn--primary" type="submit">
                         REPORT
                       </button>
                     </div>
                   </form>
                 <?php endif; ?>
               <?php elseif ($isAssignedToMeAsQA && (($row['assign_status'] ?? '') === 'with_senior_qa')): ?>
-                <button class="btn btn-pending" type="button" disabled>REPORTED</button>
+                <button class="btn btn-pending bc-btn bc-btn--quiet" type="button" disabled>REPORTED</button>
               <?php endif; ?>
 
               <?php if ($isAssignedToMeAsSeniorQA && $qaLeadUnassigned && $isReadyForQALead && ($row['status'] ?? '') === 'open'): ?>
                 <?php if (empty($qaLeads)): ?>
-                  <button class="btn btn-disabled" type="button" disabled>No QA Lead</button>
+                  <button class="btn btn-disabled bc-btn bc-btn--quiet" type="button" disabled>No QA Lead</button>
                 <?php else: ?>
                   <form method="POST" class="assign-form">
                     <input type="hidden" name="action" value="report_qa_lead">
@@ -1902,7 +1903,7 @@ unset($row);
                     <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
                     <div class="assign-bar">
-                      <select name="qa_lead_id" class="assign-select" required>
+                      <select name="qa_lead_id" class="assign-select bc-select" required>
                         <option value="">QA Lead...</option>
                         <?php foreach ($qaLeads as $lead): ?>
                           <option value="<?= (int) $lead['id'] ?>">
@@ -1911,13 +1912,13 @@ unset($row);
                         <?php endforeach; ?>
                       </select>
 
-                      <button class="btn btn-assign" type="submit">REPORT</button>
+                      <button class="btn btn-assign bc-btn bc-btn--primary" type="submit">REPORT</button>
                     </div>
                   </form>
                 <?php endif; ?>
 
               <?php elseif ($isAssignedToMeAsSeniorQA && (($row['assign_status'] ?? '') === 'with_qa_lead')): ?>
-                <button class="btn btn-pending" type="button" disabled>REPORTED</button>
+                <button class="btn btn-pending bc-btn bc-btn--quiet" type="button" disabled>REPORTED</button>
               <?php endif; ?>
 
               <?php if ($isAssignedToMeAsQALead && $isWithQALead && ($row['status'] ?? '') === 'open'): ?>
@@ -1925,11 +1926,11 @@ unset($row);
                   <input type="hidden" name="org_id" value="<?= (int) $orgId ?>">
                   <input type="hidden" name="issue_id" value="<?= (int) $issueId ?>">
 
-                  <button class="btn btn-approve" type="submit" name="action" value="qa_lead_approve">
+                  <button class="btn btn-approve bc-btn bc-btn--primary" type="submit" name="action" value="qa_lead_approve">
                     ✓ APPROVE
                   </button>
 
-                  <button class="btn btn-reject" type="submit" name="action" value="qa_lead_reject"
+                  <button class="btn btn-reject bc-btn bc-btn--danger" type="submit" name="action" value="qa_lead_reject"
                     onclick="return confirm('Reject this issue and send back to PM for reassignment?');">
                     ✕ REJECT
                   </button>
@@ -1979,7 +1980,7 @@ unset($row);
           <input type="hidden" name="action" value="create_issue">
 
           <label class="issue-form-label">Project</label>
-          <select name="project_id" required class="issue-input">
+          <select name="project_id" required class="issue-input bc-select">
             <option value="">Select a project</option>
             <?php foreach ($projectOptions as $project): ?>
               <?php
@@ -1999,15 +2000,15 @@ unset($row);
           <?php endif; ?>
 
           <label class="issue-form-label">Title</label>
-          <input type="text" name="title" required class="issue-input"
+          <input type="text" name="title" required class="issue-input bc-input"
             value="<?= htmlspecialchars((string) ($_POST['title'] ?? '')) ?>">
 
           <label class="issue-form-label">Description</label>
           <textarea name="description"
-            class="issue-textarea"><?= htmlspecialchars((string) ($_POST['description'] ?? '')) ?></textarea>
+            class="issue-textarea bc-textarea"><?= htmlspecialchars((string) ($_POST['description'] ?? '')) ?></textarea>
 
           <label class="issue-form-label">Attach Images</label>
-          <input type="file" id="dashboardImagesInput" name="images[]" accept="image/*" multiple class="issue-file-input">
+          <input type="file" id="dashboardImagesInput" name="images[]" accept="image/*" multiple class="issue-file-input bc-input">
           <small class="issue-help">
             You can upload JPG/PNG/GIF/WebP. Max 10 MB each.
           </small>
@@ -2016,7 +2017,7 @@ unset($row);
 
           <div class="issue-label-row">
             <span class="issue-form-label">Labels</span>
-            <button type="button" id="dashboardClearLabelsBtn">Clear Labels</button>
+            <button type="button" id="dashboardClearLabelsBtn" class="bc-btn bc-btn--danger">Clear Labels</button>
           </div>
 
           <div class="label-pills">
@@ -2034,8 +2035,8 @@ unset($row);
           </div>
 
           <div class="issue-modal-actions">
-            <button type="button" class="btn btn-modal-secondary" data-modal-close="createIssueModal">Cancel</button>
-            <button type="submit" id="dashboardSubmitBtn" class="btn-green" <?= ($createIssueSelectedLabels && $projectOptions) ? '' : 'disabled' ?>>
+            <button type="button" class="btn btn-modal-secondary bc-btn bc-btn--secondary" data-modal-close="createIssueModal">Cancel</button>
+            <button type="submit" id="dashboardSubmitBtn" class="btn-green bc-btn bc-btn--primary" <?= ($createIssueSelectedLabels && $projectOptions) ? '' : 'disabled' ?>>
               Create Issue
             </button>
           </div>
@@ -2045,49 +2046,10 @@ unset($row);
     <?php endif; ?>
   </main>
 
-  <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
-  <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
+  <?php bugcatcher_render_legacy_ui_script(); ?>
+  <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
+  <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
   <script>
-    // Toggle dropdown open/close
-    document.querySelectorAll(".gh-dd-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const dd = btn.closest(".gh-dd");
-        const willOpen = !dd.classList.contains("open");
-        document.querySelectorAll(".gh-dd").forEach(x => x.classList.remove("open"));
-        if (willOpen) dd.classList.add("open");
-      });
-    });
-
-    // Close when clicking outside
-    document.addEventListener("click", () => {
-      document.querySelectorAll(".gh-dd").forEach(x => x.classList.remove("open"));
-    });
-
-    // Search filter
-    function setupSearch(type) {
-      const input = document.querySelector(`[data-search="${type}"]`);
-      const list = document.querySelector(`[data-list="${type}"]`);
-      if (!input || !list) return;
-
-      input.addEventListener("input", () => {
-        const q = input.value.trim().toLowerCase();
-        list.querySelectorAll(".gh-dd-item").forEach(item => {
-          const isSpecial =
-            item.innerText.toLowerCase().includes("any author") ||
-            item.innerText.toLowerCase().includes("any label");
-
-          const t = (item.getAttribute("data-text") || item.innerText).toLowerCase();
-          item.style.display = (isSpecial || t.includes(q)) ? "flex" : "none";
-        });
-      });
-    }
-
-    <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
-      setupSearch("author");
-    <?php endif; ?>
-    setupSearch("labels");
-
     function setModalState(modalId, open) {
       const modal = document.getElementById(modalId);
       const backdrop = document.querySelector(`[data-modal-backdrop="${modalId}"]`);

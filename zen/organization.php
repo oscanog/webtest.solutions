@@ -574,8 +574,9 @@ if ($activeOrg) {
     <title>BugCatcher - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=7')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('zen/organization.css?v=3')) ?>">
+    <?php bugcatcher_render_theme_bootstrap(); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('zen/organization.css')) ?>">
 </head>
 
 <body>
@@ -612,11 +613,11 @@ if ($activeOrg) {
                     <input type="hidden" name="action" value="create">
 
                     <label class="muted">Organization name</label>
-                    <input class="inp" name="org_name" placeholder="e.g. Team Alpha" maxlength="120" required
+                    <input class="inp bc-input" name="org_name" placeholder="e.g. Team Alpha" maxlength="120" required
                         value="<?= h($_POST['org_name'] ?? '') ?>">
 
                     <div class="mt-12">
-                        <button class="btn-green" type="submit">Create</button>
+                        <button class="btn-green bc-btn bc-btn--primary" type="submit">Create</button>
                     </div>
                 </form>
             </div>
@@ -626,21 +627,21 @@ if ($activeOrg) {
                 <h2 class="card-title">Join an Organization</h2>
                 <p class="muted card-subtitle">Search and join from the list.</p>
 
-                <div class="gh-dd" data-dd="orgs">
-                    <button type="button" class="gh-dd-btn">
+                <div class="gh-dd bc-dropdown" data-dd="orgs" data-dropdown>
+                    <button type="button" class="gh-dd-btn bc-dropdown__trigger" data-dropdown-trigger aria-expanded="false">
                         Select Organization <span class="caret">▾</span>
                     </button>
 
-                    <div class="gh-dd-menu">
+                    <div class="gh-dd-menu bc-dropdown__menu">
                         <div class="gh-dd-header">Filter organizations</div>
 
-                        <div class="gh-dd-search">
-                            <input type="text" placeholder="Filter organizations" data-search="orgs">
+                        <div class="gh-dd-search bc-dropdown__search">
+                            <input type="text" placeholder="Filter organizations" data-search="orgs" data-dropdown-search>
                         </div>
 
-                        <div class="gh-dd-list dd-list-scroll" data-list="orgs">
+                        <div class="gh-dd-list dd-list-scroll bc-dropdown__list" data-list="orgs">
                             <?php if (empty($orgsArr)): ?>
-                                <div class="gh-dd-item opacity-70 cursor-default">
+                                <div class="gh-dd-item bc-dropdown__item opacity-70 cursor-default" data-static-option="true">
                                     <span class="txt">No organizations available</span>
                                 </div>
                             <?php else: ?>
@@ -657,7 +658,7 @@ if ($activeOrg) {
                                         <input type="hidden" name="action" value="join">
                                         <input type="hidden" name="org_id" value="<?= (int) $o['id'] ?>">
 
-                                        <button type="submit" class="gh-dd-item w-100 no-border bg-transparent"
+                                        <button type="submit" class="gh-dd-item bc-dropdown__item w-100 no-border bg-transparent"
                                             data-text="<?= h($searchText) ?>">
                                             <span class="avatar"><?= h($initial) ?></span>
                                             <span class="txt">
@@ -686,7 +687,7 @@ if ($activeOrg) {
                     <div class="muted orgs-label">Your Organizations</div>
                     <div class="orgs-links">
                         <?php foreach ($userOrgs as $o): ?>
-                            <a class="btn <?= ((int) $activeOrg['id'] === (int) $o['id']) ? 'org-link-active' : '' ?>"
+                            <a class="btn bc-btn bc-btn--secondary <?= ((int) $activeOrg['id'] === (int) $o['id']) ? 'org-link-active' : '' ?>"
                                 href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php?org_id=' . (int) $o['id'])) ?>">
                                 <?= h($o['name']) ?>
                             </a>
@@ -704,7 +705,7 @@ if ($activeOrg) {
                 <form method="POST" class="mt-12">
                     <input type="hidden" name="action" value="leave">
                     <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
-                    <button type="submit" class="btn"
+                    <button type="submit" class="btn bc-btn bc-btn--secondary"
                         onclick="return confirm('Are you sure you want to leave this organization?');">
                         Leave Organization
                     </button>
@@ -722,13 +723,13 @@ if ($activeOrg) {
                             <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
 
                             <label class="muted">Type <strong>DELETE</strong> to confirm</label>
-                            <input type="text" id="deleteConfirmInput" class="inp delete-confirm-input"
+                            <input type="text" id="deleteConfirmInput" class="inp bc-input delete-confirm-input"
                                 placeholder="Type DELETE" autocomplete="off">
 
                             <input type="hidden" name="confirm_text" id="confirmTextHidden">
 
                             <div class="mt-12">
-                                <button type="submit" id="deleteOrgBtn" class="btn btn-danger-disabled" disabled>
+                                <button type="submit" id="deleteOrgBtn" class="btn bc-btn bc-btn--danger btn-danger-disabled" disabled>
                                     Delete Organization
                                 </button>
                             </div>
@@ -747,7 +748,7 @@ if ($activeOrg) {
                         <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
 
                         <label class="muted">New owner</label>
-                        <select class="inp" name="new_owner_id" required>
+                        <select class="inp bc-select" name="new_owner_id" required>
                             <option value="">-- Select member --</option>
                             <?php foreach ($members as $m): ?>
                                 <?php if ($m['role'] !== 'owner'): ?>
@@ -757,7 +758,7 @@ if ($activeOrg) {
                         </select>
 
                         <div class="mt-12">
-                            <button class="btn" type="submit"
+                            <button class="btn bc-btn bc-btn--secondary" type="submit"
                                 onclick="return confirm('Transfer ownership? This will make the selected member the new owner.');">
                                 Transfer Ownership
                             </button>
@@ -797,7 +798,7 @@ if ($activeOrg) {
                                                 <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
                                                 <input type="hidden" name="target_user_id" value="<?= (int) $m['id'] ?>">
 
-                                                <select class="inp members-role-select" name="new_role"
+                                                <select class="inp bc-select members-role-select" name="new_role"
                                                     onchange="this.form.submit()">
                                                     <?php foreach (ORG_ROLES as $r): ?>
                                                         <?php if ($r === 'owner')
@@ -825,7 +826,7 @@ if ($activeOrg) {
                                                 <input type="hidden" name="action" value="kick_member">
                                                 <input type="hidden" name="org_id" value="<?= (int) $activeOrg['id'] ?>">
                                                 <input type="hidden" name="kick_user_id" value="<?= (int) $m['id'] ?>">
-                                                <button type="submit" class="btn btn-kick"
+                                                <button type="submit" class="btn btn-kick bc-btn bc-btn--danger"
                                                     onclick="return confirm('Kick <?= h($m['username']) ?> from the organization?');">
                                                     Kick
                                                 </button>
@@ -846,41 +847,8 @@ if ($activeOrg) {
 
     </main>
 
+    <?php bugcatcher_render_legacy_ui_script(); ?>
     <script>
-        // Toggle dropdown open/close
-        document.querySelectorAll(".gh-dd-btn").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const dd = btn.closest(".gh-dd");
-                const willOpen = !dd.classList.contains("open");
-                document.querySelectorAll(".gh-dd").forEach(x => x.classList.remove("open"));
-                if (willOpen) dd.classList.add("open");
-
-                const input = dd.querySelector('input[data-search="orgs"]');
-                if (willOpen && input) setTimeout(() => input.focus(), 0);
-            });
-        });
-
-        document.addEventListener("click", () => {
-            document.querySelectorAll(".gh-dd").forEach(x => x.classList.remove("open"));
-        });
-
-        // Search filter
-        (function setupOrgSearch() {
-            const input = document.querySelector('[data-search="orgs"]');
-            const list = document.querySelector('[data-list="orgs"]');
-            if (!input || !list) return;
-
-            input.addEventListener("input", () => {
-                const q = input.value.trim().toLowerCase();
-                list.querySelectorAll(".gh-dd-item").forEach(item => {
-                    const t = (item.getAttribute("data-text") || item.innerText).toLowerCase();
-                    item.style.display = t.includes(q) ? "flex" : "none";
-                });
-            });
-        })();
-
-        // Delete confirm behavior (no inline styles)
         (function setupDeleteConfirm() {
             const deleteInput = document.getElementById("deleteConfirmInput");
             const deleteBtn = document.getElementById("deleteOrgBtn");
@@ -923,8 +891,8 @@ if ($activeOrg) {
             });
         })();
     </script>
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
 </body>
 
 </html>

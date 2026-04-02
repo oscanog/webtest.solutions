@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/notification_lib.php';
+require_once __DIR__ . '/ui/theme.php';
+require_once __DIR__ . '/ui/primitives.php';
 
 function bugcatcher_sidebar_definitions(): array
 {
@@ -261,6 +263,7 @@ function bugcatcher_render_page_header(
                     <span data-session-username><?= htmlspecialchars($currentUsername) ?></span>
                     (<span data-session-role><?= htmlspecialchars($displayRole) ?></span>)
                 </span>
+                <?php bugcatcher_render_theme_toggle(); ?>
                 <div
                     class="bc-notifications-menu"
                     data-notifications-root
@@ -343,14 +346,7 @@ function bugcatcher_render_page_header(
         <?php if (!empty($actions)): ?>
             <div class="bc-subheader">
                 <div class="bc-subheader-actions">
-                    <?php foreach ($actions as $action): ?>
-                        <a
-                            class="bc-btn <?= !empty($action['variant']) ? htmlspecialchars((string) $action['variant']) : '' ?>"
-                            href="<?= htmlspecialchars(bugcatcher_href((string) ($action['href'] ?? '#'))) ?>"
-                        >
-                            <?= htmlspecialchars((string) ($action['label'] ?? 'Action')) ?>
-                        </a>
-                    <?php endforeach; ?>
+                    <?php bugcatcher_render_header_actions($actions); ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -388,22 +384,30 @@ function bugcatcher_render_sidebar(
         data-drawer
         data-drawer-breakpoint="960"
     >
-        <div class="bc-logo">BugCatcher</div>
-        <nav class="bc-nav">
+        <div class="bc-sidebar__header">
+            <div class="bc-logo">
+                <span class="bc-logo__mark" aria-hidden="true">BC</span>
+                <span class="bc-logo__text">BugCatcher</span>
+            </div>
+        </div>
+        <nav class="bc-nav" aria-label="Primary navigation">
             <?php foreach ($nav as $item): ?>
                 <?php $key = (string) ($item['key'] ?? ''); ?>
-                <a href="<?= htmlspecialchars((string) ($item['href'] ?? '#')) ?>" class="<?= $activePage === $key ? 'active' : '' ?>">
-                    <?= htmlspecialchars((string) ($item['label'] ?? 'Page')) ?>
+                <a
+                    href="<?= htmlspecialchars((string) ($item['href'] ?? '#')) ?>"
+                    class="<?= $activePage === $key ? 'active' : '' ?>"
+                    <?= $activePage === $key ? 'aria-current="page"' : '' ?>
+                >
+                    <span class="bc-nav__label"><?= htmlspecialchars((string) ($item['label'] ?? 'Page')) ?></span>
                 </a>
             <?php endforeach; ?>
-            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="logout">Logout</a>
         </nav>
         <div class="bc-userbox">
-            <div>Logged in as</div>
+            <span class="bc-userbox__eyebrow">Workspace</span>
             <strong data-session-sidebar-username><?= htmlspecialchars($currentUsername) ?></strong>
-            <span>(<?= htmlspecialchars($currentRole) ?><?= $orgRole ? ' / ' . htmlspecialchars($orgRole) : '' ?>)</span>
+            <span class="bc-userbox__meta">(<?= htmlspecialchars($currentRole) ?><?= $orgRole ? ' / ' . htmlspecialchars($orgRole) : '' ?>)</span>
             <?php if ($orgName): ?>
-                <small><?= htmlspecialchars($orgName) ?></small>
+                <small class="bc-userbox__org"><?= htmlspecialchars($orgName) ?></small>
             <?php endif; ?>
         </div>
     </aside>

@@ -34,7 +34,7 @@
 
 .org-link-active {
   border-color: var(--accent) !important;
-  background: rgba(9, 105, 218, 0.08) !important;
+  background: var(--pill-info-bg) !important;
   color: var(--accent) !important;
 }
 
@@ -45,8 +45,8 @@
 
 .danger-card {
   margin-top: 12px;
-  border-color: rgba(207, 34, 46, 0.28);
-  background: linear-gradient(180deg, #ffffff 0%, #fff5f5 100%);
+  border-color: var(--pill-danger-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pill-danger-bg) 30%, var(--surface)) 0%, var(--surface) 100%);
 }
 
 .danger-title {
@@ -64,8 +64,9 @@
 .btn-danger-enabled {
   opacity: 1 !important;
   cursor: pointer !important;
-  background: var(--danger) !important;
-  color: #fff !important;
+  background: var(--button-danger-bg) !important;
+  border-color: var(--button-danger-border) !important;
+  color: var(--button-danger-text) !important;
 }
 
 .delete-confirm-input {
@@ -74,12 +75,12 @@
 
 .inp-danger {
   border-color: var(--danger) !important;
-  box-shadow: 0 0 0 3px rgba(207, 34, 46, 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill-danger-bg) 72%, transparent);
 }
 
 .inp-success {
-  border-color: #2da44e !important;
-  box-shadow: 0 0 0 3px rgba(45, 164, 78, 0.18);
+  border-color: var(--success) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill-success-bg) 72%, transparent);
 }
 
 .org-member-role-controls {
@@ -126,8 +127,8 @@
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--pill-neutral-border);
+  background: var(--pill-neutral-bg);
   color: var(--text);
   font-size: 12px;
   font-weight: 700;
@@ -147,58 +148,58 @@
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: color-mix(in srgb, var(--pill-neutral-bg) 88%, transparent);
+  border: 1px solid var(--pill-neutral-border);
   font-size: 10px;
   letter-spacing: 0.04em;
 }
 
 .role-owner {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #7c4a00;
+  background: var(--pill-warning-bg);
+  border-color: var(--pill-warning-border);
+  color: var(--pill-warning-text);
 }
 
 .role-member {
-  background: rgba(148, 163, 184, 0.16);
-  border-color: rgba(148, 163, 184, 0.32);
-  color: #334155;
+  background: var(--pill-neutral-bg);
+  border-color: var(--pill-neutral-border);
+  color: var(--pill-neutral-text);
 }
 
 .role-project-manager {
-  background: rgba(59, 130, 246, 0.14);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #0b3a82;
+  background: var(--pill-info-bg);
+  border-color: var(--pill-info-border);
+  color: var(--pill-info-text);
 }
 
 .role-qa-lead {
-  background: rgba(168, 85, 247, 0.14);
-  border-color: rgba(168, 85, 247, 0.3);
-  color: #5b21b6;
+  background: color-mix(in srgb, var(--pill-info-bg) 70%, var(--pill-neutral-bg));
+  border-color: color-mix(in srgb, var(--pill-info-border) 70%, var(--pill-neutral-border));
+  color: color-mix(in srgb, var(--pill-info-text) 74%, var(--text-primary));
 }
 
 .role-senior-developer {
-  background: rgba(34, 197, 94, 0.14);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #166534;
+  background: var(--pill-success-bg);
+  border-color: var(--pill-success-border);
+  color: var(--pill-success-text);
 }
 
 .role-junior-developer {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.28);
-  color: #065f46;
+  background: color-mix(in srgb, var(--pill-success-bg) 82%, var(--pill-neutral-bg));
+  border-color: color-mix(in srgb, var(--pill-success-border) 82%, var(--pill-neutral-border));
+  color: color-mix(in srgb, var(--pill-success-text) 78%, var(--text-primary));
 }
 
 .role-senior-qa {
-  background: rgba(236, 72, 153, 0.14);
-  border-color: rgba(236, 72, 153, 0.3);
-  color: #9d174d;
+  background: color-mix(in srgb, var(--pill-danger-bg) 72%, var(--pill-neutral-bg));
+  border-color: color-mix(in srgb, var(--pill-danger-border) 72%, var(--pill-neutral-border));
+  color: color-mix(in srgb, var(--pill-danger-text) 74%, var(--text-primary));
 }
 
 .role-qa-tester {
-  background: rgba(244, 63, 94, 0.12);
-  border-color: rgba(244, 63, 94, 0.28);
-  color: #9f1239;
+  background: color-mix(in srgb, var(--pill-danger-bg) 64%, var(--pill-info-bg));
+  border-color: color-mix(in srgb, var(--pill-danger-border) 64%, var(--pill-info-border));
+  color: color-mix(in srgb, var(--pill-danger-text) 78%, var(--text-primary));
 }
 
 .role-owner::before {

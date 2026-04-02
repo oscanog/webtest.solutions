@@ -50,8 +50,9 @@ if ($selectedProjectId <= 0 && $projects) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
     <title>New Issue · BugCatcher</title>
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_theme.css?v=7')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_path('app/legacy_issues.css?v=2')) ?>">
+    <?php bugcatcher_render_theme_bootstrap(); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">
 </head>
 
 <body>
@@ -79,7 +80,7 @@ if ($selectedProjectId <= 0 && $projects) {
 
                 <form method="POST" enctype="multipart/form-data">
                     <label class="issue-form-label">Project</label>
-                    <select name="project_id" required class="issue-input">
+                    <select name="project_id" required class="issue-input bc-select">
                         <option value="">Select a project</option>
                         <?php foreach ($projects as $project):
                             $projectId = (int) ($project['id'] ?? 0);
@@ -100,19 +101,19 @@ if ($selectedProjectId <= 0 && $projects) {
                     <br><br>
 
                     <label class="issue-form-label">Title</label>
-                    <input type="text" name="title" required class="issue-input"
+                    <input type="text" name="title" required class="issue-input bc-input"
                         value="<?= htmlspecialchars((string) ($_POST['title'] ?? '')) ?>">
 
                     <br><br>
 
                     <label class="issue-form-label">Description</label>
                     <textarea name="description"
-                        class="issue-textarea"><?= htmlspecialchars((string) ($_POST['description'] ?? '')) ?></textarea>
+                        class="issue-textarea bc-textarea"><?= htmlspecialchars((string) ($_POST['description'] ?? '')) ?></textarea>
 
                     <br><br>
 
                     <label class="issue-form-label">Attach Images</label>
-                    <input type="file" id="imagesInput" name="images[]" accept="image/*" multiple class="issue-file-input">
+                    <input type="file" id="imagesInput" name="images[]" accept="image/*" multiple class="issue-file-input bc-input">
                     <small class="issue-help">
                         You can upload JPG/PNG/GIF/WebP. Max 10 MB each.
                     </small>
@@ -124,13 +125,13 @@ if ($selectedProjectId <= 0 && $projects) {
                     <label class="issue-form-label">Author</label>
                     <input type="text"
                         value="<?= htmlspecialchars($current_username) ?> (<?= htmlspecialchars((string) ($mem['role'] ?? 'Org Member')) ?>)"
-                        disabled class="issue-author-input">
+                        disabled class="issue-author-input bc-input">
 
                     <br><br>
 
                     <div class="issue-label-row">
                         <span class="issue-form-label">Labels</span>
-                        <button type="button" id="clearLabelsBtn">Clear Labels</button>
+                        <button type="button" id="clearLabelsBtn" class="bc-btn bc-btn--danger">Clear Labels</button>
                     </div>
 
                     <div class="label-pills">
@@ -151,7 +152,7 @@ if ($selectedProjectId <= 0 && $projects) {
 
                     <br><br>
 
-                    <button type="submit" id="submitBtn" class="btn-green" <?= ($selectedLabels && $projects) ? '' : 'disabled' ?>>
+                    <button type="submit" id="submitBtn" class="btn-green bc-btn bc-btn--primary" <?= ($selectedLabels && $projects) ? '' : 'disabled' ?>>
                         Submit
                     </button>
                 </form>
@@ -210,8 +211,9 @@ if ($selectedProjectId <= 0 && $projects) {
         updateSubmitState();
     </script>
 
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/mobile_nav.js?v=3')) ?>"></script>
-    <script src="<?= htmlspecialchars(bugcatcher_path('app/notifications_ui.js?v=1')) ?>"></script>
+    <?php bugcatcher_render_legacy_ui_script(); ?>
+    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
     <script>
         const imagesInput = document.getElementById("imagesInput");
         const imgPreview = document.getElementById("imgPreview");

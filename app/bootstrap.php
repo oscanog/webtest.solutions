@@ -349,6 +349,36 @@ function bugcatcher_href(string $href): string
     return $href;
 }
 
+function bugcatcher_asset_path(string $path): string
+{
+    $parts = parse_url($path);
+    if ($parts === false) {
+        return bugcatcher_path($path);
+    }
+
+    $assetPath = ltrim((string) ($parts['path'] ?? $path), '/');
+    $query = [];
+    if (isset($parts['query'])) {
+        parse_str((string) $parts['query'], $query);
+    }
+
+    $absolutePath = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $assetPath);
+    if (is_file($absolutePath)) {
+        $query['v'] = (string) filemtime($absolutePath);
+    }
+
+    $href = bugcatcher_path($assetPath);
+    if ($query) {
+        $href .= '?' . http_build_query($query);
+    }
+
+    if (isset($parts['fragment']) && $parts['fragment'] !== '') {
+        $href .= '#' . $parts['fragment'];
+    }
+
+    return $href;
+}
+
 function bugcatcher_is_https(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
