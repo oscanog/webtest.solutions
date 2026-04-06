@@ -42,7 +42,7 @@ function bugcatcher_mail_send_via_symfony(array $message, array $config): void
         $email = (new \Symfony\Component\Mime\Email())
             ->from(new \Symfony\Component\Mime\Address(
                 (string) ($config['from_address'] ?? ''),
-                (string) ($config['from_name'] ?? 'BugCatcher')
+                (string) ($config['from_name'] ?? 'WebTest')
             ))
             ->to(new \Symfony\Component\Mime\Address(
                 (string) ($message['to']['email'] ?? ''),

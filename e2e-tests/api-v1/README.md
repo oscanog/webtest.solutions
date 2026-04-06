@@ -1,4 +1,4 @@
-﻿# BugCatcher API v1 E2E
+# WebTest API v1 E2E
 
 Role-based API E2E suite for the modular `/api/v1/*` surface.
 

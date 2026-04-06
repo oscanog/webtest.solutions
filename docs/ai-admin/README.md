@@ -1,6 +1,6 @@
 # AI Admin
 
-Built-in BugCatcher AI runtime management now lives in the dedicated AI Admin surface instead of the old OpenClaw control plane.
+Built-in WebTest AI runtime management now lives in the dedicated AI Admin surface instead of the old OpenClaw control plane.
 
 ## Entry Points
 

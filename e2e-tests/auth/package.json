@@ -2,7 +2,7 @@
   "name": "bugcatcher-auth-e2e",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright browser E2E for BugCatcher auth flows",
+  "description": "Playwright browser E2E for WebTest auth flows",
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc --noEmit",

@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "bugcatcher-api-v1-e2e",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright API E2E suite for BugCatcher modular /api/v1 surface",
+  "description": "Playwright API E2E suite for WebTest modular /api/v1 surface",
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc --noEmit",

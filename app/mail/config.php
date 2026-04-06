@@ -35,7 +35,7 @@ function bugcatcher_mail_from_address(): string
 
 function bugcatcher_mail_from_name(): string
 {
-    return trim((string) bugcatcher_config('MAIL_FROM_NAME', 'BugCatcher'));
+    return trim((string) bugcatcher_config('MAIL_FROM_NAME', 'WebTest'));
 }
 
 function bugcatcher_mail_normalized_config(): array

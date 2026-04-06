@@ -61,7 +61,7 @@ if (isset($_POST['register'])) {
     <div class="form-box box">
       <header>Sign Up</header>
       <hr>
-      <p class="auth-subtitle">Create your BugCatcher account</p>
+      <p class="auth-subtitle">Create your WebTest account</p>
 
       <?php if ($error !== ""): ?>
         <div class='message'>

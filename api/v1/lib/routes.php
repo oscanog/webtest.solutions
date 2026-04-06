@@ -20,7 +20,7 @@ function bc_v1_routes(): array
     return [
         ['method' => 'GET', 'pattern' => '/', 'handler' => static function (mysqli $conn, array $params): void {
             bc_v1_json_success([
-                'name' => 'BugCatcher API',
+                'name' => 'WebTest API',
                 'version' => 'v1',
                 'status' => 'ok',
             ]);

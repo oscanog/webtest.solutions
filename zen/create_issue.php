@@ -49,7 +49,7 @@ if ($selectedProjectId <= 0 && $projects) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <title>New Issue · BugCatcher</title>
+    <title>New Issue · WebTest</title>
     <?php bugcatcher_render_theme_bootstrap(); ?>
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
     <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">

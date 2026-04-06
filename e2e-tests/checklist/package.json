@@ -2,7 +2,7 @@
   "name": "bugcatcher-checklist-e2e",
   "version": "1.0.0",
   "private": true,
-  "description": "Playwright API E2E for BugCatcher checklist v1 APIs",
+  "description": "Playwright API E2E for WebTest checklist v1 APIs",
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc --noEmit",

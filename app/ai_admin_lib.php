@@ -4,7 +4,7 @@ require_once __DIR__ . '/bootstrap.php';
 
 function bugcatcher_ai_admin_persona_definitions(): array
 {
-    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'));
+    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
     $systemPrompt = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
 
     return [
@@ -512,7 +512,7 @@ function bugcatcher_ai_admin_save_runtime_config(
 
     $assistantName = trim($assistantName);
     if ($assistantName === '') {
-        $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'));
+        $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
     }
     $systemPrompt = trim($systemPrompt);
 
@@ -582,7 +582,7 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
     $modelId = trim((string) bugcatcher_config('AI_CHAT_DEMO_MODEL_ID', 'deepseek-chat'));
     $modelName = trim((string) bugcatcher_config('AI_CHAT_DEMO_MODEL_NAME', 'DeepSeek Chat'));
     $supportsVision = (bool) bugcatcher_config('AI_CHAT_DEMO_MODEL_SUPPORTS_VISION', false);
-    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'));
+    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
     $systemPrompt = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
 
     if (
@@ -765,7 +765,7 @@ function bugcatcher_ai_admin_runtime_snapshot(mysqli $conn): array
             'is_enabled' => (bool) ($runtime['is_enabled'] ?? bugcatcher_config('AI_CHAT_DEMO_ENABLED', true)),
             'default_provider_config_id' => isset($runtime['default_provider_config_id']) ? (int) $runtime['default_provider_config_id'] : null,
             'default_model_id' => isset($runtime['default_model_id']) ? (int) $runtime['default_model_id'] : null,
-            'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI')),
+            'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
             'system_prompt' => (string) ($runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', '')),
         ],
         'providers' => bugcatcher_ai_admin_providers_for_display($conn),
@@ -821,7 +821,7 @@ function bugcatcher_ai_admin_resolve_runtime(mysqli $conn): array
         'provider' => $provider,
         'model' => $model,
         'api_key' => $apiKey,
-        'assistant_name' => trim((string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'))),
+        'assistant_name' => trim((string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
         'system_prompt' => trim((string) ($runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
     ];
 }
@@ -882,7 +882,7 @@ function bugcatcher_ai_admin_resolve_persona_runtime(mysqli $conn, string $perso
         'provider' => $provider,
         'model' => $model,
         'api_key' => $apiKey,
-        'assistant_name' => trim((string) ($persona['assistant_name'] ?? $runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'BugCatcher AI'))),
+        'assistant_name' => trim((string) ($persona['assistant_name'] ?? $runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
         'system_prompt' => trim((string) ($persona['system_prompt'] ?? $runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
     ];
 }

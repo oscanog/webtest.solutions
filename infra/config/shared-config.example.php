@@ -25,7 +25,7 @@ return [
     'MAIL_ENCRYPTION' => 'tls',
     'MAIL_FROM_ADDRESS' => 'no-reply@example.com',
     'MAIL_FROM_EMAIL' => 'no-reply@example.com',
-    'MAIL_FROM_NAME' => 'BugCatcher',
+    'MAIL_FROM_NAME' => 'WebTest',
     'PASSWORD_RESET_OTP_TTL_SECONDS' => 600,
     'PASSWORD_RESET_RESEND_COOLDOWN_SECONDS' => 60,
     'PASSWORD_RESET_MAX_VERIFY_ATTEMPTS' => 5,

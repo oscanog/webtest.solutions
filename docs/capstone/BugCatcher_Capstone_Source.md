@@ -1,4 +1,4 @@
-:::title BugCatcher: Integrated Web and Mobile Issue, Checklist, and AI-Assisted QA Management System
+:::title WebTest: Integrated Web and Mobile Issue, Checklist, and AI-Assisted QA Management System
 :::subtitle BSIT Capstone Project Manuscript
 :::center [School Name]
 :::center Bachelor of Science in Information Technology
@@ -23,9 +23,9 @@
 
 ## 1.1 Project Background
 
-BugCatcher is an integrated quality-assurance and issue-management platform composed of a PHP and MySQL backend and a separate React and Vite mobile web client. The backend repository provides user authentication, organization and member management, project scoping, issue lifecycle control, checklist management, evidence attachments, AI administration, AI-assisted checklist drafting, and in-app notifications. The mobile web repository provides a mobile-first operational interface for daily use of the same platform.
+WebTest is an integrated quality-assurance and issue-management platform composed of a PHP and MySQL backend and a separate React and Vite mobile web client. The backend repository provides user authentication, organization and member management, project scoping, issue lifecycle control, checklist management, evidence attachments, AI administration, AI-assisted checklist drafting, and in-app notifications. The mobile web repository provides a mobile-first operational interface for daily use of the same platform.
 
-The capstone project answers a practical software-development problem: many student teams and small development groups track defects, checklist work, and review approvals across disconnected channels. BugCatcher addresses that problem by centralizing issue intake, project-level checklist work, role-based workflow routing, attachment evidence, and a supporting AI workflow that can help draft checklist items for QA review.
+The capstone project answers a practical software-development problem: many student teams and small development groups track defects, checklist work, and review approvals across disconnected channels. WebTest addresses that problem by centralizing issue intake, project-level checklist work, role-based workflow routing, attachment evidence, and a supporting AI workflow that can help draft checklist items for QA review.
 
 The implemented system is suitable for a BSIT capstone because it is a full-stack application system, uses a relational database, exposes API endpoints, includes a dedicated mobile client, applies role-based access control, and demonstrates real software-engineering concerns such as deployment, testing, runtime configuration, data validation, file handling, and system integration.
 
@@ -89,7 +89,7 @@ The observed development cycle is:
 
 ## 3.2 System Overview
 
-BugCatcher is organized as one integrated platform with three major runtime parts:
+WebTest is organized as one integrated platform with three major runtime parts:
 
 - a PHP and MySQL backend that stores data, validates requests, enforces business rules, and serves API endpoints;
 - a React and Vite mobile web client that consumes the backend API for operational use;
@@ -217,7 +217,7 @@ These controls are not only conceptual. They are visible in the backend configur
 
 ## 3.9 Summary of Chapter 3
 
-Chapter 3 presented the development methodology, architecture, modules, API structure, database design, and security design of BugCatcher. The chapter established that the project is a complete integrated application system with a backend service layer, a mobile-first client, a relational database, a realtime notification service, and a supporting AI-assisted QA subsystem.
+Chapter 3 presented the development methodology, architecture, modules, API structure, database design, and security design of WebTest. The chapter established that the project is a complete integrated application system with a backend service layer, a mobile-first client, a relational database, a realtime notification service, and a supporting AI-assisted QA subsystem.
 
 # Chapter 4. System Development, Implementation, and Testing
 
@@ -366,7 +366,7 @@ These limitations do not invalidate the project. Instead, they show a living sof
 
 ## 4.9 Summary of Chapter 4
 
-Chapter 4 showed how BugCatcher was implemented across backend, mobile web, notification, and AI-support layers. It also showed that the project is supported by repository-backed end-to-end tests and operational deployment procedures, which increases the credibility of the implemented capstone output.
+Chapter 4 showed how WebTest was implemented across backend, mobile web, notification, and AI-support layers. It also showed that the project is supported by repository-backed end-to-end tests and operational deployment procedures, which increases the credibility of the implemented capstone output.
 
 # Chapter 5. Summary, Conclusions, and Recommendations
 
@@ -385,7 +385,7 @@ The repositories confirm that the project includes:
 
 ## 5.2 Conclusions
 
-Based on the implemented repositories, BugCatcher meets the profile of a BSIT capstone application system. It is not limited to isolated features; instead, it demonstrates coordinated system analysis, database design, API development, mobile client integration, file handling, runtime configuration, testing, and deployment planning.
+Based on the implemented repositories, WebTest meets the profile of a BSIT capstone application system. It is not limited to isolated features; instead, it demonstrates coordinated system analysis, database design, API development, mobile client integration, file handling, runtime configuration, testing, and deployment planning.
 
 The project also demonstrates that AI can be integrated into a practical QA workflow without removing human control. By keeping generated checklist items subject to review and approval, the system applies AI as an assistive mechanism rather than an ungoverned replacement for testers and leads.
 
@@ -410,13 +410,13 @@ The following recommendations are grounded in the current codebase and its visib
 
 ## 5.4 Final Statement
 
-BugCatcher demonstrates that a student development team can build an integrated and operational quality-assurance platform that combines traditional CRUD features, workflow management, mobile access, realtime communication, and supporting AI capabilities in one deployable BSIT capstone project.
+WebTest demonstrates that a student development team can build an integrated and operational quality-assurance platform that combines traditional CRUD features, workflow management, mobile access, realtime communication, and supporting AI capabilities in one deployable BSIT capstone project.
 
 # Appendix A. Full ERD
 
 The ERD included with this capstone package is a consolidated current-system diagram. It combines the core bootstrap tables from local development SQL, project-scoped issue relationships used by the current backend schema and migrations, and supporting notes about runtime-created AI chat extension tables.
 
-:::image BugCatcher_Full_ERD.png|Figure A-1. Consolidated BugCatcher full ERD|7.0
+:::image BugCatcher_Full_ERD.png|Figure A-1. Consolidated WebTest full ERD|7.0
 
 # Appendix B. Schema Reconciliation Notes
 

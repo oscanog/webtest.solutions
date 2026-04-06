@@ -16,7 +16,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BugCatcher - Issue Tracking System</title>
+    <title>WebTest - Issue Tracking System</title>
     <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
     <style>
         * {
@@ -1203,7 +1203,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
     <nav class="navbar">
         <div class="logo">
             <span class="logo-icon">🐞</span>
-            BugCatcher
+            WebTest
         </div>
         <div class="nav-links">
             <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>">Login</a>
@@ -1271,7 +1271,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
 
         <div class="hero-content">
             <h1>Track Bugs Like a <span>Pro</span></h1>
-            <p>BugCatcher helps you manage and track issues in your projects. Simple, fast, and effective issue tracking for teams of all sizes.</p>
+            <p>WebTest helps you manage and track issues in your projects. Simple, fast, and effective issue tracking for teams of all sizes.</p>
             <div class="hero-actions">
                 <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>" class="btn">Get Started</a>
                 <a href="#features" class="btn btn-secondary">Learn More</a>
@@ -1297,7 +1297,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
     <section class="features" id="features">
         <div class="features-container">
             <div class="section-title">
-                <h2>Why Choose BugCatcher?</h2>
+                <h2>Why Choose WebTest?</h2>
                 <p>Everything you need to manage your project issues efficiently</p>
             </div>
             <div class="features-grid">
@@ -1321,7 +1321,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
     </section>
 
     <footer>
-        <p>&copy; 2026 BugCatcher. Built for students, by students.</p>
+        <p>&copy; 2026 WebTest. Built for students, by students.</p>
     </footer>
 
     <script>

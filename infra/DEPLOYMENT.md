@@ -1,4 +1,4 @@
-# BugCatcher Deployment
+# WebTest Deployment
 
 This repo is prepared for release-based deployment on a Debian Google Compute Engine VM.
 

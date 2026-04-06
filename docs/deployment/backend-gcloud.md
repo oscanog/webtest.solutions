@@ -1,6 +1,6 @@
 # Backend GCloud Deploy Guide
 
-This guide is for teammates who need to deploy new BugCatcher backend changes to the production Google Compute Engine VM.
+This guide is for teammates who need to deploy new WebTest backend changes to the production Google Compute Engine VM.
 
 As of March 24, 2026, the production VM used in this workspace is:
 

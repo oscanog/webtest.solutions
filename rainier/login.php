@@ -105,7 +105,7 @@ if (isset($_POST['login'])) {
     <div class="form-box box">
       <header>Login</header>
       <hr>
-      <p class="auth-subtitle">Sign in to continue to BugCatcher</p>
+      <p class="auth-subtitle">Sign in to continue to WebTest</p>
 
       <?php foreach ($infoMessages as $infoMessage): ?>
         <div class='message info'>

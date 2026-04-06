@@ -116,7 +116,7 @@ test("project detail formats singapore wall-clock time correctly in a UTC browse
           project: {
             id: cfg.projectId,
             org_id: cfg.orgId,
-            org_name: "BugCatcher QA",
+            org_name: "WebTest QA",
             name: "Timezone Project",
             code: "TZ-01",
             description: "Project detail timestamp regression check",

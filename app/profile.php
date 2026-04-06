@@ -58,7 +58,7 @@ bugcatcher_shell_start('Profile', 'profile', $context);
         <div class="bc-card">
             <h2 class="bc-title-tight">Profile Settings</h2>
             <div class="profile-form-card">
-                <p class="profile-settings-note">Update the account name shown across BugCatcher. Your email stays read-only so the login address remains stable.</p>
+                <p class="profile-settings-note">Update the account name shown across WebTest. Your email stays read-only so the login address remains stable.</p>
                 <div id="profileFormMessage" aria-live="polite"></div>
                 <form id="profileSettingsForm" class="bc-form-grid">
                     <div class="bc-field full">

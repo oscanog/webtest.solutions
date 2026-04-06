@@ -133,7 +133,7 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         </div>
         <div class="bc-field">
             <label for="assistant_name">Assistant name</label>
-            <input class="bc-input" id="assistant_name" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'BugCatcher AI')) ?>">
+            <input class="bc-input" id="assistant_name" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
         </div>
         <div class="bc-field">
             <label for="default_provider_config_id">Default provider</label>
@@ -175,7 +175,7 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         <input type="hidden" name="is_enabled" value="<?= !empty($runtime['is_enabled']) ? '1' : '0' ?>">
         <input type="hidden" name="default_provider_config_id" value="<?= (int) ($runtime['default_provider_config_id'] ?? 0) ?>">
         <input type="hidden" name="default_model_id" value="<?= (int) ($runtime['default_model_id'] ?? 0) ?>">
-        <input type="hidden" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'BugCatcher AI')) ?>">
+        <input type="hidden" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
         <input type="hidden" name="system_prompt" value="<?= bugcatcher_html((string) ($runtime['system_prompt'] ?? '')) ?>">
         <?php foreach ($personas as $persona): ?>
             <div class="bc-field full bc-subpanel">

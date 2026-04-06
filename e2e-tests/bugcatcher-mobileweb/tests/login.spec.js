@@ -81,7 +81,7 @@ test("login page renders cleanly with empty fields, auth links, theme toggle, an
   await page.goto("/login");
 
   await expect(page.getByRole("heading", { name: "Login" })).toBeVisible();
-  await expect(page.getByText("Use your BugCatcher account", { exact: true })).toBeVisible();
+  await expect(page.getByText("Use your WebTest account", { exact: true })).toBeVisible();
   await expect(page.locator('input[name="email"]')).toHaveValue("");
   await expect(page.locator('input[name="password"]')).toHaveValue("");
   await expect(page.getByRole("button", { name: "Show password" })).toBeVisible();

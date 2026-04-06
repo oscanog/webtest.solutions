@@ -41,8 +41,8 @@ function bugcatcher_default_config(): array
         'AI_CHAT_DEMO_MODEL_NAME' => 'DeepSeek Chat',
         'AI_CHAT_DEMO_MODEL_SUPPORTS_VISION' => true,
         'AI_CHAT_DEMO_ENABLED' => true,
-        'AI_CHAT_DEFAULT_ASSISTANT_NAME' => 'BugCatcher AI',
-        'AI_CHAT_DEFAULT_SYSTEM_PROMPT' => 'You are BugCatcher AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',
+        'AI_CHAT_DEFAULT_ASSISTANT_NAME' => 'WebTest AI',
+        'AI_CHAT_DEFAULT_SYSTEM_PROMPT' => 'You are WebTest AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',
         'REALTIME_NOTIFICATIONS_ENABLED' => true,
         'REALTIME_NOTIFICATIONS_HOST' => '127.0.0.1',
         'REALTIME_NOTIFICATIONS_PORT' => 8090,
@@ -57,7 +57,7 @@ function bugcatcher_default_config(): array
         'MAIL_ENCRYPTION' => 'tls',
         'MAIL_FROM_ADDRESS' => '',
         'MAIL_FROM_EMAIL' => 'no-reply@example.com',
-        'MAIL_FROM_NAME' => 'BugCatcher',
+        'MAIL_FROM_NAME' => 'WebTest',
         'PASSWORD_RESET_OTP_TTL_SECONDS' => 600,
         'PASSWORD_RESET_RESEND_COOLDOWN_SECONDS' => 60,
         'PASSWORD_RESET_MAX_VERIFY_ATTEMPTS' => 5,
@@ -156,7 +156,7 @@ function bugcatcher_load_config(): array
     if ($config['AI_CHAT_DEMO_ENABLED'] === null) {
         $config['AI_CHAT_DEMO_ENABLED'] = true;
     }
-    $config['AI_CHAT_DEFAULT_ASSISTANT_NAME'] = trim((string) ($config['AI_CHAT_DEFAULT_ASSISTANT_NAME'] ?? 'BugCatcher AI'));
+    $config['AI_CHAT_DEFAULT_ASSISTANT_NAME'] = trim((string) ($config['AI_CHAT_DEFAULT_ASSISTANT_NAME'] ?? 'WebTest AI'));
     $config['AI_CHAT_DEFAULT_SYSTEM_PROMPT'] = trim((string) ($config['AI_CHAT_DEFAULT_SYSTEM_PROMPT'] ?? ''));
     $config['REALTIME_NOTIFICATIONS_ENABLED'] = filter_var(
         $config['REALTIME_NOTIFICATIONS_ENABLED'] ?? true,
@@ -185,7 +185,7 @@ function bugcatcher_load_config(): array
         $config['MAIL_FROM_ADDRESS'] = trim((string) ($config['MAIL_FROM_EMAIL'] ?? ''));
     }
     $config['MAIL_FROM_EMAIL'] = $config['MAIL_FROM_ADDRESS'];
-    $config['MAIL_FROM_NAME'] = trim((string) ($config['MAIL_FROM_NAME'] ?? 'BugCatcher'));
+    $config['MAIL_FROM_NAME'] = trim((string) ($config['MAIL_FROM_NAME'] ?? 'WebTest'));
     $config['PASSWORD_RESET_OTP_TTL_SECONDS'] = max(60, (int) ($config['PASSWORD_RESET_OTP_TTL_SECONDS'] ?? 600));
     $config['PASSWORD_RESET_RESEND_COOLDOWN_SECONDS'] = max(0, (int) ($config['PASSWORD_RESET_RESEND_COOLDOWN_SECONDS'] ?? 60));
     $config['PASSWORD_RESET_MAX_VERIFY_ATTEMPTS'] = max(1, (int) ($config['PASSWORD_RESET_MAX_VERIFY_ATTEMPTS'] ?? 5));

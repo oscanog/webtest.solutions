@@ -6,7 +6,7 @@ $user = (string) ($_SERVER['PHP_AUTH_USER'] ?? '');
 $pass = (string) ($_SERVER['PHP_AUTH_PW'] ?? '');
 
 if ($user !== $expectedUser || $pass !== $expectedPass) {
-    header('WWW-Authenticate: Basic realm="BugCatcher AI Fixture"');
+    header('WWW-Authenticate: Basic realm="WebTest AI Fixture"');
     http_response_code(401);
     header('Content-Type: text/plain; charset=utf-8');
     echo "Authentication required.";

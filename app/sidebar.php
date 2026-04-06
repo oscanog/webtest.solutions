@@ -386,8 +386,8 @@ function bugcatcher_render_sidebar(
     >
         <div class="bc-sidebar__header">
             <div class="bc-logo">
-                <span class="bc-logo__mark" aria-hidden="true">BC</span>
-                <span class="bc-logo__text">BugCatcher</span>
+                <span class="bc-logo__mark" aria-hidden="true">WT</span>
+                <span class="bc-logo__text">WebTest</span>
             </div>
         </div>
         <nav class="bc-nav" aria-label="Primary navigation">

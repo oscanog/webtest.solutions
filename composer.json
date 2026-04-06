@@ -1,6 +1,6 @@
 {
     "name": "bugcatcher/bugcatcher",
-    "description": "BugCatcher authentication and issue tracking app",
+    "description": "WebTest authentication and issue tracking app",
     "type": "project",
     "require": {
         "symfony/mailer": "^7.3",

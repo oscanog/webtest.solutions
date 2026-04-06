@@ -1,11 +1,11 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1300" viewBox="0 0 1480 1300">
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1300" viewBox="0 0 1480 1300">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
     </marker>
   </defs>
   <rect width="1480" height="1300" fill="#f8fafc"/>
-  <text x="40" y="42" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">BugCatcher Consolidated Full ERD</text>
+  <text x="40" y="42" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">WebTest Consolidated Full ERD</text>
   <text x="40" y="68" font-size="13" font-family="Segoe UI, Arial, sans-serif" fill="#334155">Current-system view derived from local_dev_full.sql, schema.sql, migrations, and ai_chat runtime schema helpers.</text>
   <text x="40" y="760" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">AI Admin, OpenClaw, AI Chat, and Notification Domain</text>
   <text x="40" y="505" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">Checklist Domain</text>

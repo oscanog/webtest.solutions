@@ -1,6 +1,6 @@
 # Checklist API E2E
 
-Playwright API E2E suite for BugCatcher checklist v1 endpoints.
+Playwright API E2E suite for WebTest checklist v1 endpoints.
 
 ## Folder Rules
 
@@ -54,4 +54,3 @@ Headed mode:
 npm run test:local:headed
 npm run test:prod:headed
 ```
-

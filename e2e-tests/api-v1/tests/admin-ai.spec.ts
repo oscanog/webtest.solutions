@@ -494,7 +494,7 @@ test("admin ai APIs expose personas, readiness, and keep openclaw aliases limite
       ...runtime.body.data.runtime,
       default_provider_config_id: createdProviderId,
       default_model_id: createdTextModelId,
-      assistant_name: `BugCatcher AI ${marker}`,
+      assistant_name: `WebTest AI ${marker}`,
       system_prompt: "Test runtime prompt",
       is_enabled: true,
     },
@@ -515,7 +515,7 @@ test("admin ai APIs expose personas, readiness, and keep openclaw aliases limite
       },
     }
   );
-  expect(textOnlySnapshot.runtime.assistant_name).toBe(`BugCatcher AI ${marker}`);
+  expect(textOnlySnapshot.runtime.assistant_name).toBe(`WebTest AI ${marker}`);
   expect(textOnlySnapshot.readiness.link.enabled).toBe(true);
   expect(textOnlySnapshot.readiness.screenshot.enabled).toBe(false);
   expect(textOnlySnapshot.readiness.screenshot.warning_message).toContain("vision-capable provider/model");
@@ -526,7 +526,7 @@ test("admin ai APIs expose personas, readiness, and keep openclaw aliases limite
       ...textOnlySnapshot.runtime,
       default_provider_config_id: createdProviderId,
       default_model_id: createdVisionModelId,
-      assistant_name: `BugCatcher AI Vision ${marker}`,
+      assistant_name: `WebTest AI Vision ${marker}`,
       is_enabled: true,
     },
     {
@@ -679,7 +679,7 @@ test("ai chat bootstrap and page link preview statuses support saved basic auth 
     page_url: readyUrl,
   });
   expect(readyPreview.page_link_preview.status).toBe("ready");
-  expect(readyPreview.page_link_preview.page_title).toContain("BugCatcher AI Preview Fixture");
+  expect(readyPreview.page_link_preview.page_title).toContain("WebTest AI Preview Fixture");
   expect(readyPreview.thread.draft_context.page_link_status).toBe("ready");
 
   const invalidPreview = await previewPageLink(thread.id, {

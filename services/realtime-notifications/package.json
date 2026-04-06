@@ -2,7 +2,7 @@
   "name": "bugcatcher-realtime-notifications",
   "version": "1.0.0",
   "private": true,
-  "description": "Realtime WebSocket delivery service for BugCatcher in-app notifications",
+  "description": "Realtime WebSocket delivery service for WebTest in-app notifications",
   "scripts": {
     "start": "node ./server.cjs"
   },
