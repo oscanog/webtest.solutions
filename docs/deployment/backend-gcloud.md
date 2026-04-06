@@ -31,6 +31,7 @@ The backend deploy flow is release-based. Do not treat `/var/www/bugcatcher/curr
 
 If this release includes the Cloudinary migration, make sure `/var/www/bugcatcher/shared/config.php` contains:
 
+- `APP_BASE_URL` set to `https://webtest.solutions` so generated links and emails use the new canonical host
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
@@ -128,17 +129,25 @@ readlink -f /var/www/bugcatcher/current
 ls -1 /var/www/bugcatcher/releases | tail
 ```
 
-Check the main site and API health through nginx locally on the VM:
+Check the canonical site, API health, and legacy redirect behavior through nginx locally on the VM:
 
 ```bash
-curl -skI https://127.0.0.1/ -H "Host: bugcatcher.online" | head -n 5
-curl -sk https://127.0.0.1/api/v1/health -H "Host: bugcatcher.online"
+curl -skI https://127.0.0.1/ -H "Host: webtest.solutions" | head -n 5
+curl -sk https://127.0.0.1/api/v1/health -H "Host: webtest.solutions"
+curl -skI https://127.0.0.1/some/path?x=1 -H "Host: bugcatcher.online" | head -n 5
 ```
 
 Expected result:
 
-- the homepage request returns `HTTP/1.1 200 OK` or an expected redirect
+- the `webtest.solutions` request returns `HTTP/1.1 200 OK` or the expected app response
 - the health endpoint returns a JSON success payload with `status` set to `ok`
+- the `bugcatcher.online` request returns a redirect to `https://webtest.solutions/some/path?x=1`
+
+If the certificate still only covers the old hostname set, expand it before verification:
+
+```bash
+sudo certbot --nginx --cert-name webtest.solutions -d webtest.solutions -d www.webtest.solutions -d bugcatcher.online
+```
 
 ## 6. Migrate Existing UploadThing Rows If Needed
 

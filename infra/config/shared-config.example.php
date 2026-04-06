@@ -2,7 +2,7 @@
 
 return [
     'APP_ENV' => 'production',
-    'APP_BASE_URL' => 'https://bugcatcher.example.com',
+    'APP_BASE_URL' => 'https://webtest.solutions',
     'DB_HOST' => '127.0.0.1',
     'DB_PORT' => 3306,
     'DB_NAME' => 'bug_catcher',

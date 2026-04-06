@@ -15,7 +15,8 @@ The mobileweb frontend is deployed from a separate repository than this backend 
 - frontend repo: `https://github.com/oscanog/bugcatcher-mobileweb.git`
 - frontend branch: `main`
 - VM repo path: `/var/www/bugcatcher-mobileweb`
-- public host: `m.bugcatcher.online`
+- canonical public hosts: `m.webtest.solutions`, `mobile.webtest.solutions`
+- legacy redirect hosts: `m.bugcatcher.online`, `mobile.bugcatcher.online`
 
 If any of those change later, update this document together with the server scripts.
 
@@ -79,30 +80,35 @@ This should be the standard path for frontend releases. The script is expected t
 
 ## 5. Verify the Frontend Deploy
 
-Check the public frontend through nginx locally on the VM:
+Check the canonical mobile hosts and the legacy redirects through nginx locally on the VM:
 
 ```bash
-curl -skI https://127.0.0.1/ -H "Host: m.bugcatcher.online" | head -n 5
-curl -sk https://127.0.0.1/api/v1/health -H "Host: m.bugcatcher.online"
+curl -skI https://127.0.0.1/ -H "Host: m.webtest.solutions" | head -n 5
+curl -skI https://127.0.0.1/ -H "Host: mobile.webtest.solutions" | head -n 5
+curl -sk https://127.0.0.1/api/v1/health -H "Host: m.webtest.solutions"
+curl -skI https://127.0.0.1/app/dashboard?tab=1 -H "Host: m.bugcatcher.online" | head -n 5
+curl -skI https://127.0.0.1/login?next=%2Fapp -H "Host: mobile.bugcatcher.online" | head -n 5
 ```
 
 Expected result:
 
-- the root request returns `HTTP/1.1 200 OK`
+- the `m.webtest.solutions` and `mobile.webtest.solutions` root requests return `HTTP/1.1 200 OK`
 - the health endpoint returns a JSON success payload with `status` set to `ok`
+- `m.bugcatcher.online` redirects to `https://m.webtest.solutions/app/dashboard?tab=1`
+- `mobile.bugcatcher.online` redirects to `https://mobile.webtest.solutions/login?next=%2Fapp`
 
 Then open the live site in a browser and verify the changed screen manually:
 
 ```text
-https://mobile.bugcatcher.online/
+https://mobile.webtest.solutions/
 ```
 
 ## Suggested Release Order When Both Repos Changed
 
 1. Deploy backend `bugcatcher` first.
-2. Verify `https://bugcatcher.online/api/v1/health`.
+2. Verify `https://webtest.solutions/api/v1/health`.
 3. Deploy frontend `bugcatcher-mobileweb`.
-4. Verify `https://mobile.bugcatcher.online/`.
+4. Verify `https://mobile.webtest.solutions/`.
 
 ## Troubleshooting
 
