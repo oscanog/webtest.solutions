@@ -2,10 +2,10 @@
 
 return [
     'APP_ENV' => 'development',
-    'APP_BASE_URL' => 'http://localhost/bugcatcher',
+    'APP_BASE_URL' => 'http://localhost/webtest',
     'DB_HOST' => '127.0.0.1',
     'DB_PORT' => 3306,
-    'DB_NAME' => 'bug_catcher',
+    'DB_NAME' => 'web_test',
     'DB_USER' => 'root',
     'DB_PASS' => '',
     'UPLOADS_DIR' => dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'issues',
@@ -23,7 +23,7 @@ return [
     'MAIL_PASSWORD' => '',
     'MAIL_ENCRYPTION' => 'tls',
     'MAIL_FROM_EMAIL' => 'm.viner001@gmail.com',
-    'MAIL_FROM_NAME' => 'BugCatcher',
+    'MAIL_FROM_NAME' => 'WebTest',
     'PASSWORD_RESET_OTP_TTL_SECONDS' => 600,
     'PASSWORD_RESET_RESEND_COOLDOWN_SECONDS' => 60,
     'PASSWORD_RESET_MAX_VERIFY_ATTEMPTS' => 5,
