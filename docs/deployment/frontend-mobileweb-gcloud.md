@@ -12,9 +12,9 @@ The mobileweb frontend is deployed from a separate repository than this backend 
 
 ## Current Production Assumptions
 
-- frontend repo: `https://github.com/oscanog/webtest-mobileweb.git`
+- frontend repo: `https://github.com/oscanog/mobile.webtest.solutions.git`
 - frontend branch: `main`
-- VM repo path: `/var/www/webtest-mobileweb`
+- VM repo path: `/var/www/mobile.webtest.solutions`
 - canonical public hosts: `m.webtest.solutions`, `mobile.webtest.solutions`
 - legacy redirect hosts: `m.webtest.online`, `mobile.webtest.online`
 
@@ -41,10 +41,10 @@ gcloud compute ssh instance-20260218-175107 --project tarlac-backup01 --zone asi
 First-time setup only:
 
 ```bash
-if [ ! -d /var/www/webtest-mobileweb/.git ]; then
+if [ ! -d /var/www/mobile.webtest.solutions/.git ]; then
   sudo mkdir -p /var/www
-  sudo git clone --branch main https://github.com/oscanog/webtest-mobileweb.git /var/www/webtest-mobileweb
-  sudo chown -R "$USER:$USER" /var/www/webtest-mobileweb
+  sudo git clone --branch main https://github.com/oscanog/mobile.webtest.solutions.git /var/www/mobile.webtest.solutions
+  sudo chown -R "$USER:$USER" /var/www/mobile.webtest.solutions
 fi
 ```
 
@@ -53,7 +53,7 @@ fi
 Update the checkout to the latest `main` branch:
 
 ```bash
-cd /var/www/webtest-mobileweb
+cd /var/www/mobile.webtest.solutions
 git fetch origin
 git checkout main
 git pull --ff-only origin main
@@ -62,7 +62,7 @@ git pull --ff-only origin main
 If you need to deploy a specific commit instead of the latest `main`:
 
 ```bash
-cd /var/www/webtest-mobileweb
+cd /var/www/mobile.webtest.solutions
 git fetch origin
 git checkout <commit-or-tag>
 ```
@@ -72,7 +72,7 @@ git checkout <commit-or-tag>
 From the frontend repo:
 
 ```bash
-cd /var/www/webtest-mobileweb
+cd /var/www/mobile.webtest.solutions
 bash scripts/deploy-mobileweb.sh
 ```
 

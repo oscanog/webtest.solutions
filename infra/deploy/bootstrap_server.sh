@@ -11,7 +11,7 @@ APP_ROOT="${APP_ROOT:-/var/www/${APP_NAME}}"
 SHARED_DIR="${SHARED_DIR:-${APP_ROOT}/shared}"
 RELEASES_DIR="${RELEASES_DIR:-${APP_ROOT}/releases}"
 MIRROR_DIR="${MIRROR_DIR:-/opt/${APP_NAME}/repo.git}"
-REPO_URL="${REPO_URL:-https://github.com/oscanog/webtest.git}"
+REPO_URL="${REPO_URL:-https://github.com/oscanog/webtest.solutions.git}"
 CONFIG_TEMPLATE="${CONFIG_TEMPLATE:-${REPO_ROOT}/infra/config/shared-config.example.php}"
 
 if [[ "${EUID}" -ne 0 ]]; then
@@ -32,6 +32,7 @@ apt-get install -y \
   php-zip \
   mariadb-server \
   git \
+  composer \
   certbot \
   python3-certbot-nginx
 

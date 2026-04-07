@@ -11,6 +11,7 @@ APP_USER="${APP_USER:-webtest}"
 APP_GROUP="${APP_GROUP:-www-data}"
 REF="${1:-}"
 PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-}"
+COMPOSER_BIN="${COMPOSER_BIN:-composer}"
 
 if [[ -z "${REF}" ]]; then
   echo "Usage: $0 <git-ref>"
@@ -31,6 +32,15 @@ sudo -u "${APP_USER}" sh -c "git --git-dir='${MIRROR_DIR}' archive '${REF}' | ta
 
 rm -rf "${release_dir}/uploads"
 ln -sfn "${SHARED_DIR}/uploads" "${release_dir}/uploads"
+
+if [[ -f "${release_dir}/composer.lock" ]]; then
+  if ! command -v "${COMPOSER_BIN}" >/dev/null 2>&1; then
+    echo "Composer executable not found: ${COMPOSER_BIN}" >&2
+    exit 1
+  fi
+
+  sudo -u "${APP_USER}" sh -c "cd '${release_dir}' && '${COMPOSER_BIN}' install --no-dev --optimize-autoloader --no-interaction"
+fi
 
 if [[ ! -f "${SHARED_DIR}/config.php" ]]; then
   echo "Shared config missing: ${SHARED_DIR}/config.php"
