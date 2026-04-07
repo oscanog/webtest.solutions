@@ -6,7 +6,7 @@
 *.sh text eol=lf
 
 setup.php export-ignore
-bug_catcher.sql export-ignore
+web_test.sql export-ignore
 SQL-inserts.txt export-ignore
 database/demo.sql export-ignore
 uploads export-ignore
