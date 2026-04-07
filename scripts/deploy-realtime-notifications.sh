@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVICE_DIR="${ROOT_DIR}/services/realtime-notifications"
-SYSTEMD_NAME="bugcatcher-realtime-notifications.service"
+SYSTEMD_NAME="webtest-realtime-notifications.service"
 SYSTEMD_SOURCE="${SERVICE_DIR}/systemd/${SYSTEMD_NAME}"
 SYSTEMD_TARGET="/etc/systemd/system/${SYSTEMD_NAME}"
 

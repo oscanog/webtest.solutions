@@ -39,11 +39,11 @@ function loadConfig() {
     internalSharedSecret:
       process.env.REALTIME_NOTIFICATIONS_INTERNAL_SHARED_SECRET ||
       phpConfig.internal_shared_secret ||
-      'bugcatcher-realtime-dev-secret',
+      'webtest-realtime-dev-secret',
     socketSecret:
       process.env.REALTIME_NOTIFICATIONS_SOCKET_SECRET ||
       phpConfig.socket_secret ||
-      'bugcatcher-realtime-dev-secret',
+      'webtest-realtime-dev-secret',
   }
 }
 
@@ -65,7 +65,7 @@ function verifySocketToken(token, socketSecret) {
   }
 
   const [head, body, signature] = parts
-  const expected = crypto.createHmac('sha256', deriveSecret('bugcatcher-realtime', socketSecret)).update(`${head}.${body}`).digest()
+  const expected = crypto.createHmac('sha256', deriveSecret('webtest-realtime', socketSecret)).update(`${head}.${body}`).digest()
   const actual = base64UrlDecode(signature)
   if (actual.length === 0 || actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) {
     return null
@@ -119,7 +119,7 @@ const config = loadConfig()
 const clientsByUser = new Map()
 
 function log(message) {
-  process.stdout.write(`[bugcatcher-realtime] ${message}\n`)
+  process.stdout.write(`[webtest-realtime] ${message}\n`)
 }
 
 function registerClient(userId, socket) {

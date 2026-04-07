@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 INSERT INTO users (id, username, email, password, role, created_at, last_active_org_id) VALUES
   (3, 'Zen', 'zen@gmail.com', '$2y$10$fZEUrsGS9bOxxHJx2uXH.Or5r9iZOBenrnEg86aHeLuekabgXK5wu', 'user', '2026-02-24 06:58:13', 4),

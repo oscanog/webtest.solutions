@@ -1,7 +1,7 @@
 const { test, expect } = require("../../api-v1/node_modules/@playwright/test");
 const { cfg } = require("../src/config");
 
-const AUTH_STORAGE_KEY = "bugcatcher-mobileweb-auth-session";
+const AUTH_STORAGE_KEY = "webtest-mobileweb-auth-session";
 const FRONTEND_API_BASE_PATH = "/api/v1";
 
 function stripByteOrderMark(value) {

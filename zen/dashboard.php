@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/app/sidebar.php';
 
 if (empty($_SESSION['active_org_id']) || (int) $_SESSION['active_org_id'] <= 0) {
   $_SESSION['org_error'] = "You haven't joined an organization to access this, please do it first.";
-  header("Location: " . bugcatcher_path('zen/organization.php'));
+  header("Location: " . webtest_path('zen/organization.php'));
   exit;
 }
 
@@ -21,7 +21,7 @@ $rankingPage = isset($_GET['ranking_page']) && ctype_digit((string) $_GET['ranki
 $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
 
 if ($orgId <= 0) {
-  header("Location: " . bugcatcher_path('zen/organization.php'));
+  header("Location: " . webtest_path('zen/organization.php'));
   exit;
 }
 
@@ -40,13 +40,13 @@ $isOrgOwner = ($orgOwnerId > 0 && $orgOwnerId === (int) $current_user_id);
 // normalize
 $page = ($page === 'issues') ? 'issues' : 'dashboard';
 $view = ($view === 'list') ? 'list' : 'kanban';
-$status = bugcatcher_issue_workflow_filter($status);
+$status = webtest_issue_workflow_filter($status);
 $author = ($author !== '' && ctype_digit((string) $author)) ? (int) $author : '';
 $label = ($label !== '' && ctype_digit((string) $label)) ? (int) $label : '';
 
 function require_membership(mysqli $conn, int $orgId, int $userId): ?array
 {
-  return bugcatcher_issue_find_membership($conn, $orgId, $userId);
+  return webtest_issue_find_membership($conn, $orgId, $userId);
 }
 
 function post_int($key): int
@@ -70,7 +70,7 @@ $isQATester = ($myOrgRole && $myOrgRole['role'] === 'QA Tester');
 $isSeniorQA = ($myOrgRole && $myOrgRole['role'] === 'Senior QA');
 $isQALead = ($myOrgRole && $myOrgRole['role'] === 'QA Lead');
 
-$isSystemAdmin = bugcatcher_is_system_admin_role($current_role);
+$isSystemAdmin = webtest_is_system_admin_role($current_role);
 
 // One workflow-role context for the whole page UI.
 $scope = 'regular'; // regular | junior | senior | pm | admin | owner | qa | senior_qa | qa_lead
@@ -104,7 +104,7 @@ if (!$isSystemAdmin) {
 // ---- Counts ----
 function count_issues(mysqli $conn, int $orgId, string $status): int
 {
-  $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
+  $filterSql = webtest_issue_workflow_filter_sql('workflow_status', $status);
   $stmt = $conn->prepare("SELECT COUNT(*) AS total FROM issues WHERE org_id=? AND {$filterSql}");
   $stmt->bind_param("i", $orgId);
   $stmt->execute();
@@ -135,7 +135,7 @@ $lRes = $conn->query("SELECT id, name, description, color FROM labels ORDER BY n
 while ($r = $lRes->fetch_assoc())
   $labelsArr[] = $r;
 
-$projectOptions = bugcatcher_issue_project_catalog($conn, $orgId);
+$projectOptions = webtest_issue_project_catalog($conn, $orgId);
 $createIssueSelectedProjectId = post_int('project_id');
 if ($createIssueSelectedProjectId <= 0 && $projectOptions) {
   $createIssueSelectedProjectId = (int) ($projectOptions[0]['id'] ?? 0);
@@ -147,9 +147,9 @@ $showCreateIssueModal = (($_GET['create'] ?? '') === 'open');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_issue') {
   try {
-    bugcatcher_issue_create_from_form($conn, $orgId, (int) $current_user_id, $_POST, $_FILES);
+    webtest_issue_create_from_form($conn, $orgId, (int) $current_user_id, $_POST, $_FILES);
 
-    header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+    header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
       'page' => 'issues',
       'view' => $view,
       'status' => $status,
@@ -208,12 +208,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
   if (
     !$isSystemAdmin
     && $isOrgOwner
-    && bugcatcher_issue_workflow_is_closed((string) ($ok['workflow_status'] ?? ''))
+    && webtest_issue_workflow_is_closed((string) ($ok['workflow_status'] ?? ''))
   ) {
     die("Closed issues cannot be deleted by the organization owner.");
   }
 
-  bugcatcher_file_storage_ensure_schema($conn);
+  webtest_file_storage_ensure_schema($conn);
 
   // Delete safely (remove files + rows)
   $conn->begin_transaction();
@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
       if ($storageKey !== '') {
         $remoteFiles[] = $file;
       } else {
-        $abs = bugcatcher_upload_absolute_path((string) ($file['file_path'] ?? ''));
+        $abs = webtest_upload_absolute_path((string) ($file['file_path'] ?? ''));
         if ($abs !== null) {
           $legacyPaths[] = $abs;
         }
@@ -271,13 +271,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         continue;
       }
 
-      $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+      $provider = webtest_file_storage_provider_from_row($remoteFile);
       $deleteKey = $provider . '|' . $storageKey;
       if (isset($deletedRemote[$deleteKey])) {
         continue;
       }
 
-      bugcatcher_file_storage_delete_if_unreferenced(
+      webtest_file_storage_delete_if_unreferenced(
         $conn,
         $storageKey,
         null,
@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
       $deletedRemote[$deleteKey] = true;
     }
     foreach ($legacyPaths as $legacyPath) {
-      bugcatcher_file_storage_delete_legacy_local($legacyPath);
+      webtest_file_storage_delete_legacy_local($legacyPath);
     }
 
   } catch (Throwable $e) {
@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
   }
 
   // Back to list (preserve filters)
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -339,8 +339,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   if (!$issue) {
     die("Issue not found in this organization.");
   }
-  $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-  if (!bugcatcher_issue_workflow_can_assign_dev($workflowStatus)) {
+  $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+  if (!webtest_issue_workflow_can_assign_dev($workflowStatus)) {
     die("Issue is not ready for PM assignment.");
   }
 
@@ -396,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   $stmt->close();
 
   // Back to list
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -442,7 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   if ((int) $issue['assigned_dev_id'] !== (int) $current_user_id) {
     die("You can only assign issues that are assigned to you.");
   }
-  if (!bugcatcher_issue_workflow_can_assign_junior((string) ($issue['workflow_status'] ?? ''))) {
+  if (!webtest_issue_workflow_can_assign_junior((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with a Senior Developer.");
   }
 
@@ -481,7 +481,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -527,7 +527,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
     die("You can only mark DONE issues assigned to you.");
   }
 
-  if (!bugcatcher_issue_workflow_can_mark_junior_done((string) ($issue['workflow_status'] ?? ''))) {
+  if (!webtest_issue_workflow_can_mark_junior_done((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with a Junior Developer.");
   }
 
@@ -545,7 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'junio
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -591,7 +591,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
     die("You can only analyze issues assigned to you.");
   }
 
-  if (!bugcatcher_issue_workflow_can_assign_qa((string) ($issue['workflow_status'] ?? ''))) {
+  if (!webtest_issue_workflow_can_assign_qa((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not ready for QA (Junior must click DONE first).");
   }
 
@@ -629,7 +629,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assig
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -673,7 +673,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   if ((int) ($issue['assigned_qa_id'] ?? 0) !== (int) $current_user_id) {
     die("You can only report issues assigned to you.");
   }
-  if (!bugcatcher_issue_workflow_can_report_senior_qa((string) ($issue['workflow_status'] ?? ''))) {
+  if (!webtest_issue_workflow_can_report_senior_qa((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with QA.");
   }
   if (!empty($issue['assigned_senior_qa_id'])) {
@@ -713,7 +713,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -757,7 +757,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   if ((int) ($issue['assigned_senior_qa_id'] ?? 0) !== (int) $current_user_id) {
     die("You can only report issues assigned to you.");
   }
-  if (!bugcatcher_issue_workflow_can_report_qa_lead((string) ($issue['workflow_status'] ?? ''))) {
+  if (!webtest_issue_workflow_can_report_qa_lead((string) ($issue['workflow_status'] ?? ''))) {
     die("Issue is not currently with Senior QA.");
   }
   if (!empty($issue['assigned_qa_lead_id'])) {
@@ -797,7 +797,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'repor
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -837,7 +837,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
     die("Issue not found.");
   if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== (int) $current_user_id)
     die("Not assigned to you.");
-  if (!bugcatcher_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
+  if (!webtest_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
     die("Issue is not with QA Lead.");
 
   // Approve -> goes back to PM (PM already sees all, we just set state)
@@ -854,7 +854,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -893,7 +893,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
     die("Issue not found.");
   if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== (int) $current_user_id)
     die("Not assigned to you.");
-  if (!bugcatcher_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
+  if (!webtest_issue_workflow_can_qa_lead_decide((string) ($issue['workflow_status'] ?? '')))
     die("Issue is not with QA Lead.");
 
   // Reject -> PM can reassign again (cycle repeats)
@@ -927,7 +927,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'qa_le
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status,
@@ -965,9 +965,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
 
   if (!$issue)
     die("Issue not found.");
-  if (bugcatcher_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? '')))
+  if (webtest_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? '')))
     die("Issue is already closed.");
-  if (!bugcatcher_issue_workflow_can_pm_close((string) ($issue['workflow_status'] ?? '')))
+  if (!webtest_issue_workflow_can_pm_close((string) ($issue['workflow_status'] ?? '')))
     die("Only APPROVED issues can be closed.");
 
   $stmt = $conn->prepare("
@@ -983,7 +983,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'pm_cl
   }
   $stmt->close();
 
-  header("Location: " . bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  header("Location: " . webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => 'closed',
@@ -1115,7 +1115,7 @@ $leaderboardStart = $rankingTotal > 0 ? ($rankingOffset + 1) : 0;
 $leaderboardEnd = min($rankingOffset + $rankingPageSize, $rankingTotal);
 
 // ---- Issues query (prepared + optional author/label filters) ----
-$statusSql = bugcatcher_issue_workflow_filter_sql('issues.workflow_status', $status);
+$statusSql = webtest_issue_workflow_filter_sql('issues.workflow_status', $status);
 $sql = "
   SELECT
     issues.*,
@@ -1173,12 +1173,12 @@ function issues_url($status, $author, $label, $view)
   if ($label !== '')
     $qs['label'] = $label;
 
-  return bugcatcher_path("zen/dashboard.php?" . http_build_query($qs));
+  return webtest_path("zen/dashboard.php?" . http_build_query($qs));
 }
 
 function issues_url_clear($status, $view)
 {
-  return bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  return webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'issues',
     'view' => $view,
     'status' => $status
@@ -1187,7 +1187,7 @@ function issues_url_clear($status, $view)
 
 function leaderboard_url(int $rankingPage): string
 {
-  return bugcatcher_path("zen/dashboard.php?" . http_build_query([
+  return webtest_path("zen/dashboard.php?" . http_build_query([
     'page' => 'dashboard',
     'ranking_page' => max(1, $rankingPage),
   ]));
@@ -1195,7 +1195,7 @@ function leaderboard_url(int $rankingPage): string
 
 function issue_detail_url(int $issueId): string
 {
-  return bugcatcher_path("zen/issue_detail.php?" . http_build_query([
+  return webtest_path("zen/issue_detail.php?" . http_build_query([
     'id' => $issueId,
   ]));
 }
@@ -1212,7 +1212,7 @@ function issue_project_label(array $issue): string
 
 function issue_workflow_badge_class(string $workflowStatus): string
 {
-  switch (bugcatcher_issue_workflow_normalize($workflowStatus)) {
+  switch (webtest_issue_workflow_normalize($workflowStatus)) {
     case 'with_senior':
       return 'badge-senior';
     case 'with_junior':
@@ -1281,24 +1281,24 @@ if ($issueIds) {
 }
 
 $issuesByLane = [];
-foreach (bugcatcher_issue_workflow_lanes() as $lane) {
+foreach (webtest_issue_workflow_lanes() as $lane) {
   $issuesByLane[(string) $lane['key']] = [];
 }
 
 foreach ($issuesRows as &$row) {
   $issueId = (int) ($row['id'] ?? 0);
-  $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($row['workflow_status'] ?? ''));
+  $workflowStatus = webtest_issue_workflow_normalize((string) ($row['workflow_status'] ?? ''));
   $row['workflow_status'] = $workflowStatus;
-  $row['status'] = bugcatcher_issue_workflow_status_alias($workflowStatus);
-  $row['assign_status'] = bugcatcher_issue_workflow_assign_status_alias($workflowStatus);
-  $row['workflow_label'] = bugcatcher_issue_workflow_label($workflowStatus);
+  $row['status'] = webtest_issue_workflow_status_alias($workflowStatus);
+  $row['assign_status'] = webtest_issue_workflow_assign_status_alias($workflowStatus);
+  $row['workflow_label'] = webtest_issue_workflow_label($workflowStatus);
   $row['badge_class'] = issue_workflow_badge_class($workflowStatus);
   $row['attachment_count'] = $attachmentCounts[$issueId] ?? 0;
   $row['labels'] = $issueLabels[$issueId] ?? [];
 
   $matchingWorkflowLaneKeys = [];
   $matchingOverviewLaneKeys = [];
-  foreach (bugcatcher_issue_workflow_lanes() as $lane) {
+  foreach (webtest_issue_workflow_lanes() as $lane) {
     $laneKey = (string) ($lane['key'] ?? '');
     $laneStates = $lane['states'] ?? [];
     if (in_array($workflowStatus, $laneStates, true)) {
@@ -1326,19 +1326,19 @@ unset($row);
   <meta charset="UTF-8">
   <title>WebTest</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-  <?php bugcatcher_render_theme_bootstrap(); ?>
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
-  <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">
+  <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
+  <?php webtest_render_theme_bootstrap(); ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_theme.css')) ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_issues.css')) ?>">
 </head>
 
 <body>
-  <?php bugcatcher_render_sidebar($page, $current_username, $current_role, (string) ($myOrgRole['role'] ?? ''), $orgName); ?>
+  <?php webtest_render_sidebar($page, $current_username, $current_role, (string) ($myOrgRole['role'] ?? ''), $orgName); ?>
 
   <main class="main">
 
     <?php if ($page === 'dashboard'): ?>
-      <?php bugcatcher_render_page_header(
+      <?php webtest_render_page_header(
         'Dashboard',
         $current_username,
         $current_role,
@@ -1426,7 +1426,7 @@ unset($row);
       </div>
 
     <?php else: ?>
-      <?php bugcatcher_render_page_header(
+      <?php webtest_render_page_header(
         'Issues',
         $current_username,
         $current_role,
@@ -1460,7 +1460,7 @@ unset($row);
       <div class="gh-toolbar">
         <div class="gh-filters">
 
-          <?php if (bugcatcher_is_system_admin_role($current_role)): ?>
+          <?php if (webtest_is_system_admin_role($current_role)): ?>
             <!-- Author dropdown -->
             <div class="gh-dd bc-dropdown" data-dd="author" data-dropdown>
               <button type="button" class="gh-dd-btn bc-dropdown__trigger" data-dropdown-trigger aria-expanded="false">
@@ -1560,7 +1560,7 @@ unset($row);
           </button>
           <div class="issue-kanban-scroll" data-kanban-scroll>
             <div class="issue-kanban-board">
-              <?php foreach (bugcatcher_issue_workflow_lanes() as $lane): ?>
+              <?php foreach (webtest_issue_workflow_lanes() as $lane): ?>
                 <?php
                 $laneKey = (string) ($lane['key'] ?? '');
                 if (($status === 'closed' && $laneKey !== 'closed') || ($status === 'open' && $laneKey === 'closed')) {
@@ -1649,7 +1649,7 @@ unset($row);
         $isAssignedToMeAsQALead = ($isQALead && (int) ($row['assigned_qa_lead_id'] ?? 0) === (int) $current_user_id);
         $isWithQALead = (($row['assign_status'] ?? '') === 'with_qa_lead');
 
-        $badgeText = (string) ($row['workflow_label'] ?? bugcatcher_issue_workflow_label($assignStatus));
+        $badgeText = (string) ($row['workflow_label'] ?? webtest_issue_workflow_label($assignStatus));
         $badgeClass = (string) ($row['badge_class'] ?? issue_workflow_badge_class($assignStatus));
         ?>
 
@@ -2046,9 +2046,9 @@ unset($row);
     <?php endif; ?>
   </main>
 
-  <?php bugcatcher_render_legacy_ui_script(); ?>
-  <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
-  <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
+  <?php webtest_render_legacy_ui_script(); ?>
+  <script src="<?= htmlspecialchars(webtest_asset_path('app/mobile_nav.js')) ?>"></script>
+  <script src="<?= htmlspecialchars(webtest_asset_path('app/notifications_ui.js')) ?>"></script>
   <script>
     function setModalState(modalId, open) {
       const modal = document.getElementById(modalId);

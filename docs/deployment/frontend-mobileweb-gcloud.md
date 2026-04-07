@@ -1,6 +1,6 @@
 # Frontend Mobileweb GCloud Deploy Guide
 
-This guide is for deploying the separate `bugcatcher-mobileweb` frontend to the production Google Compute Engine VM.
+This guide is for deploying the separate `webtest-mobileweb` frontend to the production Google Compute Engine VM.
 
 As of March 24, 2026, the production VM used in this workspace is:
 
@@ -12,11 +12,11 @@ The mobileweb frontend is deployed from a separate repository than this backend 
 
 ## Current Production Assumptions
 
-- frontend repo: `https://github.com/oscanog/bugcatcher-mobileweb.git`
+- frontend repo: `https://github.com/oscanog/webtest-mobileweb.git`
 - frontend branch: `main`
-- VM repo path: `/var/www/bugcatcher-mobileweb`
+- VM repo path: `/var/www/webtest-mobileweb`
 - canonical public hosts: `m.webtest.solutions`, `mobile.webtest.solutions`
-- legacy redirect hosts: `m.bugcatcher.online`, `mobile.bugcatcher.online`
+- legacy redirect hosts: `m.webtest.online`, `mobile.webtest.online`
 
 If any of those change later, update this document together with the server scripts.
 
@@ -41,10 +41,10 @@ gcloud compute ssh instance-20260218-175107 --project tarlac-backup01 --zone asi
 First-time setup only:
 
 ```bash
-if [ ! -d /var/www/bugcatcher-mobileweb/.git ]; then
+if [ ! -d /var/www/webtest-mobileweb/.git ]; then
   sudo mkdir -p /var/www
-  sudo git clone --branch main https://github.com/oscanog/bugcatcher-mobileweb.git /var/www/bugcatcher-mobileweb
-  sudo chown -R "$USER:$USER" /var/www/bugcatcher-mobileweb
+  sudo git clone --branch main https://github.com/oscanog/webtest-mobileweb.git /var/www/webtest-mobileweb
+  sudo chown -R "$USER:$USER" /var/www/webtest-mobileweb
 fi
 ```
 
@@ -53,7 +53,7 @@ fi
 Update the checkout to the latest `main` branch:
 
 ```bash
-cd /var/www/bugcatcher-mobileweb
+cd /var/www/webtest-mobileweb
 git fetch origin
 git checkout main
 git pull --ff-only origin main
@@ -62,7 +62,7 @@ git pull --ff-only origin main
 If you need to deploy a specific commit instead of the latest `main`:
 
 ```bash
-cd /var/www/bugcatcher-mobileweb
+cd /var/www/webtest-mobileweb
 git fetch origin
 git checkout <commit-or-tag>
 ```
@@ -72,7 +72,7 @@ git checkout <commit-or-tag>
 From the frontend repo:
 
 ```bash
-cd /var/www/bugcatcher-mobileweb
+cd /var/www/webtest-mobileweb
 bash scripts/deploy-mobileweb.sh
 ```
 
@@ -86,16 +86,16 @@ Check the canonical mobile hosts and the legacy redirects through nginx locally 
 curl -skI https://127.0.0.1/ -H "Host: m.webtest.solutions" | head -n 5
 curl -skI https://127.0.0.1/ -H "Host: mobile.webtest.solutions" | head -n 5
 curl -sk https://127.0.0.1/api/v1/health -H "Host: m.webtest.solutions"
-curl -skI https://127.0.0.1/app/dashboard?tab=1 -H "Host: m.bugcatcher.online" | head -n 5
-curl -skI https://127.0.0.1/login?next=%2Fapp -H "Host: mobile.bugcatcher.online" | head -n 5
+curl -skI https://127.0.0.1/app/dashboard?tab=1 -H "Host: m.webtest.online" | head -n 5
+curl -skI https://127.0.0.1/login?next=%2Fapp -H "Host: mobile.webtest.online" | head -n 5
 ```
 
 Expected result:
 
 - the `m.webtest.solutions` and `mobile.webtest.solutions` root requests return `HTTP/1.1 200 OK`
 - the health endpoint returns a JSON success payload with `status` set to `ok`
-- `m.bugcatcher.online` redirects to `https://m.webtest.solutions/app/dashboard?tab=1`
-- `mobile.bugcatcher.online` redirects to `https://mobile.webtest.solutions/login?next=%2Fapp`
+- `m.webtest.online` redirects to `https://m.webtest.solutions/app/dashboard?tab=1`
+- `mobile.webtest.online` redirects to `https://mobile.webtest.solutions/login?next=%2Fapp`
 
 Then open the live site in a browser and verify the changed screen manually:
 
@@ -105,9 +105,9 @@ https://mobile.webtest.solutions/
 
 ## Suggested Release Order When Both Repos Changed
 
-1. Deploy backend `bugcatcher` first.
+1. Deploy backend `webtest` first.
 2. Verify `https://webtest.solutions/api/v1/health`.
-3. Deploy frontend `bugcatcher-mobileweb`.
+3. Deploy frontend `webtest-mobileweb`.
 4. Verify `https://mobile.webtest.solutions/`.
 
 ## Troubleshooting

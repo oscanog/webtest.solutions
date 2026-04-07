@@ -45,9 +45,9 @@ if ($uploadedCount <= 0) {
     checklist_api_json_error(422, 'upload_failed', 'No valid batch attachments were uploaded.', $failed);
 }
 
-$attachments = bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId);
+$attachments = webtest_openclaw_fetch_batch_attachments($conn, $batchId);
 checklist_api_json_response(200, [
     'uploaded_count' => $uploadedCount,
     'failed' => $failed,
-    'attachments' => bugcatcher_checklist_shape_attachments($attachments),
+    'attachments' => webtest_checklist_shape_attachments($attachments),
 ]);

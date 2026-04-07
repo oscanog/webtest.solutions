@@ -2,19 +2,19 @@
 
 require_once dirname(__DIR__) . '/db.php';
 
-function bugcatcher_post_int(string $key): int
+function webtest_post_int(string $key): int
 {
     $value = $_POST[$key] ?? '';
     return ctype_digit((string) $value) ? (int) $value : 0;
 }
 
-function bugcatcher_get_int(string $key): int
+function webtest_get_int(string $key): int
 {
     $value = $_GET[$key] ?? '';
     return ctype_digit((string) $value) ? (int) $value : 0;
 }
 
-function bugcatcher_fetch_org_membership(mysqli $conn, int $orgId, int $userId): ?array
+function webtest_fetch_org_membership(mysqli $conn, int $orgId, int $userId): ?array
 {
     $stmt = $conn->prepare("
         SELECT om.role, o.name AS org_name, o.owner_id
@@ -31,13 +31,13 @@ function bugcatcher_fetch_org_membership(mysqli $conn, int $orgId, int $userId):
     return $row ?: null;
 }
 
-function bugcatcher_sync_active_org_from_request(mysqli $conn): int
+function webtest_sync_active_org_from_request(mysqli $conn): int
 {
     global $current_user_id;
 
-    $requestedOrgId = bugcatcher_get_int('org_id');
+    $requestedOrgId = webtest_get_int('org_id');
     if ($requestedOrgId > 0 && (int) $current_user_id > 0) {
-        $membership = bugcatcher_fetch_org_membership($conn, $requestedOrgId, (int) $current_user_id);
+        $membership = webtest_fetch_org_membership($conn, $requestedOrgId, (int) $current_user_id);
         if ($membership) {
             $_SESSION['active_org_id'] = $requestedOrgId;
 
@@ -53,17 +53,17 @@ function bugcatcher_sync_active_org_from_request(mysqli $conn): int
     return (int) ($_SESSION['active_org_id'] ?? 0);
 }
 
-function bugcatcher_require_org_context(mysqli $conn): array
+function webtest_require_org_context(mysqli $conn): array
 {
     global $current_user_id, $current_username, $current_role;
 
-    $orgId = bugcatcher_sync_active_org_from_request($conn);
+    $orgId = webtest_sync_active_org_from_request($conn);
     if ($orgId <= 0) {
-        header("Location: " . bugcatcher_path('zen/organization.php'));
+        header("Location: " . webtest_path('zen/organization.php'));
         exit;
     }
 
-    $membership = bugcatcher_fetch_org_membership($conn, $orgId, $current_user_id);
+    $membership = webtest_fetch_org_membership($conn, $orgId, $current_user_id);
     if (!$membership) {
         die("You are not a member of the active organization.");
     }

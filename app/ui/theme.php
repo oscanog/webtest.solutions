@@ -1,13 +1,13 @@
 <?php
 
-function bugcatcher_theme_storage_key(): string
+function webtest_theme_storage_key(): string
 {
-    return 'bugcatcher-theme';
+    return 'webtest-theme';
 }
 
-function bugcatcher_render_theme_bootstrap(): void
+function webtest_render_theme_bootstrap(): void
 {
-    $storageKey = json_encode(bugcatcher_theme_storage_key(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $storageKey = json_encode(webtest_theme_storage_key(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     ?>
     <script>
         (function () {
@@ -31,7 +31,7 @@ function bugcatcher_render_theme_bootstrap(): void
     <?php
 }
 
-function bugcatcher_render_theme_toggle(): void
+function webtest_render_theme_toggle(): void
 {
     ?>
     <button
@@ -73,9 +73,9 @@ function bugcatcher_render_theme_toggle(): void
     <?php
 }
 
-function bugcatcher_render_legacy_ui_script(): void
+function webtest_render_legacy_ui_script(): void
 {
     ?>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_ui.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/legacy_ui.js')) ?>"></script>
     <?php
 }

@@ -4,14 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-APP_NAME="${APP_NAME:-bugcatcher}"
-APP_USER="${APP_USER:-bugcatcher}"
+APP_NAME="${APP_NAME:-webtest}"
+APP_USER="${APP_USER:-webtest}"
 APP_GROUP="${APP_GROUP:-www-data}"
 APP_ROOT="${APP_ROOT:-/var/www/${APP_NAME}}"
 SHARED_DIR="${SHARED_DIR:-${APP_ROOT}/shared}"
 RELEASES_DIR="${RELEASES_DIR:-${APP_ROOT}/releases}"
 MIRROR_DIR="${MIRROR_DIR:-/opt/${APP_NAME}/repo.git}"
-REPO_URL="${REPO_URL:-https://github.com/oscanog/bugcatcher.git}"
+REPO_URL="${REPO_URL:-https://github.com/oscanog/webtest.git}"
 CONFIG_TEMPLATE="${CONFIG_TEMPLATE:-${REPO_ROOT}/infra/config/shared-config.example.php}"
 
 if [[ "${EUID}" -ne 0 ]]; then

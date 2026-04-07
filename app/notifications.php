@@ -16,10 +16,10 @@ if (!$user) {
 }
 
 $activeOrgId = (int) ($_SESSION['active_org_id'] ?? 0);
-$membership = $activeOrgId > 0 ? bugcatcher_fetch_org_membership($conn, $activeOrgId, $current_user_id) : null;
+$membership = $activeOrgId > 0 ? webtest_fetch_org_membership($conn, $activeOrgId, $current_user_id) : null;
 $orgRole = is_array($membership) ? (string) ($membership['role'] ?? '') : null;
 $orgName = is_array($membership) ? (string) ($membership['org_name'] ?? '') : null;
-$pageData = bugcatcher_notifications_bootstrap($conn, $current_user_id, 50, 'all');
+$pageData = webtest_notifications_bootstrap($conn, $current_user_id, 50, 'all');
 $items = is_array($pageData['items'] ?? null) ? $pageData['items'] : [];
 $unreadCount = (int) ($pageData['unread_count'] ?? 0);
 $readCount = max(0, count($items) - $unreadCount);
@@ -34,7 +34,7 @@ $context = [
     'org_name' => $orgName,
 ];
 
-function bugcatcher_render_notifications_page_rows(array $items): void
+function webtest_render_notifications_page_rows(array $items): void
 {
     if (!$items) {
         ?>
@@ -48,7 +48,7 @@ function bugcatcher_render_notifications_page_rows(array $items): void
 
     foreach ($items as $item):
         $notificationId = (int) ($item['id'] ?? 0);
-        $destination = trim((string) ($item['legacy_path'] ?? bugcatcher_notification_legacy_fallback_path()));
+        $destination = trim((string) ($item['legacy_path'] ?? webtest_notification_legacy_fallback_path()));
         $isUnread = empty($item['read_at']);
         $severity = (string) ($item['severity'] ?? 'default');
         ?>
@@ -62,13 +62,13 @@ function bugcatcher_render_notifications_page_rows(array $items): void
             <div class="bc-notification-row__main">
                 <div class="bc-notification-row__topline">
                     <span class="bc-notification-tag severity-<?= htmlspecialchars($severity) ?>">
-                        <?= htmlspecialchars(bugcatcher_notification_severity_label($severity)) ?>
+                        <?= htmlspecialchars(webtest_notification_severity_label($severity)) ?>
                     </span>
                     <span class="bc-notification-state <?= $isUnread ? 'is-unread' : 'is-read' ?>">
                         <?= $isUnread ? 'Unread' : 'Read' ?>
                     </span>
                     <span class="bc-notification-time" data-notification-created-at="<?= htmlspecialchars((string) ($item['created_at'] ?? '')) ?>">
-                        <?= htmlspecialchars(bugcatcher_notification_time_label((string) ($item['created_at'] ?? ''))) ?>
+                        <?= htmlspecialchars(webtest_notification_time_label((string) ($item['created_at'] ?? ''))) ?>
                     </span>
                 </div>
                 <strong class="bc-notification-row__title"><?= htmlspecialchars((string) ($item['title'] ?? 'Notification')) ?></strong>
@@ -82,7 +82,7 @@ function bugcatcher_render_notifications_page_rows(array $items): void
     endforeach;
 }
 
-bugcatcher_shell_start(
+webtest_shell_start(
     'Notifications',
     'notifications',
     $context,
@@ -94,7 +94,7 @@ bugcatcher_shell_start(
 <div
     class="bc-notifications-page"
     data-notifications-page
-    data-notifications-initial="<?= bugcatcher_json_attr($pageData) ?>"
+    data-notifications-initial="<?= webtest_json_attr($pageData) ?>"
 >
     <section class="bc-card bc-notifications-hero">
         <div class="bc-notifications-hero__copy">
@@ -140,9 +140,9 @@ bugcatcher_shell_start(
             </div>
         </div>
         <div class="bc-notifications-list-page" data-notifications-page-list>
-            <?php bugcatcher_render_notifications_page_rows($items); ?>
+            <?php webtest_render_notifications_page_rows($items); ?>
         </div>
     </section>
 </div>
 
-<?php bugcatcher_shell_end(); ?>
+<?php webtest_shell_end(); ?>

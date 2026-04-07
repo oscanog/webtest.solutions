@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-function bugcatcher_mail_message(
+function webtest_mail_message(
     string $toEmail,
     string $toName,
     string $subject,
@@ -23,9 +23,9 @@ function bugcatcher_mail_message(
     ];
 }
 
-function bugcatcher_mail_password_reset_message(string $toEmail, string $toName, string $otp, int $ttlSeconds): array
+function webtest_mail_password_reset_message(string $toEmail, string $toName, string $otp, int $ttlSeconds): array
 {
-    $appName = bugcatcher_mail_from_name();
+    $appName = webtest_mail_from_name();
     $minutes = (int) ceil($ttlSeconds / 60);
     $htmlBody = sprintf(
         '<p>You requested a password reset for %s.</p><p>Your 6-digit reset code is <strong style="font-size:22px; letter-spacing:4px;">%s</strong>.</p><p>This code expires in %d minutes.</p><p>If you did not request this, you can ignore this email.</p>',
@@ -40,7 +40,7 @@ function bugcatcher_mail_password_reset_message(string $toEmail, string $toName,
         $minutes
     );
 
-    return bugcatcher_mail_message(
+    return webtest_mail_message(
         $toEmail,
         $toName,
         $appName . ' password reset code',

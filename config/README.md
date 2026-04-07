@@ -6,8 +6,8 @@ Canonical local config files now live under `infra/config/`.
 
 Load order in app bootstrap is:
 
-1. `BUGCATCHER_CONFIG_PATH` (env override)
-2. `/var/www/bugcatcher/shared/config.php`
+1. `WEBTEST_CONFIG_PATH` (env override)
+2. `/var/www/webtest/shared/config.php`
 3. `infra/config/local.php`
 4. `config/local.php` (legacy fallback)
 

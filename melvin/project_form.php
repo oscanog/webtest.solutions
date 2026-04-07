@@ -4,11 +4,11 @@ require_once dirname(__DIR__) . '/app/auth_org.php';
 require_once dirname(__DIR__) . '/app/checklist_lib.php';
 require_once dirname(__DIR__) . '/app/checklist_shell.php';
 
-$context = bugcatcher_require_org_context($conn);
-bugcatcher_checklist_require_manager($context);
+$context = webtest_require_org_context($conn);
+webtest_checklist_require_manager($context);
 
-$projectId = bugcatcher_get_int('id');
-$project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, $context['org_id'], $projectId) : null;
+$projectId = webtest_get_int('id');
+$project = $projectId > 0 ? webtest_checklist_fetch_project($conn, $context['org_id'], $projectId) : null;
 if ($projectId > 0 && !$project) {
     die('Project not found.');
 }
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $code = trim($_POST['code'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $status = bugcatcher_checklist_normalize_enum($_POST['status'] ?? 'active', ['active', 'archived'], 'active');
+    $status = webtest_checklist_normalize_enum($_POST['status'] ?? 'active', ['active', 'archived'], 'active');
 
     if ($name === '') {
         $error = 'Project name is required.';
@@ -71,34 +71,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         if ($ok) {
-            header('Location: ' . bugcatcher_path('melvin/project_detail.php?id=' . $newId));
+            header('Location: ' . webtest_path('melvin/project_detail.php?id=' . $newId));
             exit;
         }
     }
 }
 
-bugcatcher_shell_start($project ? 'Edit Project' : 'New Project', 'projects', $context, [
+webtest_shell_start($project ? 'Edit Project' : 'New Project', 'projects', $context, [
     ['href' => '/melvin/project_list.php', 'label' => 'Back to Projects', 'variant' => 'secondary'],
 ]);
 ?>
 
 <?php if ($error): ?>
-    <div class="bc-alert error"><?= bugcatcher_html($error) ?></div>
+    <div class="bc-alert error"><?= webtest_html($error) ?></div>
 <?php endif; ?>
 
 <div class="bc-panel">
     <form method="post" class="bc-form-grid">
         <div class="bc-field">
             <label for="name">Project name</label>
-            <input class="bc-input" id="name" name="name" required value="<?= bugcatcher_html($name) ?>">
+            <input class="bc-input" id="name" name="name" required value="<?= webtest_html($name) ?>">
         </div>
         <div class="bc-field">
             <label for="code">Project code</label>
-            <input class="bc-input" id="code" name="code" value="<?= bugcatcher_html($code) ?>" placeholder="Optional short code">
+            <input class="bc-input" id="code" name="code" value="<?= webtest_html($code) ?>" placeholder="Optional short code">
         </div>
         <div class="bc-field full">
             <label for="description">Description</label>
-            <textarea class="bc-textarea" id="description" name="description"><?= bugcatcher_html($description) ?></textarea>
+            <textarea class="bc-textarea" id="description" name="description"><?= webtest_html($description) ?></textarea>
         </div>
         <div class="bc-field">
             <label for="status">Status</label>
@@ -113,4 +113,4 @@ bugcatcher_shell_start($project ? 'Edit Project' : 'New Project', 'projects', $c
     </form>
 </div>
 
-<?php bugcatcher_shell_end(); ?>
+<?php webtest_shell_end(); ?>

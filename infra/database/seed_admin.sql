@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 -- Replace the values below before importing this file.
 -- Generate a bcrypt hash with:

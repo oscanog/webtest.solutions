@@ -2,10 +2,10 @@
 
 require_once __DIR__ . '/bootstrap.php';
 
-function bugcatcher_ai_admin_persona_definitions(): array
+function webtest_ai_admin_persona_definitions(): array
 {
-    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
-    $systemPrompt = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
+    $assistantName = trim((string) webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
+    $systemPrompt = trim((string) webtest_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
 
     return [
         'checklist_generator' => [
@@ -27,7 +27,7 @@ function bugcatcher_ai_admin_persona_definitions(): array
     ];
 }
 
-function bugcatcher_ai_admin_to_bool($value, bool $default = false): bool
+function webtest_ai_admin_to_bool($value, bool $default = false): bool
 {
     if ($value === null) {
         return $default;
@@ -47,9 +47,9 @@ function bugcatcher_ai_admin_to_bool($value, bool $default = false): bool
     return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true);
 }
 
-function bugcatcher_ai_admin_persona_label(string $personaKey): string
+function webtest_ai_admin_persona_label(string $personaKey): string
 {
-    $definitions = bugcatcher_ai_admin_persona_definitions();
+    $definitions = webtest_ai_admin_persona_definitions();
     $definition = $definitions[$personaKey] ?? null;
     if (is_array($definition) && trim((string) ($definition['display_name'] ?? '')) !== '') {
         return (string) $definition['display_name'];
@@ -58,7 +58,7 @@ function bugcatcher_ai_admin_persona_label(string $personaKey): string
     return ucwords(str_replace('_', ' ', $personaKey));
 }
 
-function bugcatcher_ai_admin_runtime_ensure_schema(mysqli $conn): void
+function webtest_ai_admin_runtime_ensure_schema(mysqli $conn): void
 {
     static $done = false;
     if ($done) {
@@ -159,14 +159,14 @@ function bugcatcher_ai_admin_runtime_ensure_schema(mysqli $conn): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     ");
 
-    bugcatcher_ai_admin_backfill_runtime_from_openclaw($conn);
+    webtest_ai_admin_backfill_runtime_from_openclaw($conn);
 
     $done = true;
 }
 
-function bugcatcher_ai_admin_backfill_runtime_from_openclaw(mysqli $conn): void
+function webtest_ai_admin_backfill_runtime_from_openclaw(mysqli $conn): void
 {
-    if (!bugcatcher_db_has_table($conn, 'openclaw_runtime_config')) {
+    if (!webtest_db_has_table($conn, 'openclaw_runtime_config')) {
         return;
     }
 
@@ -185,7 +185,7 @@ function bugcatcher_ai_admin_backfill_runtime_from_openclaw(mysqli $conn): void
     ];
 
     foreach ($requiredColumns as $column) {
-        if (!bugcatcher_db_has_column($conn, 'openclaw_runtime_config', $column)) {
+        if (!webtest_db_has_column($conn, 'openclaw_runtime_config', $column)) {
             return;
         }
     }
@@ -249,9 +249,9 @@ function bugcatcher_ai_admin_backfill_runtime_from_openclaw(mysqli $conn): void
     $stmt->close();
 }
 
-function bugcatcher_ai_admin_fetch_runtime_config(mysqli $conn): ?array
+function webtest_ai_admin_fetch_runtime_config(mysqli $conn): ?array
 {
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
+    webtest_ai_admin_runtime_ensure_schema($conn);
 
     $result = $conn->query("
         SELECT arc.*,
@@ -272,7 +272,7 @@ function bugcatcher_ai_admin_fetch_runtime_config(mysqli $conn): ?array
     return $row ?: null;
 }
 
-function bugcatcher_ai_admin_validate_runtime_model(mysqli $conn, int $providerId, int $modelId): void
+function webtest_ai_admin_validate_runtime_model(mysqli $conn, int $providerId, int $modelId): void
 {
     if ($providerId <= 0 || $modelId <= 0) {
         return;
@@ -298,9 +298,9 @@ function bugcatcher_ai_admin_validate_runtime_model(mysqli $conn, int $providerI
     }
 }
 
-function bugcatcher_ai_admin_fetch_personas(mysqli $conn): array
+function webtest_ai_admin_fetch_personas(mysqli $conn): array
 {
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
+    webtest_ai_admin_runtime_ensure_schema($conn);
 
     $result = $conn->query("
         SELECT arp.*,
@@ -319,9 +319,9 @@ function bugcatcher_ai_admin_fetch_personas(mysqli $conn): array
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function bugcatcher_ai_admin_fetch_persona_by_key(mysqli $conn, string $personaKey): ?array
+function webtest_ai_admin_fetch_persona_by_key(mysqli $conn, string $personaKey): ?array
 {
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
+    webtest_ai_admin_runtime_ensure_schema($conn);
     $stmt = $conn->prepare("
         SELECT arp.*,
                provider.display_name AS provider_name,
@@ -344,12 +344,12 @@ function bugcatcher_ai_admin_fetch_persona_by_key(mysqli $conn, string $personaK
     return $row ?: null;
 }
 
-function bugcatcher_ai_admin_format_persona(array $persona): array
+function webtest_ai_admin_format_persona(array $persona): array
 {
     return [
         'id' => (int) $persona['id'],
         'persona_key' => (string) $persona['persona_key'],
-        'display_name' => (string) ($persona['display_name'] ?? bugcatcher_ai_admin_persona_label((string) ($persona['persona_key'] ?? ''))),
+        'display_name' => (string) ($persona['display_name'] ?? webtest_ai_admin_persona_label((string) ($persona['persona_key'] ?? ''))),
         'is_enabled' => (bool) ($persona['is_enabled'] ?? false),
         'provider_config_id' => isset($persona['provider_config_id']) ? (int) $persona['provider_config_id'] : null,
         'provider_name' => (string) ($persona['provider_name'] ?? ''),
@@ -364,12 +364,12 @@ function bugcatcher_ai_admin_format_persona(array $persona): array
     ];
 }
 
-function bugcatcher_ai_admin_personas_for_display(mysqli $conn): array
+function webtest_ai_admin_personas_for_display(mysqli $conn): array
 {
-    return array_map('bugcatcher_ai_admin_format_persona', bugcatcher_ai_admin_fetch_personas($conn));
+    return array_map('webtest_ai_admin_format_persona', webtest_ai_admin_fetch_personas($conn));
 }
 
-function bugcatcher_ai_admin_seed_default_personas(
+function webtest_ai_admin_seed_default_personas(
     mysqli $conn,
     int $actorUserId,
     int $defaultProviderId,
@@ -377,11 +377,11 @@ function bugcatcher_ai_admin_seed_default_personas(
     string $assistantName,
     string $systemPrompt
 ): void {
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
-    $definitions = bugcatcher_ai_admin_persona_definitions();
+    webtest_ai_admin_runtime_ensure_schema($conn);
+    $definitions = webtest_ai_admin_persona_definitions();
 
     foreach ($definitions as $personaKey => $definition) {
-        $existing = bugcatcher_ai_admin_fetch_persona_by_key($conn, $personaKey);
+        $existing = webtest_ai_admin_fetch_persona_by_key($conn, $personaKey);
         if ($existing) {
             continue;
         }
@@ -401,7 +401,7 @@ function bugcatcher_ai_admin_seed_default_personas(
             VALUES (?, ?, ?, NULLIF(?, 0), NULLIF(?, 0), NULLIF(?, ''), NULLIF(?, ''), ?, ?, NOW())
         ");
         $enabled = !empty($definition['is_enabled']) ? 1 : 0;
-        $displayName = (string) ($definition['display_name'] ?? bugcatcher_ai_admin_persona_label($personaKey));
+        $displayName = (string) ($definition['display_name'] ?? webtest_ai_admin_persona_label($personaKey));
         $stmt->bind_param(
             'ssiiissii',
             $personaKey,
@@ -419,7 +419,7 @@ function bugcatcher_ai_admin_seed_default_personas(
     }
 }
 
-function bugcatcher_ai_admin_save_personas(
+function webtest_ai_admin_save_personas(
     mysqli $conn,
     int $actorUserId,
     array $personas,
@@ -428,7 +428,7 @@ function bugcatcher_ai_admin_save_personas(
     string $assistantName,
     string $systemPrompt
 ): void {
-    bugcatcher_ai_admin_seed_default_personas(
+    webtest_ai_admin_seed_default_personas(
         $conn,
         $actorUserId,
         $defaultProviderId,
@@ -437,14 +437,14 @@ function bugcatcher_ai_admin_save_personas(
         $systemPrompt
     );
 
-    $definitions = bugcatcher_ai_admin_persona_definitions();
+    $definitions = webtest_ai_admin_persona_definitions();
     foreach ($definitions as $personaKey => $definition) {
         $input = $personas[$personaKey] ?? null;
         if (!is_array($input)) {
             continue;
         }
 
-        $existing = bugcatcher_ai_admin_fetch_persona_by_key($conn, $personaKey);
+        $existing = webtest_ai_admin_fetch_persona_by_key($conn, $personaKey);
         if (!$existing) {
             continue;
         }
@@ -455,7 +455,7 @@ function bugcatcher_ai_admin_save_personas(
         $modelId = isset($input['model_id'])
             ? (int) $input['model_id']
             : (int) ($existing['model_id'] ?? $defaultModelId);
-        bugcatcher_ai_admin_validate_runtime_model($conn, $providerId, $modelId);
+        webtest_ai_admin_validate_runtime_model($conn, $providerId, $modelId);
 
         $personaAssistantName = trim((string) ($input['assistant_name'] ?? $existing['assistant_name'] ?? $definition['assistant_name'] ?? $assistantName));
         if ($personaAssistantName === '') {
@@ -464,7 +464,7 @@ function bugcatcher_ai_admin_save_personas(
 
         $personaPrompt = trim((string) ($input['system_prompt'] ?? $existing['system_prompt'] ?? $definition['system_prompt'] ?? $systemPrompt));
         $isEnabled = array_key_exists('is_enabled', $input)
-            ? bugcatcher_ai_admin_to_bool($input['is_enabled'], true)
+            ? webtest_ai_admin_to_bool($input['is_enabled'], true)
             : (bool) ($existing['is_enabled'] ?? !empty($definition['is_enabled']));
 
         $stmt = $conn->prepare("
@@ -480,7 +480,7 @@ function bugcatcher_ai_admin_save_personas(
             WHERE persona_key = ?
         ");
         $enabled = $isEnabled ? 1 : 0;
-        $displayName = (string) ($definition['display_name'] ?? bugcatcher_ai_admin_persona_label($personaKey));
+        $displayName = (string) ($definition['display_name'] ?? webtest_ai_admin_persona_label($personaKey));
         $stmt->bind_param(
             'siiissis',
             $displayName,
@@ -497,7 +497,7 @@ function bugcatcher_ai_admin_save_personas(
     }
 }
 
-function bugcatcher_ai_admin_save_runtime_config(
+function webtest_ai_admin_save_runtime_config(
     mysqli $conn,
     int $actorUserId,
     bool $isEnabled,
@@ -507,16 +507,16 @@ function bugcatcher_ai_admin_save_runtime_config(
     string $systemPrompt,
     array $personas = []
 ): void {
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
-    bugcatcher_ai_admin_validate_runtime_model($conn, $defaultProviderId, $defaultModelId);
+    webtest_ai_admin_runtime_ensure_schema($conn);
+    webtest_ai_admin_validate_runtime_model($conn, $defaultProviderId, $defaultModelId);
 
     $assistantName = trim($assistantName);
     if ($assistantName === '') {
-        $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
+        $assistantName = trim((string) webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
     }
     $systemPrompt = trim($systemPrompt);
 
-    $existing = bugcatcher_ai_admin_fetch_runtime_config($conn);
+    $existing = webtest_ai_admin_fetch_runtime_config($conn);
     if ($existing) {
         $stmt = $conn->prepare("
             UPDATE ai_runtime_config
@@ -555,7 +555,7 @@ function bugcatcher_ai_admin_save_runtime_config(
         $stmt->close();
     }
 
-    bugcatcher_ai_admin_save_personas(
+    webtest_ai_admin_save_personas(
         $conn,
         $actorUserId,
         $personas,
@@ -566,24 +566,24 @@ function bugcatcher_ai_admin_save_runtime_config(
     );
 }
 
-function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
+function webtest_ai_admin_seed_default_config(mysqli $conn): void
 {
     static $done = false;
     if ($done) {
         return;
     }
 
-    bugcatcher_ai_admin_runtime_ensure_schema($conn);
-    $providerKey = trim((string) bugcatcher_config('AI_CHAT_DEMO_PROVIDER_KEY', 'deepseek'));
-    $providerName = trim((string) bugcatcher_config('AI_CHAT_DEMO_PROVIDER_NAME', 'DeepSeek'));
-    $providerType = trim((string) bugcatcher_config('AI_CHAT_DEMO_PROVIDER_TYPE', 'openai-compatible'));
-    $baseUrl = trim((string) bugcatcher_config('AI_CHAT_DEMO_PROVIDER_BASE_URL', 'https://api.deepseek.com'));
-    $apiKey = trim((string) bugcatcher_config('AI_CHAT_DEMO_API_KEY', ''));
-    $modelId = trim((string) bugcatcher_config('AI_CHAT_DEMO_MODEL_ID', 'deepseek-chat'));
-    $modelName = trim((string) bugcatcher_config('AI_CHAT_DEMO_MODEL_NAME', 'DeepSeek Chat'));
-    $supportsVision = (bool) bugcatcher_config('AI_CHAT_DEMO_MODEL_SUPPORTS_VISION', false);
-    $assistantName = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
-    $systemPrompt = trim((string) bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
+    webtest_ai_admin_runtime_ensure_schema($conn);
+    $providerKey = trim((string) webtest_config('AI_CHAT_DEMO_PROVIDER_KEY', 'deepseek'));
+    $providerName = trim((string) webtest_config('AI_CHAT_DEMO_PROVIDER_NAME', 'DeepSeek'));
+    $providerType = trim((string) webtest_config('AI_CHAT_DEMO_PROVIDER_TYPE', 'openai-compatible'));
+    $baseUrl = trim((string) webtest_config('AI_CHAT_DEMO_PROVIDER_BASE_URL', 'https://api.deepseek.com'));
+    $apiKey = trim((string) webtest_config('AI_CHAT_DEMO_API_KEY', ''));
+    $modelId = trim((string) webtest_config('AI_CHAT_DEMO_MODEL_ID', 'deepseek-chat'));
+    $modelName = trim((string) webtest_config('AI_CHAT_DEMO_MODEL_NAME', 'DeepSeek Chat'));
+    $supportsVision = (bool) webtest_config('AI_CHAT_DEMO_MODEL_SUPPORTS_VISION', false);
+    $assistantName = trim((string) webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'));
+    $systemPrompt = trim((string) webtest_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''));
 
     if (
         $providerKey === ''
@@ -597,9 +597,9 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
     }
 
     $actorId = 1;
-    $provider = bugcatcher_openclaw_find_provider_by_key($conn, $providerKey);
+    $provider = webtest_openclaw_find_provider_by_key($conn, $providerKey);
     if (!$provider) {
-        bugcatcher_openclaw_save_provider(
+        webtest_openclaw_save_provider(
             $conn,
             $actorId,
             0,
@@ -611,15 +611,15 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
             true,
             false
         );
-        $provider = bugcatcher_openclaw_find_provider_by_key($conn, $providerKey);
+        $provider = webtest_openclaw_find_provider_by_key($conn, $providerKey);
     } elseif (
         trim((string) ($provider['display_name'] ?? '')) !== $providerName
         || trim((string) ($provider['provider_type'] ?? '')) !== $providerType
         || trim((string) ($provider['base_url'] ?? '')) !== $baseUrl
         || !(bool) ($provider['is_enabled'] ?? false)
-        || ($apiKey !== '' && bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '') !== $apiKey)
+        || ($apiKey !== '' && webtest_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '') !== $apiKey)
     ) {
-        bugcatcher_openclaw_save_provider(
+        webtest_openclaw_save_provider(
             $conn,
             $actorId,
             (int) $provider['id'],
@@ -631,7 +631,7 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
             true,
             false
         );
-        $provider = bugcatcher_openclaw_find_provider_by_key($conn, $providerKey);
+        $provider = webtest_openclaw_find_provider_by_key($conn, $providerKey);
     }
 
     if (!$provider) {
@@ -639,9 +639,9 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
         return;
     }
 
-    $model = bugcatcher_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
+    $model = webtest_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
     if (!$model) {
-        bugcatcher_openclaw_save_model(
+        webtest_openclaw_save_model(
             $conn,
             (int) $provider['id'],
             0,
@@ -653,14 +653,14 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
             true,
             $actorId
         );
-        $model = bugcatcher_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
+        $model = webtest_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
     } elseif (
         trim((string) ($model['display_name'] ?? '')) !== $modelName
         || (bool) ($model['supports_vision'] ?? false) !== $supportsVision
         || !(bool) ($model['is_enabled'] ?? false)
         || !(bool) ($model['is_default'] ?? false)
     ) {
-        bugcatcher_openclaw_save_model(
+        webtest_openclaw_save_model(
             $conn,
             (int) $provider['id'],
             (int) $model['id'],
@@ -672,15 +672,15 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
             true,
             $actorId
         );
-        $model = bugcatcher_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
+        $model = webtest_openclaw_find_model_by_provider_and_remote_id($conn, (int) $provider['id'], $modelId);
     }
 
-    $runtime = bugcatcher_ai_admin_fetch_runtime_config($conn);
+    $runtime = webtest_ai_admin_fetch_runtime_config($conn);
     if (!$runtime) {
-        bugcatcher_ai_admin_save_runtime_config(
+        webtest_ai_admin_save_runtime_config(
             $conn,
             $actorId,
-            (bool) bugcatcher_config('AI_CHAT_DEMO_ENABLED', true),
+            (bool) webtest_config('AI_CHAT_DEMO_ENABLED', true),
             (int) $provider['id'],
             (int) ($model['id'] ?? 0),
             $assistantName,
@@ -690,10 +690,10 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
         (int) ($runtime['default_provider_config_id'] ?? 0) <= 0
         || (int) ($runtime['default_model_id'] ?? 0) <= 0
     ) {
-        bugcatcher_ai_admin_save_runtime_config(
+        webtest_ai_admin_save_runtime_config(
             $conn,
             $actorId,
-            (bool) ($runtime['is_enabled'] ?? bugcatcher_config('AI_CHAT_DEMO_ENABLED', true)),
+            (bool) ($runtime['is_enabled'] ?? webtest_config('AI_CHAT_DEMO_ENABLED', true)),
             (int) $provider['id'],
             (int) ($model['id'] ?? 0),
             (string) ($runtime['assistant_name'] ?? $assistantName),
@@ -701,8 +701,8 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
         );
     }
 
-    $resolvedRuntime = bugcatcher_ai_admin_fetch_runtime_config($conn);
-    bugcatcher_ai_admin_seed_default_personas(
+    $resolvedRuntime = webtest_ai_admin_fetch_runtime_config($conn);
+    webtest_ai_admin_seed_default_personas(
         $conn,
         $actorId,
         (int) ($resolvedRuntime['default_provider_config_id'] ?? $provider['id']),
@@ -714,7 +714,7 @@ function bugcatcher_ai_admin_seed_default_config(mysqli $conn): void
     $done = true;
 }
 
-function bugcatcher_ai_admin_format_provider(array $provider): array
+function webtest_ai_admin_format_provider(array $provider): array
 {
     return [
         'id' => (int) $provider['id'],
@@ -722,13 +722,13 @@ function bugcatcher_ai_admin_format_provider(array $provider): array
         'display_name' => (string) $provider['display_name'],
         'provider_type' => (string) $provider['provider_type'],
         'base_url' => (string) ($provider['base_url'] ?? ''),
-        'api_key' => bugcatcher_openclaw_mask_secret($provider['encrypted_api_key'] ?? ''),
+        'api_key' => webtest_openclaw_mask_secret($provider['encrypted_api_key'] ?? ''),
         'is_enabled' => (bool) ($provider['is_enabled'] ?? false),
         'supports_model_sync' => (bool) ($provider['supports_model_sync'] ?? false),
     ];
 }
 
-function bugcatcher_ai_admin_format_model(array $model): array
+function webtest_ai_admin_format_model(array $model): array
 {
     return [
         'id' => (int) $model['id'],
@@ -743,42 +743,42 @@ function bugcatcher_ai_admin_format_model(array $model): array
     ];
 }
 
-function bugcatcher_ai_admin_providers_for_display(mysqli $conn): array
+function webtest_ai_admin_providers_for_display(mysqli $conn): array
 {
-    return array_map('bugcatcher_ai_admin_format_provider', bugcatcher_openclaw_fetch_providers($conn));
+    return array_map('webtest_ai_admin_format_provider', webtest_openclaw_fetch_providers($conn));
 }
 
-function bugcatcher_ai_admin_models_for_display(mysqli $conn): array
+function webtest_ai_admin_models_for_display(mysqli $conn): array
 {
-    return array_map('bugcatcher_ai_admin_format_model', bugcatcher_openclaw_fetch_models($conn));
+    return array_map('webtest_ai_admin_format_model', webtest_openclaw_fetch_models($conn));
 }
 
-function bugcatcher_ai_admin_runtime_snapshot(mysqli $conn): array
+function webtest_ai_admin_runtime_snapshot(mysqli $conn): array
 {
-    bugcatcher_ai_admin_seed_default_config($conn);
-    $runtime = bugcatcher_ai_admin_fetch_runtime_config($conn);
-    $personas = bugcatcher_ai_admin_personas_for_display($conn);
-    $readiness = bugcatcher_ai_admin_runtime_readiness($conn);
+    webtest_ai_admin_seed_default_config($conn);
+    $runtime = webtest_ai_admin_fetch_runtime_config($conn);
+    $personas = webtest_ai_admin_personas_for_display($conn);
+    $readiness = webtest_ai_admin_runtime_readiness($conn);
 
     return [
         'runtime' => [
-            'is_enabled' => (bool) ($runtime['is_enabled'] ?? bugcatcher_config('AI_CHAT_DEMO_ENABLED', true)),
+            'is_enabled' => (bool) ($runtime['is_enabled'] ?? webtest_config('AI_CHAT_DEMO_ENABLED', true)),
             'default_provider_config_id' => isset($runtime['default_provider_config_id']) ? (int) $runtime['default_provider_config_id'] : null,
             'default_model_id' => isset($runtime['default_model_id']) ? (int) $runtime['default_model_id'] : null,
-            'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
-            'system_prompt' => (string) ($runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', '')),
+            'assistant_name' => (string) ($runtime['assistant_name'] ?? webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
+            'system_prompt' => (string) ($runtime['system_prompt'] ?? webtest_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', '')),
         ],
-        'providers' => bugcatcher_ai_admin_providers_for_display($conn),
-        'models' => bugcatcher_ai_admin_models_for_display($conn),
+        'providers' => webtest_ai_admin_providers_for_display($conn),
+        'models' => webtest_ai_admin_models_for_display($conn),
         'personas' => $personas,
         'readiness' => $readiness,
     ];
 }
 
-function bugcatcher_ai_admin_resolve_runtime(mysqli $conn): array
+function webtest_ai_admin_resolve_runtime(mysqli $conn): array
 {
-    bugcatcher_ai_admin_seed_default_config($conn);
-    $runtime = bugcatcher_ai_admin_fetch_runtime_config($conn);
+    webtest_ai_admin_seed_default_config($conn);
+    $runtime = webtest_ai_admin_fetch_runtime_config($conn);
     if (!$runtime || !(bool) ($runtime['is_enabled'] ?? false)) {
         throw new RuntimeException('AI chat is disabled right now.');
     }
@@ -811,7 +811,7 @@ function bugcatcher_ai_admin_resolve_runtime(mysqli $conn): array
     $model = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    $apiKey = bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '');
+    $apiKey = webtest_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '');
     if (!$provider || !$model || trim($apiKey) === '') {
         throw new RuntimeException('AI chat is not configured correctly. Go to Super Admin > AI.');
     }
@@ -821,29 +821,29 @@ function bugcatcher_ai_admin_resolve_runtime(mysqli $conn): array
         'provider' => $provider,
         'model' => $model,
         'api_key' => $apiKey,
-        'assistant_name' => trim((string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
-        'system_prompt' => trim((string) ($runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
+        'assistant_name' => trim((string) ($runtime['assistant_name'] ?? webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
+        'system_prompt' => trim((string) ($runtime['system_prompt'] ?? webtest_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
     ];
 }
 
-function bugcatcher_ai_admin_resolve_persona_runtime(mysqli $conn, string $personaKey, bool $requireVision = false): array
+function webtest_ai_admin_resolve_persona_runtime(mysqli $conn, string $personaKey, bool $requireVision = false): array
 {
-    $runtime = bugcatcher_ai_admin_resolve_runtime($conn);
-    $persona = bugcatcher_ai_admin_fetch_persona_by_key($conn, $personaKey);
+    $runtime = webtest_ai_admin_resolve_runtime($conn);
+    $persona = webtest_ai_admin_fetch_persona_by_key($conn, $personaKey);
     if (!$persona) {
-        throw new RuntimeException(bugcatcher_ai_admin_persona_label($personaKey) . ' is not configured. Go to Super Admin > AI.');
+        throw new RuntimeException(webtest_ai_admin_persona_label($personaKey) . ' is not configured. Go to Super Admin > AI.');
     }
     if (!(bool) ($persona['is_enabled'] ?? false)) {
-        throw new RuntimeException(bugcatcher_ai_admin_persona_label($personaKey) . ' is disabled in Super Admin > AI.');
+        throw new RuntimeException(webtest_ai_admin_persona_label($personaKey) . ' is disabled in Super Admin > AI.');
     }
 
     $providerId = (int) ($persona['provider_config_id'] ?? $runtime['runtime']['default_provider_config_id'] ?? 0);
     $modelId = (int) ($persona['model_id'] ?? $runtime['runtime']['default_model_id'] ?? 0);
     if ($providerId <= 0 || $modelId <= 0) {
-        throw new RuntimeException(bugcatcher_ai_admin_persona_label($personaKey) . ' is missing its provider or model configuration.');
+        throw new RuntimeException(webtest_ai_admin_persona_label($personaKey) . ' is missing its provider or model configuration.');
     }
 
-    bugcatcher_ai_admin_validate_runtime_model($conn, $providerId, $modelId);
+    webtest_ai_admin_validate_runtime_model($conn, $providerId, $modelId);
 
     $stmt = $conn->prepare("
         SELECT *
@@ -867,9 +867,9 @@ function bugcatcher_ai_admin_resolve_persona_runtime(mysqli $conn, string $perso
     $model = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    $apiKey = bugcatcher_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '');
+    $apiKey = webtest_openclaw_decrypt_secret($provider['encrypted_api_key'] ?? '');
     if (!$provider || !$model || trim($apiKey) === '') {
-        throw new RuntimeException(bugcatcher_ai_admin_persona_label($personaKey) . ' is not configured correctly. Go to Super Admin > AI.');
+        throw new RuntimeException(webtest_ai_admin_persona_label($personaKey) . ' is not configured correctly. Go to Super Admin > AI.');
     }
 
     if ($requireVision && !(bool) ($model['supports_vision'] ?? false)) {
@@ -882,15 +882,15 @@ function bugcatcher_ai_admin_resolve_persona_runtime(mysqli $conn, string $perso
         'provider' => $provider,
         'model' => $model,
         'api_key' => $apiKey,
-        'assistant_name' => trim((string) ($persona['assistant_name'] ?? $runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
-        'system_prompt' => trim((string) ($persona['system_prompt'] ?? $runtime['system_prompt'] ?? bugcatcher_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
+        'assistant_name' => trim((string) ($persona['assistant_name'] ?? $runtime['assistant_name'] ?? webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'))),
+        'system_prompt' => trim((string) ($persona['system_prompt'] ?? $runtime['system_prompt'] ?? webtest_config('AI_CHAT_DEFAULT_SYSTEM_PROMPT', ''))),
     ];
 }
 
-function bugcatcher_ai_admin_runtime_readiness(mysqli $conn): array
+function webtest_ai_admin_runtime_readiness(mysqli $conn): array
 {
     try {
-        bugcatcher_ai_admin_resolve_runtime($conn);
+        webtest_ai_admin_resolve_runtime($conn);
     } catch (Throwable $e) {
         $message = $e->getMessage();
         return [
@@ -908,7 +908,7 @@ function bugcatcher_ai_admin_runtime_readiness(mysqli $conn): array
     $linkWarning = '';
     $linkEnabled = true;
     try {
-        bugcatcher_ai_admin_resolve_persona_runtime($conn, 'checklist_generator', false);
+        webtest_ai_admin_resolve_persona_runtime($conn, 'checklist_generator', false);
     } catch (Throwable $e) {
         $linkEnabled = false;
         $linkWarning = $e->getMessage();
@@ -917,7 +917,7 @@ function bugcatcher_ai_admin_runtime_readiness(mysqli $conn): array
     $screenshotWarning = '';
     $screenshotEnabled = true;
     try {
-        bugcatcher_ai_admin_resolve_persona_runtime($conn, 'checklist_generator', true);
+        webtest_ai_admin_resolve_persona_runtime($conn, 'checklist_generator', true);
     } catch (Throwable $e) {
         $screenshotEnabled = false;
         $screenshotWarning = $e->getMessage();

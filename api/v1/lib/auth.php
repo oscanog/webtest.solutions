@@ -35,7 +35,7 @@ function bc_v1_auth_login(mysqli $conn, array $params): void
     }
 
     $userId = (int) $user['id'];
-    $role = bugcatcher_normalize_system_role((string) ($user['role'] ?? 'user'));
+    $role = webtest_normalize_system_role((string) ($user['role'] ?? 'user'));
     $canUseAllScope = bc_v1_can_use_all_scope(['role' => $role]);
     $activeOrgId = 0;
     if ($requestedOrgId > 0 && bc_v1_has_membership($conn, $requestedOrgId, $userId)) {
@@ -56,7 +56,7 @@ function bc_v1_auth_login(mysqli $conn, array $params): void
     $_SESSION['id'] = $userId;
     $_SESSION['username'] = (string) $user['username'];
     $_SESSION['role'] = $role;
-    bugcatcher_mark_known_user_browser();
+    webtest_mark_known_user_browser();
     bc_v1_set_active_org($conn, $userId, $activeScope === 'org' ? $activeOrgId : 0, $activeScope);
 
     $normalizedUser = bc_v1_fetch_user_by_id($conn, $userId);
@@ -164,7 +164,7 @@ function bc_v1_auth_refresh(mysqli $conn, array $params): void
 function bc_v1_auth_logout(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['POST']);
-    bugcatcher_clear_known_user_browser();
+    webtest_clear_known_user_browser();
     $_SESSION = [];
     if (ini_get('session.use_cookies')) {
         $cookie = session_get_cookie_params();
@@ -350,41 +350,41 @@ function bc_v1_auth_forgot_request_otp(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['POST']);
     $payload = bc_v1_request_data();
-    $result = bugcatcher_password_reset_request_otp($conn, trim((string) ($payload['email'] ?? '')));
+    $result = webtest_password_reset_request_otp($conn, trim((string) ($payload['email'] ?? '')));
     if (!$result['ok']) {
         bc_v1_json_error(422, 'reset_request_failed', (string) ($result['error'] ?? 'Unable to start password reset.'));
     }
-    bc_v1_json_success(['step' => bugcatcher_password_reset_current_step(), 'message' => (string) ($result['message'] ?? '')]);
+    bc_v1_json_success(['step' => webtest_password_reset_current_step(), 'message' => (string) ($result['message'] ?? '')]);
 }
 
 function bc_v1_auth_forgot_resend_otp(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['POST']);
     $payload = bc_v1_request_data();
-    $email = trim((string) ($payload['email'] ?? bugcatcher_password_reset_session_email()));
-    $result = bugcatcher_password_reset_resend_otp($conn, $email);
+    $email = trim((string) ($payload['email'] ?? webtest_password_reset_session_email()));
+    $result = webtest_password_reset_resend_otp($conn, $email);
     if (!$result['ok']) {
         bc_v1_json_error(422, 'reset_resend_failed', (string) ($result['error'] ?? 'Unable to resend reset code.'));
     }
-    bc_v1_json_success(['step' => bugcatcher_password_reset_current_step(), 'message' => (string) ($result['message'] ?? '')]);
+    bc_v1_json_success(['step' => webtest_password_reset_current_step(), 'message' => (string) ($result['message'] ?? '')]);
 }
 
 function bc_v1_auth_forgot_verify_otp(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['POST']);
     $payload = bc_v1_request_data();
-    $email = trim((string) ($payload['email'] ?? bugcatcher_password_reset_session_email()));
+    $email = trim((string) ($payload['email'] ?? webtest_password_reset_session_email()));
     $otp = trim((string) ($payload['otp'] ?? ''));
     if ($otp === '') {
         bc_v1_json_error(422, 'validation_error', 'otp is required.');
     }
-    $result = bugcatcher_password_reset_verify_otp($conn, $email, $otp);
+    $result = webtest_password_reset_verify_otp($conn, $email, $otp);
     if (!$result['ok']) {
         bc_v1_json_error(422, 'reset_verify_failed', (string) ($result['error'] ?? 'Unable to verify OTP.'));
     }
     bc_v1_json_success([
-        'step' => bugcatcher_password_reset_current_step(),
-        'verified_request_id' => bugcatcher_password_reset_verified_request_id(),
+        'step' => webtest_password_reset_current_step(),
+        'verified_request_id' => webtest_password_reset_verified_request_id(),
         'message' => (string) ($result['message'] ?? ''),
     ]);
 }
@@ -393,12 +393,12 @@ function bc_v1_auth_forgot_reset_password(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['POST']);
     $payload = bc_v1_request_data();
-    $email = trim((string) ($payload['email'] ?? bugcatcher_password_reset_session_email()));
+    $email = trim((string) ($payload['email'] ?? webtest_password_reset_session_email()));
     $password = (string) ($payload['password'] ?? '');
     $confirm = (string) ($payload['confirm_password'] ?? $payload['cpass'] ?? '');
-    $result = bugcatcher_password_reset_update_password(
+    $result = webtest_password_reset_update_password(
         $conn,
-        bugcatcher_password_reset_verified_request_id(),
+        webtest_password_reset_verified_request_id(),
         $email,
         $password,
         $confirm

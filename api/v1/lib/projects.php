@@ -54,7 +54,7 @@ function bc_v1_projects_get(mysqli $conn, array $params): void
     }
 
     $org = bc_v1_org_context($conn, $actor, $requestedOrgId);
-    $projects = bugcatcher_checklist_fetch_projects($conn, (int) $org['org_id'], $includeArchived);
+    $projects = webtest_checklist_fetch_projects($conn, (int) $org['org_id'], $includeArchived);
     foreach ($projects as &$project) {
         $project['org_name'] = (string) $org['org_name'];
     }
@@ -77,7 +77,7 @@ function bc_v1_projects_post(mysqli $conn, array $params): void
     $name = trim((string) ($payload['name'] ?? ''));
     $code = trim((string) ($payload['code'] ?? ''));
     $description = trim((string) ($payload['description'] ?? ''));
-    $status = bugcatcher_checklist_normalize_enum((string) ($payload['status'] ?? 'active'), ['active', 'archived'], 'active');
+    $status = webtest_checklist_normalize_enum((string) ($payload['status'] ?? 'active'), ['active', 'archived'], 'active');
 
     if ($name === '') {
         bc_v1_json_error(422, 'validation_error', 'Project name is required.');
@@ -108,9 +108,9 @@ function bc_v1_projects_post(mysqli $conn, array $params): void
         throw $e;
     }
 
-    $project = bugcatcher_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
-    bugcatcher_notifications_send($conn, array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $org['org_id']),
+    $project = webtest_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
+    webtest_notifications_send($conn, array_values(array_diff(
+        webtest_notification_org_manager_ids($conn, (int) $org['org_id']),
         [(int) $org['user_id']]
     )), [
         'type' => 'project',
@@ -157,12 +157,12 @@ function bc_v1_projects_id_get(mysqli $conn, array $params): void
         }
         $org = bc_v1_org_context($conn, $actor, (int) $row['org_id']);
     }
-    $project = bugcatcher_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
+    $project = webtest_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
     if (!$project) {
         bc_v1_json_error(404, 'project_not_found', 'Project not found.');
     }
     $project['org_name'] = (string) $org['org_name'];
-    $batches = bugcatcher_checklist_fetch_batches($conn, (int) $org['org_id'], $projectId);
+    $batches = webtest_checklist_fetch_batches($conn, (int) $org['org_id'], $projectId);
     foreach ($batches as &$batch) {
         $batch['org_name'] = (string) $org['org_name'];
     }
@@ -182,7 +182,7 @@ function bc_v1_projects_id_patch(mysqli $conn, array $params): void
 
     $org = bc_v1_org_context($conn, $actor, bc_v1_get_int($payload, 'org_id', 0));
     bc_v1_require_manager_role($org);
-    $project = bugcatcher_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
+    $project = webtest_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
     if (!$project) {
         bc_v1_json_error(404, 'project_not_found', 'Project not found.');
     }
@@ -190,7 +190,7 @@ function bc_v1_projects_id_patch(mysqli $conn, array $params): void
     $name = trim((string) ($payload['name'] ?? $project['name']));
     $code = trim((string) ($payload['code'] ?? ($project['code'] ?? '')));
     $description = trim((string) ($payload['description'] ?? ($project['description'] ?? '')));
-    $status = bugcatcher_checklist_normalize_enum((string) ($payload['status'] ?? $project['status']), ['active', 'archived'], (string) $project['status']);
+    $status = webtest_checklist_normalize_enum((string) ($payload['status'] ?? $project['status']), ['active', 'archived'], (string) $project['status']);
 
     if ($name === '') {
         bc_v1_json_error(422, 'validation_error', 'Project name is required.');
@@ -212,9 +212,9 @@ function bc_v1_projects_id_patch(mysqli $conn, array $params): void
         throw $e;
     }
 
-    $updated = bugcatcher_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
-    bugcatcher_notifications_send($conn, array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $org['org_id']),
+    $updated = webtest_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
+    webtest_notifications_send($conn, array_values(array_diff(
+        webtest_notification_org_manager_ids($conn, (int) $org['org_id']),
         [(int) $org['user_id']]
     )), [
         'type' => 'project',
@@ -242,7 +242,7 @@ function bc_v1_projects_status_post(mysqli $conn, array $params, string $nextSta
 
     $org = bc_v1_org_context($conn, $actor, bc_v1_get_int($payload, 'org_id', 0));
     bc_v1_require_manager_role($org);
-    $project = bugcatcher_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
+    $project = webtest_checklist_fetch_project($conn, (int) $org['org_id'], $projectId);
     if (!$project) {
         bc_v1_json_error(404, 'project_not_found', 'Project not found.');
     }
@@ -252,8 +252,8 @@ function bc_v1_projects_status_post(mysqli $conn, array $params, string $nextSta
     $stmt->execute();
     $stmt->close();
 
-    bugcatcher_notifications_send($conn, array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $org['org_id']),
+    webtest_notifications_send($conn, array_values(array_diff(
+        webtest_notification_org_manager_ids($conn, (int) $org['org_id']),
         [(int) $org['user_id']]
     )), [
         'type' => 'project',

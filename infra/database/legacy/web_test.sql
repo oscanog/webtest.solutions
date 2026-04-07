@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `bug_catcher`
+-- Database: `web_test`
 --
 
 -- --------------------------------------------------------
@@ -214,8 +214,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `created_at`, `last_active_org_id`) VALUES
-(1, 'admin', 'admin@bugcatcher.com', '$2y$10$TqOyauUOHxacr2BU7LkMf.FFXuw9..mURcVDG16UEJ/a3AwIP/8.6', 'admin', '2026-02-24 06:48:27', NULL),
-(2, 'user', 'user@bugcatcher.com', '$2y$10$OJ5fkoKfjOt72KQFHAb6xOlu17fOoAohbtynEfl3iI.RFa0AX.Bq2', 'user', '2026-02-24 06:48:27', NULL),
+(1, 'admin', 'admin@webtest.com', '$2y$10$TqOyauUOHxacr2BU7LkMf.FFXuw9..mURcVDG16UEJ/a3AwIP/8.6', 'admin', '2026-02-24 06:48:27', NULL),
+(2, 'user', 'user@webtest.com', '$2y$10$OJ5fkoKfjOt72KQFHAb6xOlu17fOoAohbtynEfl3iI.RFa0AX.Bq2', 'user', '2026-02-24 06:48:27', NULL),
 (3, 'Zen', 'zen@gmail.com', '$2y$10$fZEUrsGS9bOxxHJx2uXH.Or5r9iZOBenrnEg86aHeLuekabgXK5wu', 'user', '2026-02-24 06:58:13', 4),
 (4, 'Pol', 'pol@gmail.com', '$2y$10$mrbNTwyw9wQtNkkoNTWhi.jFKrsV2h.xQNqzaE4gTGals5tMfeSYK', 'user', '2026-02-24 06:58:43', 4),
 (5, 'Endy', 'endy@gmail.com', '$2y$10$lt.owHlTl0CkmO1XIOTtNOxh4hs5qk.a3pGU0kgfR36igGifxddeG', 'user', '2026-02-24 08:46:10', 4),

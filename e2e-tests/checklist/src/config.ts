@@ -17,7 +17,7 @@ function isBlank(value: unknown): boolean {
 
 const localFallbacks = {
   E2E_BASE_URL: "http://localhost",
-  E2E_EMAIL: "e2e.local@bugcatcher.test",
+  E2E_EMAIL: "e2e.local@webtest.test",
   E2E_PASSWORD: "E2E!Pass123",
   E2E_ORG_ID: "4",
   E2E_PROJECT_ID: "1",

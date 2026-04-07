@@ -8,34 +8,34 @@ As of March 24, 2026, the production VM used in this workspace is:
 - zone: `asia-southeast1-c`
 - instance: `instance-20260218-175107`
 
-The backend deploy flow is release-based. Do not treat `/var/www/bugcatcher/current` like a normal long-lived git checkout.
+The backend deploy flow is release-based. Do not treat `/var/www/webtest/current` like a normal long-lived git checkout.
 
 ## Golden Rules
 
 - Push your backend changes to GitHub first. The server deploy pulls from the remote repo, not from your local machine.
 - Do not hot-edit production files unless it is an emergency.
-- Do not run a normal `git pull` inside `/var/www/bugcatcher/current` for the PHP app deploy. Use the release script instead.
+- Do not run a normal `git pull` inside `/var/www/webtest/current` for the PHP app deploy. Use the release script instead.
 - If a deploy includes SQL changes, take a backup first and apply the migration carefully.
 - If frontend and backend must ship together, deploy the backend first, then deploy the mobileweb frontend.
 
 ## Relevant Production Paths
 
-- app root: `/var/www/bugcatcher`
-- live symlink: `/var/www/bugcatcher/current`
-- release directories: `/var/www/bugcatcher/releases`
-- shared config: `/var/www/bugcatcher/shared/config.php`
-- shared uploads: `/var/www/bugcatcher/shared/uploads`
-- git mirror used by the release script: `/opt/bugcatcher/repo.git`
+- app root: `/var/www/webtest`
+- live symlink: `/var/www/webtest/current`
+- release directories: `/var/www/webtest/releases`
+- shared config: `/var/www/webtest/shared/config.php`
+- shared uploads: `/var/www/webtest/shared/uploads`
+- git mirror used by the release script: `/opt/webtest/repo.git`
 
 ## Runtime Config Before Deploy
 
-If this release includes the Cloudinary migration, make sure `/var/www/bugcatcher/shared/config.php` contains:
+If this release includes the Cloudinary migration, make sure `/var/www/webtest/shared/config.php` contains:
 
 - `APP_BASE_URL` set to `https://webtest.solutions` so generated links and emails use the new canonical host
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- optional `CLOUDINARY_BASE_FOLDER` override if production should not use the default `bugcatcher`
+- optional `CLOUDINARY_BASE_FOLDER` override if production should not use the default `webtest`
 - optional temporary `UPLOADTHING_TOKEN` only if you still want best-effort cleanup for old UploadThing-hosted rows during the transition
 - `OPENCLAW_ENCRYPTION_KEY` so AI provider secrets remain decryptable in the AI Admin surface
 
@@ -64,8 +64,8 @@ Optional quick checks after login:
 
 ```bash
 pwd
-readlink -f /var/www/bugcatcher/current
-ls -1 /var/www/bugcatcher/releases | tail
+readlink -f /var/www/webtest/current
+ls -1 /var/www/webtest/releases | tail
 ```
 
 ## 3. Apply Database Migration If Needed
@@ -76,16 +76,16 @@ First, take a backup if the change is risky:
 
 ```bash
 sudo -i
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 DB_PASS='your-db-password' bash infra/deploy/backup_nightly.sh
 ```
 
 Then apply the migration. Examples:
 
 ```bash
-cd /var/www/bugcatcher/current
-sudo mysql bug_catcher < infra/database/migrations/20260325_attachment_storage_providers.sql
-sudo mysql bug_catcher < infra/database/migrations/20260325_ai_runtime_split_and_integration_cleanup.sql
+cd /var/www/webtest/current
+sudo mysql web_test < infra/database/migrations/20260325_attachment_storage_providers.sql
+sudo mysql web_test < infra/database/migrations/20260325_ai_runtime_split_and_integration_cleanup.sql
 ```
 
 Notes:
@@ -99,25 +99,25 @@ Notes:
 Run the release script from the current checkout:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 sudo bash infra/deploy/deploy_release.sh <git-ref>
 ```
 
 Example:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 sudo bash infra/deploy/deploy_release.sh main
 ```
 
 What this script does:
 
-- fetches the latest refs from the mirror at `/opt/bugcatcher/repo.git`
-- creates a new timestamped directory under `/var/www/bugcatcher/releases`
+- fetches the latest refs from the mirror at `/opt/webtest/repo.git`
+- creates a new timestamped directory under `/var/www/webtest/releases`
 - extracts the requested git ref into that release directory
 - re-links shared uploads
 - lint-checks PHP files
-- repoints `/var/www/bugcatcher/current`
+- repoints `/var/www/webtest/current`
 - reloads PHP-FPM and nginx
 
 ## 5. Verify the Deploy
@@ -125,8 +125,8 @@ What this script does:
 Confirm the live symlink moved:
 
 ```bash
-readlink -f /var/www/bugcatcher/current
-ls -1 /var/www/bugcatcher/releases | tail
+readlink -f /var/www/webtest/current
+ls -1 /var/www/webtest/releases | tail
 ```
 
 Check the canonical site, API health, and legacy redirect behavior through nginx locally on the VM:
@@ -134,19 +134,19 @@ Check the canonical site, API health, and legacy redirect behavior through nginx
 ```bash
 curl -skI https://127.0.0.1/ -H "Host: webtest.solutions" | head -n 5
 curl -sk https://127.0.0.1/api/v1/health -H "Host: webtest.solutions"
-curl -skI https://127.0.0.1/some/path?x=1 -H "Host: bugcatcher.online" | head -n 5
+curl -skI https://127.0.0.1/some/path?x=1 -H "Host: webtest.online" | head -n 5
 ```
 
 Expected result:
 
 - the `webtest.solutions` request returns `HTTP/1.1 200 OK` or the expected app response
 - the health endpoint returns a JSON success payload with `status` set to `ok`
-- the `bugcatcher.online` request returns a redirect to `https://webtest.solutions/some/path?x=1`
+- the `webtest.online` request returns a redirect to `https://webtest.solutions/some/path?x=1`
 
 If the certificate still only covers the old hostname set, expand it before verification:
 
 ```bash
-sudo certbot --nginx --cert-name webtest.solutions -d webtest.solutions -d www.webtest.solutions -d bugcatcher.online
+sudo certbot --nginx --cert-name webtest.solutions -d webtest.solutions -d www.webtest.solutions -d webtest.online
 ```
 
 ## 6. Migrate Existing UploadThing Rows If Needed
@@ -154,7 +154,7 @@ sudo certbot --nginx --cert-name webtest.solutions -d webtest.solutions -d www.w
 Run this after the backend release is live and Cloudinary credentials are already present in shared config:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 php scripts/migrate_uploadthing_to_cloudinary.php
 php scripts/migrate_uploadthing_to_cloudinary.php --execute
 ```
@@ -190,14 +190,14 @@ If this release includes the AI Admin split and legacy bridge cleanup:
 If your deploy changed `services/realtime-notifications/`, redeploy that service too:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 sudo bash scripts/deploy-realtime-notifications.sh
 ```
 
 Important:
 
-- the realtime notifications unit currently points at `/var/www/bugcatcher/services/realtime-notifications`
-- the main PHP app uses the `/var/www/bugcatcher/current` release symlink
+- the realtime notifications unit currently points at `/var/www/webtest/services/realtime-notifications`
+- the main PHP app uses the `/var/www/webtest/current` release symlink
 - if production still has an older direct-checkout layout for this service, verify the unit paths before changing them
 
 ## Rollback
@@ -205,14 +205,14 @@ Important:
 Roll back to the previous backend release:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 sudo bash infra/deploy/rollback_release.sh
 ```
 
 Roll back to a specific release directory:
 
 ```bash
-cd /var/www/bugcatcher/current
+cd /var/www/webtest/current
 sudo bash infra/deploy/rollback_release.sh 20260302153000
 ```
 
@@ -227,14 +227,14 @@ If the release included attachment migration work:
 
 ### `deploy_release.sh` says the git mirror is missing
 
-The VM bootstrap is incomplete. The mirror should exist at `/opt/bugcatcher/repo.git`.
+The VM bootstrap is incomplete. The mirror should exist at `/opt/webtest/repo.git`.
 
 ### The release deployed but the app still looks old
 
 Check the live symlink:
 
 ```bash
-readlink -f /var/www/bugcatcher/current
+readlink -f /var/www/webtest/current
 ```
 
 Then verify nginx and PHP-FPM reloaded correctly.
@@ -244,7 +244,7 @@ Then verify nginx and PHP-FPM reloaded correctly.
 Production runtime config is loaded from:
 
 ```text
-/var/www/bugcatcher/shared/config.php
+/var/www/webtest/shared/config.php
 ```
 
 Do not store production secrets in the repo.

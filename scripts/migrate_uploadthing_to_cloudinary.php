@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-function bugcatcher_upload_migration_usage(): void
+function webtest_upload_migration_usage(): void
 {
     $script = basename(__FILE__);
     fwrite(STDOUT, <<<TXT
@@ -20,7 +20,7 @@ Options:
 TXT);
 }
 
-function bugcatcher_upload_migration_targets(): array
+function webtest_upload_migration_targets(): array
 {
     return [
         'issue_attachments' => ['scope' => 'issues'],
@@ -31,9 +31,9 @@ function bugcatcher_upload_migration_targets(): array
     ];
 }
 
-function bugcatcher_upload_migration_tables($rawTables): array
+function webtest_upload_migration_tables($rawTables): array
 {
-    $targets = bugcatcher_upload_migration_targets();
+    $targets = webtest_upload_migration_targets();
     if ($rawTables === false || $rawTables === null) {
         return array_keys($targets);
     }
@@ -49,7 +49,7 @@ function bugcatcher_upload_migration_tables($rawTables): array
     return $requested;
 }
 
-function bugcatcher_upload_migration_download(string $url): array
+function webtest_upload_migration_download(string $url): array
 {
     if (!function_exists('curl_init')) {
         throw new RuntimeException('PHP cURL is required to migrate UploadThing assets.');
@@ -79,7 +79,7 @@ function bugcatcher_upload_migration_download(string $url): array
         CURLOPT_MAXREDIRS => 5,
         CURLOPT_CONNECTTIMEOUT => 15,
         CURLOPT_TIMEOUT => 300,
-        CURLOPT_USERAGENT => 'BugCatcher Upload Migration',
+        CURLOPT_USERAGENT => 'WebTest Upload Migration',
     ]);
 
     $ok = curl_exec($ch);
@@ -113,7 +113,7 @@ function bugcatcher_upload_migration_download(string $url): array
     ];
 }
 
-function bugcatcher_upload_migration_fetch_rows(mysqli $conn, string $table): array
+function webtest_upload_migration_fetch_rows(mysqli $conn, string $table): array
 {
     $sql = "
         SELECT id, file_path, storage_key, storage_provider, original_name, mime_type, file_size
@@ -130,7 +130,7 @@ function bugcatcher_upload_migration_fetch_rows(mysqli $conn, string $table): ar
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 
-function bugcatcher_upload_migration_update_row(mysqli $conn, string $table, int $id, array $stored): void
+function webtest_upload_migration_update_row(mysqli $conn, string $table, int $id, array $stored): void
 {
     $stmt = $conn->prepare("
         UPDATE {$table}
@@ -158,7 +158,7 @@ $options = getopt('', [
 ]);
 
 if (isset($options['help'])) {
-    bugcatcher_upload_migration_usage();
+    webtest_upload_migration_usage();
     exit(0);
 }
 
@@ -167,11 +167,11 @@ $limit = isset($options['limit']) ? max(0, (int) $options['limit']) : 0;
 $deleteUploadThingSource = isset($options['delete-uploadthing-source']);
 
 try {
-    $tables = bugcatcher_upload_migration_tables($options['table'] ?? false);
-    $conn = bugcatcher_db_connection();
-    bugcatcher_file_storage_ensure_schema($conn);
+    $tables = webtest_upload_migration_tables($options['table'] ?? false);
+    $conn = webtest_db_connection();
+    webtest_file_storage_ensure_schema($conn);
 
-    if ($execute && !bugcatcher_file_storage_is_cloudinary_enabled()) {
+    if ($execute && !webtest_file_storage_is_cloudinary_enabled()) {
         throw new RuntimeException('Cloudinary credentials are required before running with --execute.');
     }
 
@@ -190,8 +190,8 @@ try {
     $failed = 0;
 
     foreach ($tables as $table) {
-        $target = bugcatcher_upload_migration_targets()[$table];
-        $rows = bugcatcher_upload_migration_fetch_rows($conn, $table);
+        $target = webtest_upload_migration_targets()[$table];
+        $rows = webtest_upload_migration_fetch_rows($conn, $table);
 
         foreach ($rows as $row) {
             if ($limit > 0 && $processed >= $limit) {
@@ -199,7 +199,7 @@ try {
             }
 
             $processed++;
-            $provider = bugcatcher_file_storage_provider_from_row($row);
+            $provider = webtest_file_storage_provider_from_row($row);
             if ($provider !== 'uploadthing') {
                 $skipped++;
                 fwrite(STDOUT, "[upload-migration] skip table={$table} id={$row['id']} provider=" . ($provider !== '' ? $provider : 'unknown') . "\n");
@@ -220,8 +220,8 @@ try {
             $download = null;
             $stored = null;
             try {
-                $download = bugcatcher_upload_migration_download($originalPath);
-                $stored = bugcatcher_file_storage_upload_file(
+                $download = webtest_upload_migration_download($originalPath);
+                $stored = webtest_file_storage_upload_file(
                     (string) $download['path'],
                     $originalName !== '' ? $originalName : 'attachment',
                     $mimeType !== '' ? $mimeType : (string) $download['mime_type'],
@@ -229,11 +229,11 @@ try {
                     (string) $target['scope']
                 );
 
-                bugcatcher_upload_migration_update_row($conn, $table, (int) $row['id'], $stored);
+                webtest_upload_migration_update_row($conn, $table, (int) $row['id'], $stored);
 
                 if ($deleteUploadThingSource && $originalKey !== '') {
                     try {
-                        bugcatcher_file_storage_delete($originalKey, $originalPath, 'uploadthing', $mimeType);
+                        webtest_file_storage_delete($originalKey, $originalPath, 'uploadthing', $mimeType);
                     } catch (Throwable $deleteError) {
                         fwrite(STDOUT, "[upload-migration] warn table={$table} id={$row['id']} uploadthing_delete=" . $deleteError->getMessage() . "\n");
                     }
@@ -245,7 +245,7 @@ try {
                 $failed++;
                 if (is_array($stored) && trim((string) ($stored['storage_key'] ?? '')) !== '') {
                     try {
-                        bugcatcher_file_storage_delete(
+                        webtest_file_storage_delete(
                             (string) $stored['storage_key'],
                             (string) ($stored['file_path'] ?? ''),
                             (string) ($stored['storage_provider'] ?? 'cloudinary'),

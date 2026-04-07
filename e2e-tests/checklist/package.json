@@ -1,5 +1,5 @@
 {
-  "name": "bugcatcher-checklist-e2e",
+  "name": "webtest-checklist-e2e",
   "version": "1.0.0",
   "private": true,
   "description": "Playwright API E2E for WebTest checklist v1 APIs",

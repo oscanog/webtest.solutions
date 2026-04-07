@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function bugcatcher_issue_find_membership(mysqli $conn, int $orgId, int $userId): ?array
+function webtest_issue_find_membership(mysqli $conn, int $orgId, int $userId): ?array
 {
     $stmt = $conn->prepare("SELECT role FROM org_members WHERE org_id = ? AND user_id = ? LIMIT 1");
     $stmt->bind_param('ii', $orgId, $userId);
@@ -12,13 +12,13 @@ function bugcatcher_issue_find_membership(mysqli $conn, int $orgId, int $userId)
     return $row ?: null;
 }
 
-function bugcatcher_issue_label_catalog(mysqli $conn): array
+function webtest_issue_label_catalog(mysqli $conn): array
 {
     $result = $conn->query("SELECT id, name, color FROM labels ORDER BY name ASC");
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function bugcatcher_issue_project_catalog(mysqli $conn, int $orgId): array
+function webtest_issue_project_catalog(mysqli $conn, int $orgId): array
 {
     $stmt = $conn->prepare("
         SELECT id, name, code
@@ -33,7 +33,7 @@ function bugcatcher_issue_project_catalog(mysqli $conn, int $orgId): array
     return $rows;
 }
 
-function bugcatcher_issue_project_for_org(mysqli $conn, int $orgId, int $projectId): ?array
+function webtest_issue_project_for_org(mysqli $conn, int $orgId, int $projectId): ?array
 {
     $stmt = $conn->prepare("
         SELECT id, org_id, name, code, status
@@ -48,7 +48,7 @@ function bugcatcher_issue_project_for_org(mysqli $conn, int $orgId, int $project
     return $row ?: null;
 }
 
-function bugcatcher_issue_uploaded_images_array(array $files): ?array
+function webtest_issue_uploaded_images_array(array $files): ?array
 {
     foreach (['images', 'images[]'] as $field) {
         $bucket = $files[$field] ?? null;
@@ -74,7 +74,7 @@ function bugcatcher_issue_uploaded_images_array(array $files): ?array
     return null;
 }
 
-function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $authorId, array $post, array $files): int
+function webtest_issue_create_from_form(mysqli $conn, int $orgId, int $authorId, array $post, array $files): int
 {
     $title = trim((string) ($post['title'] ?? ''));
     $description = trim((string) ($post['description'] ?? ''));
@@ -93,7 +93,7 @@ function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $author
         throw new RuntimeException('Please select at least one label.');
     }
 
-    $project = bugcatcher_issue_project_for_org($conn, $orgId, $projectId);
+    $project = webtest_issue_project_for_org($conn, $orgId, $projectId);
     if (!$project || (string) ($project['status'] ?? 'archived') !== 'active') {
         throw new RuntimeException('Please choose a valid active project.');
     }
@@ -121,7 +121,7 @@ function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $author
         throw new RuntimeException('Please choose only valid labels.');
     }
 
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
     $allowed = [
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
@@ -137,13 +137,13 @@ function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $author
             INSERT INTO issues (title, description, author_id, org_id, project_id, workflow_status)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $workflowStatus = bugcatcher_issue_workflow_default();
+        $workflowStatus = webtest_issue_workflow_default();
         $stmt->bind_param('ssiiis', $title, $description, $authorId, $orgId, $projectId, $workflowStatus);
         $stmt->execute();
         $issueId = (int) $conn->insert_id;
         $stmt->close();
 
-        $imageUploads = bugcatcher_issue_uploaded_images_array($files);
+        $imageUploads = webtest_issue_uploaded_images_array($files);
         if ($imageUploads !== null) {
             $stmtAtt = $conn->prepare("
               INSERT INTO issue_attachments (issue_id, file_path, storage_key, storage_provider, original_name, mime_type, file_size)
@@ -179,7 +179,7 @@ function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $author
                 $ext = $allowed[$mime];
                 $origName = (string) ($imageUploads['name'][$i] ?? ('image.' . $ext));
                 $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
-                $stored = bugcatcher_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
+                $stored = webtest_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
                 $filePath = (string) $stored['file_path'];
                 $storageKey = (string) ($stored['storage_key'] ?? '');
                 $storageProvider = (string) ($stored['storage_provider'] ?? '');
@@ -213,7 +213,7 @@ function bugcatcher_issue_create_from_form(mysqli $conn, int $orgId, int $author
         $conn->rollback();
         foreach ($uploadedKeys as $uploadedKey) {
             try {
-                bugcatcher_file_storage_delete($uploadedKey);
+                webtest_file_storage_delete($uploadedKey);
             } catch (Throwable $deleteError) {
                 // Ignore cleanup errors after rollback.
             }

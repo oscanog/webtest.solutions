@@ -1,13 +1,13 @@
 <?php
 require_once __DIR__ . '/app/bootstrap.php';
 
-bugcatcher_start_session();
+webtest_start_session();
 
 $isLoggedIn = isset($_SESSION['id']);
-$isKnownBrowser = bugcatcher_is_known_user_browser();
+$isKnownBrowser = webtest_is_known_user_browser();
 
 if (!$isLoggedIn && $isKnownBrowser) {
-    header("Location: " . bugcatcher_path('rainier/login.php?reason=expired'));
+    header("Location: " . webtest_path('rainier/login.php?reason=expired'));
     exit();
 }
 ?>
@@ -17,7 +17,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebTest - Issue Tracking System</title>
-    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
     <style>
         * {
             margin: 0;
@@ -1206,9 +1206,9 @@ if (!$isLoggedIn && $isKnownBrowser) {
             WebTest
         </div>
         <div class="nav-links">
-            <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>">Login</a>
+            <a href="<?= htmlspecialchars(webtest_path('rainier/login.php')) ?>">Login</a>
             <?php if (!$isLoggedIn): ?>
-                <a href="<?= htmlspecialchars(bugcatcher_path('rainier/signup.php')) ?>">Sign Up</a>
+                <a href="<?= htmlspecialchars(webtest_path('rainier/signup.php')) ?>">Sign Up</a>
             <?php endif; ?>
         </div>
     </nav>
@@ -1273,7 +1273,7 @@ if (!$isLoggedIn && $isKnownBrowser) {
             <h1>Track Bugs Like a <span>Pro</span></h1>
             <p>WebTest helps you manage and track issues in your projects. Simple, fast, and effective issue tracking for teams of all sizes.</p>
             <div class="hero-actions">
-                <a href="<?= htmlspecialchars(bugcatcher_path('rainier/login.php')) ?>" class="btn">Get Started</a>
+                <a href="<?= htmlspecialchars(webtest_path('rainier/login.php')) ?>" class="btn">Get Started</a>
                 <a href="#features" class="btn btn-secondary">Learn More</a>
             </div>
             

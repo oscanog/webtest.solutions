@@ -3,12 +3,12 @@
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/checklist_lib.php';
 
-bugcatcher_start_session();
+webtest_start_session();
 
 header('Content-Type: application/json');
 
 try {
-    $conn = bugcatcher_db_connection();
+    $conn = webtest_db_connection();
 } catch (RuntimeException $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
@@ -35,8 +35,8 @@ function ingest_resolve_temp_file(string $token): ?string
     }
 
     $candidates = [
-        sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'bugcatcher-checklist-bot' . DIRECTORY_SEPARATOR . $token,
-        bugcatcher_checklist_uploads_dir() . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . $token,
+        sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'webtest-checklist-bot' . DIRECTORY_SEPARATOR . $token,
+        webtest_checklist_uploads_dir() . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . $token,
     ];
 
     foreach ($candidates as $path) {
@@ -48,7 +48,7 @@ function ingest_resolve_temp_file(string $token): ?string
     return null;
 }
 
-$expectedToken = bugcatcher_config('CHECKLIST_BOT_SHARED_SECRET', '');
+$expectedToken = webtest_config('CHECKLIST_BOT_SHARED_SECRET', '');
 if ($expectedToken === '' || !hash_equals($expectedToken, ingest_header_token())) {
     respond_json(401, ['error' => 'Invalid or missing bot token.']);
 }
@@ -72,21 +72,21 @@ if (count($itemsPayload) > 200) {
     respond_json(422, ['error' => 'Max batch size is 200 items.']);
 }
 
-$project = bugcatcher_checklist_fetch_project($conn, $orgId, $projectId);
+$project = webtest_checklist_fetch_project($conn, $orgId, $projectId);
 if (!$project) {
     respond_json(404, ['error' => 'Project not found in the provided organization.']);
 }
 
 $assignedQaLeadId = ctype_digit((string) ($batchPayload['assigned_qa_lead_id'] ?? '')) ? (int) $batchPayload['assigned_qa_lead_id'] : 0;
-if ($assignedQaLeadId > 0 && !bugcatcher_checklist_member_has_role($conn, $orgId, $assignedQaLeadId, ['QA Lead'])) {
+if ($assignedQaLeadId > 0 && !webtest_checklist_member_has_role($conn, $orgId, $assignedQaLeadId, ['QA Lead'])) {
     respond_json(422, ['error' => 'assigned_qa_lead_id must belong to a QA Lead in this organization.']);
 }
 
 $title = trim((string) ($batchPayload['title'] ?? ''));
 $moduleName = trim((string) ($batchPayload['module_name'] ?? ''));
 $submoduleName = trim((string) ($batchPayload['submodule_name'] ?? ''));
-$sourceType = bugcatcher_checklist_normalize_enum((string) ($batchPayload['source_type'] ?? 'bot'), ['manual', 'bot'], 'bot');
-$sourceChannel = bugcatcher_checklist_normalize_enum((string) ($batchPayload['source_channel'] ?? 'api'), ['web', 'telegram', 'legacy_chat', 'api'], 'api');
+$sourceType = webtest_checklist_normalize_enum((string) ($batchPayload['source_type'] ?? 'bot'), ['manual', 'bot'], 'bot');
+$sourceChannel = webtest_checklist_normalize_enum((string) ($batchPayload['source_channel'] ?? 'api'), ['web', 'telegram', 'legacy_chat', 'api'], 'api');
 $sourceReference = trim((string) ($batchPayload['source_reference'] ?? ''));
 $notes = trim((string) ($batchPayload['notes'] ?? ''));
 
@@ -139,18 +139,18 @@ try {
         $itemModuleName = trim((string) ($itemPayload['module_name'] ?? $moduleName));
         $itemSubmodule = trim((string) ($itemPayload['submodule_name'] ?? $submoduleName));
         $description = trim((string) ($itemPayload['description'] ?? ''));
-        $requiredRole = bugcatcher_checklist_normalize_enum((string) ($itemPayload['required_role'] ?? 'QA Tester'), BUGCATCHER_CHECKLIST_ALLOWED_REQUIRED_ROLES, 'QA Tester');
-        $priority = bugcatcher_checklist_normalize_enum((string) ($itemPayload['priority'] ?? 'medium'), BUGCATCHER_CHECKLIST_PRIORITIES, 'medium');
+        $requiredRole = webtest_checklist_normalize_enum((string) ($itemPayload['required_role'] ?? 'QA Tester'), WEBTEST_CHECKLIST_ALLOWED_REQUIRED_ROLES, 'QA Tester');
+        $priority = webtest_checklist_normalize_enum((string) ($itemPayload['priority'] ?? 'medium'), WEBTEST_CHECKLIST_PRIORITIES, 'medium');
         $assignedToUserId = ctype_digit((string) ($itemPayload['assigned_to_user_id'] ?? '')) ? (int) $itemPayload['assigned_to_user_id'] : 0;
 
         if ($itemTitle === '' || $itemModuleName === '') {
             throw new RuntimeException('Each item requires title and module_name.');
         }
-        if ($assignedToUserId > 0 && bugcatcher_checklist_fetch_member_role($conn, $orgId, $assignedToUserId) === null) {
+        if ($assignedToUserId > 0 && webtest_checklist_fetch_member_role($conn, $orgId, $assignedToUserId) === null) {
             throw new RuntimeException("assigned_to_user_id {$assignedToUserId} is not a member of org {$orgId}.");
         }
 
-        $fullTitle = bugcatcher_checklist_full_title($itemModuleName, $itemSubmodule, $itemTitle);
+        $fullTitle = webtest_checklist_full_title($itemModuleName, $itemSubmodule, $itemTitle);
         $stmt = $conn->prepare("
             INSERT INTO checklist_items
                 (batch_id, org_id, project_id, sequence_no, title, module_name, submodule_name, full_title, description,
@@ -196,7 +196,7 @@ try {
 
         if ($scope === 'item' && $itemSequenceNo > 0 && $path && isset($itemIdBySequence[$itemSequenceNo])) {
             $size = (int) filesize($path);
-            if (!bugcatcher_checklist_store_uploaded_file($conn, $itemIdBySequence[$itemSequenceNo], $path, $originalName, $size, false, null, 'bot')) {
+            if (!webtest_checklist_store_uploaded_file($conn, $itemIdBySequence[$itemSequenceNo], $path, $originalName, $size, false, null, 'bot')) {
                 throw new RuntimeException("Invalid attachment for item sequence {$itemSequenceNo}.");
             }
             continue;

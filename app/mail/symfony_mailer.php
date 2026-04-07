@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-function bugcatcher_mail_smtp_dsn(array $config): string
+function webtest_mail_smtp_dsn(array $config): string
 {
     $user = rawurlencode((string) ($config['username'] ?? ''));
     $password = rawurlencode((string) ($config['password'] ?? ''));
@@ -22,9 +22,9 @@ function bugcatcher_mail_smtp_dsn(array $config): string
     return $dsn;
 }
 
-function bugcatcher_mail_send_via_symfony(array $message, array $config): void
+function webtest_mail_send_via_symfony(array $message, array $config): void
 {
-    require_once bugcatcher_mail_autoload_path();
+    require_once webtest_mail_autoload_path();
 
     if (
         !class_exists(\Symfony\Component\Mailer\Mailer::class) ||
@@ -36,7 +36,7 @@ function bugcatcher_mail_send_via_symfony(array $message, array $config): void
     }
 
     try {
-        $transport = \Symfony\Component\Mailer\Transport::fromDsn(bugcatcher_mail_smtp_dsn($config));
+        $transport = \Symfony\Component\Mailer\Transport::fromDsn(webtest_mail_smtp_dsn($config));
         $mailer = new \Symfony\Component\Mailer\Mailer($transport);
 
         $email = (new \Symfony\Component\Mime\Email())

@@ -7,22 +7,22 @@ $itemId = checklist_api_require_id_from_query('id');
 
 if ($method === 'GET') {
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
-    if (!bugcatcher_checklist_user_can_work_item($context, $item)) {
+    if (!webtest_checklist_user_can_work_item($context, $item)) {
         checklist_api_json_error(403, 'forbidden', 'You cannot view this checklist item.');
     }
-    $attachments = bugcatcher_checklist_fetch_item_attachments($conn, $itemId);
+    $attachments = webtest_checklist_fetch_item_attachments($conn, $itemId);
     $response = [
         'item' => $item,
-        'attachments' => bugcatcher_checklist_shape_attachments($attachments),
+        'attachments' => webtest_checklist_shape_attachments($attachments),
     ];
-    if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
+    if (webtest_checklist_is_manager_role((string) $context['org_role'])) {
         $response['assignable_testers'] = array_map(static function (array $member): array {
             return [
                 'user_id' => (int) ($member['id'] ?? 0),
                 'username' => (string) ($member['username'] ?? ''),
                 'role' => (string) ($member['role'] ?? ''),
             ];
-        }, bugcatcher_checklist_fetch_org_members($conn, (int) $context['org_id'], ['QA Tester']));
+        }, webtest_checklist_fetch_org_members($conn, (int) $context['org_id'], ['QA Tester']));
     }
     checklist_api_json_response(200, $response);
 }

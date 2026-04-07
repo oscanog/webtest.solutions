@@ -2,11 +2,11 @@
 
 return [
     'APP_ENV' => 'development',
-    'APP_BASE_URL' => 'http://localhost/bugcatcher',
+    'APP_BASE_URL' => 'http://localhost/webtest',
     'APP_TIMEZONE' => 'Asia/Singapore',
     'DB_HOST' => '127.0.0.1',
     'DB_PORT' => 3306,
-    'DB_NAME' => 'bug_catcher',
+    'DB_NAME' => 'web_test',
     'DB_USER' => 'root',
     'DB_PASS' => '',
     'UPLOADS_DIR' => dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'issues',
@@ -21,7 +21,7 @@ return [
     'CLOUDINARY_CLOUD_NAME' => 'replace-with-your-cloudinary-cloud-name',
     'CLOUDINARY_API_KEY' => 'replace-with-your-cloudinary-api-key',
     'CLOUDINARY_API_SECRET' => 'replace-with-your-cloudinary-api-secret',
-    'CLOUDINARY_BASE_FOLDER' => 'bugcatcher',
+    'CLOUDINARY_BASE_FOLDER' => 'webtest',
     'UPLOADTHING_TOKEN' => 'optional-temporary-uploadthing-token-for-migration-cleanup',
     'AI_CHAT_DEMO_PROVIDER_KEY' => 'deepseek',
     'AI_CHAT_DEMO_PROVIDER_NAME' => 'DeepSeek',

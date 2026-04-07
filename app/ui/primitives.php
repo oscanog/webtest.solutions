@@ -1,6 +1,6 @@
 <?php
 
-function bugcatcher_ui_button_variant(?string $variant = null): string
+function webtest_ui_button_variant(?string $variant = null): string
 {
     $normalized = trim((string) $variant);
     if ($normalized === '') {
@@ -13,9 +13,9 @@ function bugcatcher_ui_button_variant(?string $variant = null): string
     };
 }
 
-function bugcatcher_ui_button_classes(?string $variant = null, string $extraClasses = ''): string
+function webtest_ui_button_classes(?string $variant = null, string $extraClasses = ''): string
 {
-    $classes = ['bc-btn', 'bc-btn--' . bugcatcher_ui_button_variant($variant)];
+    $classes = ['bc-btn', 'bc-btn--' . webtest_ui_button_variant($variant)];
     $extraClasses = trim($extraClasses);
     if ($extraClasses !== '') {
         $classes[] = $extraClasses;
@@ -24,7 +24,7 @@ function bugcatcher_ui_button_classes(?string $variant = null, string $extraClas
     return implode(' ', $classes);
 }
 
-function bugcatcher_render_header_actions(array $actions): void
+function webtest_render_header_actions(array $actions): void
 {
     foreach ($actions as $action):
         $href = (string) ($action['href'] ?? '#');
@@ -32,8 +32,8 @@ function bugcatcher_render_header_actions(array $actions): void
         $variant = (string) ($action['variant'] ?? 'primary');
         ?>
         <a
-            class="<?= htmlspecialchars(bugcatcher_ui_button_classes($variant)) ?>"
-            href="<?= htmlspecialchars(bugcatcher_href($href)) ?>"
+            class="<?= htmlspecialchars(webtest_ui_button_classes($variant)) ?>"
+            href="<?= htmlspecialchars(webtest_href($href)) ?>"
         >
             <?= htmlspecialchars($label) ?>
         </a>

@@ -14,7 +14,7 @@ function bc_v1_admin_ai_runtime_get(mysqli $conn, array $params): void
     bc_v1_require_method(['GET']);
     bc_v1_admin_ai_guard($conn);
 
-    bc_v1_json_success(bugcatcher_ai_admin_runtime_snapshot($conn));
+    bc_v1_json_success(webtest_ai_admin_runtime_snapshot($conn));
 }
 
 function bc_v1_admin_ai_runtime_put(mysqli $conn, array $params): void
@@ -24,7 +24,7 @@ function bc_v1_admin_ai_runtime_put(mysqli $conn, array $params): void
     $payload = bc_v1_request_data();
 
     try {
-        bugcatcher_ai_admin_save_runtime_config(
+        webtest_ai_admin_save_runtime_config(
             $conn,
             (int) $actor['user']['id'],
             bc_v1_get_bool($payload, 'is_enabled', true),
@@ -40,7 +40,7 @@ function bc_v1_admin_ai_runtime_put(mysqli $conn, array $params): void
 
     bc_v1_json_success([
         'saved' => true,
-    ] + bugcatcher_ai_admin_runtime_snapshot($conn));
+    ] + webtest_ai_admin_runtime_snapshot($conn));
 }
 
 function bc_v1_admin_ai_providers_get(mysqli $conn, array $params): void
@@ -49,7 +49,7 @@ function bc_v1_admin_ai_providers_get(mysqli $conn, array $params): void
     bc_v1_admin_ai_guard($conn);
 
     bc_v1_json_success([
-        'providers' => bugcatcher_ai_admin_providers_for_display($conn),
+        'providers' => webtest_ai_admin_providers_for_display($conn),
     ]);
 }
 
@@ -60,7 +60,7 @@ function bc_v1_admin_ai_providers_post(mysqli $conn, array $params): void
     $payload = bc_v1_request_data();
 
     try {
-        bugcatcher_openclaw_save_provider(
+        webtest_openclaw_save_provider(
             $conn,
             (int) $actor['user']['id'],
             bc_v1_get_int($payload, 'provider_id', 0),
@@ -78,7 +78,7 @@ function bc_v1_admin_ai_providers_post(mysqli $conn, array $params): void
 
     bc_v1_json_success([
         'saved' => true,
-        'providers' => bugcatcher_ai_admin_providers_for_display($conn),
+        'providers' => webtest_ai_admin_providers_for_display($conn),
     ]);
 }
 
@@ -91,7 +91,7 @@ function bc_v1_admin_ai_providers_delete(mysqli $conn, array $params): void
         bc_v1_json_error(422, 'invalid_provider', 'Provider id is invalid.');
     }
 
-    bugcatcher_openclaw_delete_provider($conn, $providerId, (int) $actor['user']['id']);
+    webtest_openclaw_delete_provider($conn, $providerId, (int) $actor['user']['id']);
     bc_v1_json_success([
         'deleted' => true,
         'provider_id' => $providerId,
@@ -104,7 +104,7 @@ function bc_v1_admin_ai_models_get(mysqli $conn, array $params): void
     bc_v1_admin_ai_guard($conn);
 
     bc_v1_json_success([
-        'models' => bugcatcher_ai_admin_models_for_display($conn),
+        'models' => webtest_ai_admin_models_for_display($conn),
     ]);
 }
 
@@ -115,7 +115,7 @@ function bc_v1_admin_ai_models_post(mysqli $conn, array $params): void
     $payload = bc_v1_request_data();
 
     try {
-        bugcatcher_openclaw_save_model(
+        webtest_openclaw_save_model(
             $conn,
             bc_v1_get_int($payload, 'provider_config_id', 0),
             bc_v1_get_int($payload, 'model_id', 0),
@@ -133,7 +133,7 @@ function bc_v1_admin_ai_models_post(mysqli $conn, array $params): void
 
     bc_v1_json_success([
         'saved' => true,
-        'models' => bugcatcher_ai_admin_models_for_display($conn),
+        'models' => webtest_ai_admin_models_for_display($conn),
     ]);
 }
 
@@ -146,7 +146,7 @@ function bc_v1_admin_ai_models_delete(mysqli $conn, array $params): void
         bc_v1_json_error(422, 'invalid_model', 'Model id is invalid.');
     }
 
-    bugcatcher_openclaw_delete_model($conn, $modelId, (int) $actor['user']['id']);
+    webtest_openclaw_delete_model($conn, $modelId, (int) $actor['user']['id']);
     bc_v1_json_success([
         'deleted' => true,
         'model_id' => $modelId,

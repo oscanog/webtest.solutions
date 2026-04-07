@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS bug_catcher
+CREATE DATABASE IF NOT EXISTS web_test
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_general_ci;
 
-USE bug_catcher;
+USE web_test;
 
 CREATE TABLE IF NOT EXISTS users (
   id INT(11) NOT NULL AUTO_INCREMENT,

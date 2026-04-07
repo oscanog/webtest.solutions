@@ -86,7 +86,7 @@ function bc_v1_issue_labels_map(mysqli $conn, array $issueIds): array
 
 function bc_v1_issue_attachments_map(mysqli $conn, array $issueIds): array
 {
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
     if (!$issueIds) {
         return [];
     }
@@ -122,8 +122,8 @@ function bc_v1_issue_attachments_map(mysqli $conn, array $issueIds): array
 
 function bc_v1_issue_shape(array $row, array $labels = [], array $attachments = []): array
 {
-    $workflowStatus = bugcatcher_issue_workflow_normalize(
-        (string) ($row['workflow_status'] ?? $row['assign_status'] ?? bugcatcher_issue_workflow_default())
+    $workflowStatus = webtest_issue_workflow_normalize(
+        (string) ($row['workflow_status'] ?? $row['assign_status'] ?? webtest_issue_workflow_default())
     );
 
     return [
@@ -136,8 +136,8 @@ function bc_v1_issue_shape(array $row, array $labels = [], array $attachments = 
         'title' => (string) $row['title'],
         'description' => (string) ($row['description'] ?? ''),
         'workflow_status' => $workflowStatus,
-        'status' => bugcatcher_issue_workflow_status_alias($workflowStatus),
-        'assign_status' => bugcatcher_issue_workflow_assign_status_alias($workflowStatus),
+        'status' => webtest_issue_workflow_status_alias($workflowStatus),
+        'assign_status' => webtest_issue_workflow_assign_status_alias($workflowStatus),
         'author_id' => isset($row['author_id']) ? (int) $row['author_id'] : 0,
         'author_username' => (string) ($row['author_username'] ?? ''),
         'pm_id' => isset($row['pm_id']) ? (int) $row['pm_id'] : 0,
@@ -160,7 +160,7 @@ function bc_v1_issue_shape(array $row, array $labels = [], array $attachments = 
 
 function bc_v1_issue_visibility_scope(array $orgContext): string
 {
-    if (bugcatcher_is_system_admin_role((string) ($orgContext['system_role'] ?? 'user'))) {
+    if (webtest_is_system_admin_role((string) ($orgContext['system_role'] ?? 'user'))) {
         return 'admin';
     }
     if (!empty($orgContext['is_org_owner'])) {
@@ -191,7 +191,7 @@ function bc_v1_issue_visibility_scope(array $orgContext): string
 
 function bc_v1_issue_count(mysqli $conn, int $orgId, string $status): int
 {
-    $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
+    $filterSql = webtest_issue_workflow_filter_sql('workflow_status', $status);
     $stmt = $conn->prepare("
         SELECT COUNT(*) AS total
         FROM issues
@@ -211,7 +211,7 @@ function bc_v1_issue_count_for_org_ids(mysqli $conn, array $orgIds, string $stat
     }
 
     $placeholders = implode(',', array_fill(0, count($orgIds), '?'));
-    $filterSql = bugcatcher_issue_workflow_filter_sql('workflow_status', $status);
+    $filterSql = webtest_issue_workflow_filter_sql('workflow_status', $status);
     $params = $orgIds;
     $types = str_repeat('i', count($orgIds));
     $stmt = $conn->prepare("
@@ -346,8 +346,8 @@ function bc_v1_issue_is_visible_to_actor(array $issue, array $org): bool
 
 function bc_v1_issue_notify(mysqli $conn, array $issue, array $payload, array $recipientUserIds): void
 {
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? $issue['assign_status'] ?? ''));
-    bugcatcher_notifications_send($conn, $recipientUserIds, [
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? $issue['assign_status'] ?? ''));
+    webtest_notifications_send($conn, $recipientUserIds, [
         'type' => 'issue',
         'event_key' => (string) ($payload['event_key'] ?? 'issue_updated'),
         'title' => (string) ($payload['title'] ?? 'Issue updated'),
@@ -361,8 +361,8 @@ function bc_v1_issue_notify(mysqli $conn, array $issue, array $payload, array $r
         'meta' => $payload['meta'] ?? [
             'project_id' => (int) ($issue['project_id'] ?? 0),
             'workflow_status' => $workflowStatus,
-            'assign_status' => bugcatcher_issue_workflow_assign_status_alias($workflowStatus),
-            'status' => bugcatcher_issue_workflow_status_alias($workflowStatus),
+            'assign_status' => webtest_issue_workflow_assign_status_alias($workflowStatus),
+            'status' => webtest_issue_workflow_status_alias($workflowStatus),
         ],
     ]);
 }
@@ -373,7 +373,7 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
     $actor = bc_v1_actor($conn, true);
     $requestedOrgId = bc_v1_get_int($_GET, 'org_id', 0);
 
-    $status = bugcatcher_issue_workflow_filter((string) ($_GET['status'] ?? 'open'));
+    $status = webtest_issue_workflow_filter((string) ($_GET['status'] ?? 'open'));
     $labelId = bc_v1_get_int($_GET, 'label', 0);
     $author = bc_v1_get_int($_GET, 'author', 0);
     $isAllScope = bc_v1_actor_is_all_scope($actor) && $requestedOrgId <= 0;
@@ -407,7 +407,7 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
         }
 
         $placeholders = implode(',', array_fill(0, count($orgIds), '?'));
-        $statusSql = bugcatcher_issue_workflow_filter_sql('i.workflow_status', $status);
+        $statusSql = webtest_issue_workflow_filter_sql('i.workflow_status', $status);
         $sql = "
             SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
             FROM issues i
@@ -468,13 +468,13 @@ function bc_v1_issues_get(mysqli $conn, array $params): void
 
     $org = bc_v1_org_context($conn, $actor, $requestedOrgId);
     $scope = bc_v1_issue_visibility_scope($org);
-    $isSystemAdmin = bugcatcher_is_system_admin_role((string) ($org['system_role'] ?? 'user'));
+    $isSystemAdmin = webtest_is_system_admin_role((string) ($org['system_role'] ?? 'user'));
 
     if (!$isSystemAdmin) {
         $author = 0;
     }
 
-    $statusSql = bugcatcher_issue_workflow_filter_sql('i.workflow_status', $status);
+    $statusSql = webtest_issue_workflow_filter_sql('i.workflow_status', $status);
     $sql = "
         SELECT i.*, u.username AS author_username, o.name AS org_name, p.name AS project_name, p.code AS project_code
         FROM issues i
@@ -594,7 +594,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
     if (!$project || (string) ($project['status'] ?? 'archived') !== 'active') {
         bc_v1_json_error(422, 'validation_error', 'project_id must reference an active project in this organization.');
     }
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
 
     $allowedMimes = [
         'image/jpeg' => 'jpg',
@@ -611,7 +611,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
             INSERT INTO issues (title, description, author_id, org_id, project_id, workflow_status)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $workflowStatus = bugcatcher_issue_workflow_default();
+        $workflowStatus = webtest_issue_workflow_default();
         $stmt->bind_param('ssiiis', $title, $description, $org['user_id'], $org['org_id'], $projectId, $workflowStatus);
         $stmt->execute();
         $issueId = (int) $conn->insert_id;
@@ -660,7 +660,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
                 $ext = $allowedMimes[$mime];
                 $origName = (string) ($imageUploads['name'][$i] ?? ('image.' . $ext));
                 $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
-                $stored = bugcatcher_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
+                $stored = webtest_file_storage_upload_file($tmp, $safeOrig, $mime, $size, 'issues');
                 $filePath = (string) $stored['file_path'];
                 $storageKey = (string) ($stored['storage_key'] ?? '');
                 $storageProvider = (string) ($stored['storage_provider'] ?? '');
@@ -683,7 +683,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
         $conn->rollback();
         foreach ($uploadedKeys as $uploadedKey) {
             try {
-                bugcatcher_file_storage_delete($uploadedKey);
+                webtest_file_storage_delete($uploadedKey);
             } catch (Throwable $deleteError) {
                 // Ignore cleanup errors after rollback.
             }
@@ -693,7 +693,7 @@ function bc_v1_issues_post(mysqli $conn, array $params): void
 
     $hydratedIssue = bc_v1_issue_hydrated_by_id($conn, (int) $org['org_id'], $issueId);
     $managerRecipients = array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $org['org_id']),
+        webtest_notification_org_manager_ids($conn, (int) $org['org_id']),
         [(int) $org['user_id']]
     ));
     bc_v1_issue_notify($conn, $hydratedIssue, [
@@ -725,15 +725,15 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
         bc_v1_json_error(404, 'issue_not_found', 'Issue not found in this organization.');
     }
 
-    $isSystemAdmin = bugcatcher_is_system_admin_role((string) ($actor['user']['role'] ?? 'user'));
+    $isSystemAdmin = webtest_is_system_admin_role((string) ($actor['user']['role'] ?? 'user'));
     $isOrgOwner = (bool) ($org['is_org_owner'] ?? false);
     if (!$isSystemAdmin && !$isOrgOwner) {
         bc_v1_json_error(403, 'forbidden', 'Only organization owners or system admins can delete issues.');
     }
-    if (!$isSystemAdmin && $isOrgOwner && bugcatcher_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? ''))) {
+    if (!$isSystemAdmin && $isOrgOwner && webtest_issue_workflow_is_closed((string) ($issue['workflow_status'] ?? ''))) {
         bc_v1_json_error(422, 'forbidden_closed_issue', 'Closed issues cannot be deleted by the organization owner.');
     }
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
 
     $conn->begin_transaction();
     try {
@@ -752,7 +752,7 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
                 $remoteFiles[] = $file;
                 continue;
             }
-            $legacyPaths[] = bugcatcher_upload_absolute_path($storedPath);
+            $legacyPaths[] = webtest_upload_absolute_path($storedPath);
         }
 
         $stmt = $conn->prepare("DELETE FROM issue_attachments WHERE issue_id = ?");
@@ -783,13 +783,13 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
                 continue;
             }
 
-            $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+            $provider = webtest_file_storage_provider_from_row($remoteFile);
             $deleteKey = $provider . '|' . $storageKey;
             if (isset($deletedRemote[$deleteKey])) {
                 continue;
             }
 
-            bugcatcher_file_storage_delete_if_unreferenced(
+            webtest_file_storage_delete_if_unreferenced(
                 $conn,
                 $storageKey,
                 null,
@@ -801,7 +801,7 @@ function bc_v1_issues_delete(mysqli $conn, array $params): void
             $deletedRemote[$deleteKey] = true;
         }
         foreach ($legacyPaths as $legacyPath) {
-            bugcatcher_file_storage_delete_legacy_local($legacyPath);
+            webtest_file_storage_delete_legacy_local($legacyPath);
         }
     } catch (Throwable $e) {
         $conn->rollback();
@@ -858,11 +858,11 @@ function bc_v1_issues_assign_dev_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_can_assign_dev($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_can_assign_dev($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not ready for PM assignment.');
     }
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be assigned.');
     }
     if (!empty($issue['pm_id']) && (int) $issue['pm_id'] !== $ctx['user_id']) {
@@ -922,11 +922,11 @@ function bc_v1_issues_assign_junior_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
     if ((int) ($issue['assigned_dev_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only assign issues that are assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_assign_junior($workflowStatus)) {
+    if (!webtest_issue_workflow_can_assign_junior($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with a Senior Developer.');
     }
     if (!empty($issue['assigned_junior_id'])) {
@@ -969,14 +969,14 @@ function bc_v1_issues_junior_done_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'Junior Developer', 'Only Junior Developers can mark DONE.');
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be marked DONE.');
     }
     if ((int) ($issue['assigned_junior_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only mark DONE for issues assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_mark_junior_done($workflowStatus)) {
+    if (!webtest_issue_workflow_can_mark_junior_done($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with a Junior Developer.');
     }
 
@@ -1018,14 +1018,14 @@ function bc_v1_issues_assign_qa_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be analyzed.');
     }
     if ((int) ($issue['assigned_dev_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only analyze issues assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_assign_qa($workflowStatus)) {
+    if (!webtest_issue_workflow_can_assign_qa($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not ready for QA.');
     }
     if (!empty($issue['assigned_qa_id'])) {
@@ -1073,14 +1073,14 @@ function bc_v1_issues_report_senior_qa_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be reported.');
     }
     if ((int) ($issue['assigned_qa_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only report issues assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_report_senior_qa($workflowStatus)) {
+    if (!webtest_issue_workflow_can_report_senior_qa($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA.');
     }
     if (!empty($issue['assigned_senior_qa_id'])) {
@@ -1128,14 +1128,14 @@ function bc_v1_issues_report_qa_lead_post(mysqli $conn, array $params): void
     }
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be reported.');
     }
     if ((int) ($issue['assigned_senior_qa_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'You can only report issues assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_report_qa_lead($workflowStatus)) {
+    if (!webtest_issue_workflow_can_report_qa_lead($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with Senior QA.');
     }
     if (!empty($issue['assigned_qa_lead_id'])) {
@@ -1178,14 +1178,14 @@ function bc_v1_issues_qa_lead_approve_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'QA Lead', 'Only QA Lead can approve.');
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be approved.');
     }
     if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'Issue is not assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_qa_lead_decide($workflowStatus)) {
+    if (!webtest_issue_workflow_can_qa_lead_decide($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA Lead.');
     }
 
@@ -1222,14 +1222,14 @@ function bc_v1_issues_qa_lead_reject_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'QA Lead', 'Only QA Lead can reject.');
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (!bugcatcher_issue_workflow_is_active($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (!webtest_issue_workflow_is_active($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only open issues can be rejected.');
     }
     if ((int) ($issue['assigned_qa_lead_id'] ?? 0) !== $ctx['user_id']) {
         bc_v1_json_error(403, 'forbidden', 'Issue is not assigned to you.');
     }
-    if (!bugcatcher_issue_workflow_can_qa_lead_decide($workflowStatus)) {
+    if (!webtest_issue_workflow_can_qa_lead_decide($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is not currently with QA Lead.');
     }
 
@@ -1277,11 +1277,11 @@ function bc_v1_issues_pm_close_post(mysqli $conn, array $params): void
     bc_v1_issue_require_org_role($ctx['org'], 'Project Manager', 'Only Project Managers can close issues.');
 
     $issue = $ctx['issue'];
-    $workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-    if (bugcatcher_issue_workflow_is_closed($workflowStatus)) {
+    $workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+    if (webtest_issue_workflow_is_closed($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Issue is already closed.');
     }
-    if (!bugcatcher_issue_workflow_can_pm_close($workflowStatus)) {
+    if (!webtest_issue_workflow_can_pm_close($workflowStatus)) {
         bc_v1_json_error(422, 'invalid_state', 'Only approved issues can be closed.');
     }
 

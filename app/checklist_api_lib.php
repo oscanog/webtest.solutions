@@ -7,7 +7,7 @@ function checklist_api_json_response(int $statusCode, array $data): void
     http_response_code($statusCode);
     echo json_encode([
         'ok' => true,
-        'data' => bugcatcher_augment_datetime_iso_fields($data),
+        'data' => webtest_augment_datetime_iso_fields($data),
     ]);
     exit;
 }
@@ -143,7 +143,7 @@ function checklist_api_require_context(mysqli $conn): array
         'is_org_owner' => (int) $membership['owner_id'] === $userId,
         'current_user_id' => $userId,
         'current_username' => (string) ($_SESSION['username'] ?? 'User'),
-        'current_role' => bugcatcher_normalize_system_role((string) ($_SESSION['role'] ?? 'user')),
+        'current_role' => webtest_normalize_system_role((string) ($_SESSION['role'] ?? 'user')),
     ];
 }
 
@@ -176,7 +176,7 @@ function checklist_api_uploaded_files(string $field): ?array
 
 function checklist_api_require_manager(array $context): void
 {
-    if (!bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
+    if (!webtest_checklist_is_manager_role((string) $context['org_role'])) {
         checklist_api_json_error(403, 'forbidden', 'Only checklist managers can perform this action.');
     }
 }
@@ -193,7 +193,7 @@ function checklist_api_item_link_path(int $itemId): string
 
 function checklist_api_notify_batch(mysqli $conn, array $batch, array $payload, array $recipientUserIds): void
 {
-    bugcatcher_notifications_send($conn, $recipientUserIds, [
+    webtest_notifications_send($conn, $recipientUserIds, [
         'type' => 'checklist',
         'event_key' => (string) ($payload['event_key'] ?? 'checklist_updated'),
         'title' => (string) ($payload['title'] ?? 'Checklist updated'),
@@ -211,7 +211,7 @@ function checklist_api_notify_batch(mysqli $conn, array $batch, array $payload, 
 
 function checklist_api_notify_item(mysqli $conn, array $item, array $payload, array $recipientUserIds): void
 {
-    bugcatcher_notifications_send($conn, $recipientUserIds, [
+    webtest_notifications_send($conn, $recipientUserIds, [
         'type' => 'checklist',
         'event_key' => (string) ($payload['event_key'] ?? 'checklist_item_updated'),
         'title' => (string) ($payload['title'] ?? 'Checklist item updated'),
@@ -229,7 +229,7 @@ function checklist_api_notify_item(mysqli $conn, array $item, array $payload, ar
 
 function checklist_api_find_batch_or_404(mysqli $conn, int $orgId, int $batchId): array
 {
-    $batch = bugcatcher_checklist_fetch_batch($conn, $orgId, $batchId);
+    $batch = webtest_checklist_fetch_batch($conn, $orgId, $batchId);
     if (!$batch) {
         checklist_api_json_error(404, 'batch_not_found', 'Checklist batch not found.');
     }
@@ -239,7 +239,7 @@ function checklist_api_find_batch_or_404(mysqli $conn, int $orgId, int $batchId)
 
 function checklist_api_find_item_or_404(mysqli $conn, int $orgId, int $itemId): array
 {
-    $item = bugcatcher_checklist_fetch_item($conn, $orgId, $itemId);
+    $item = webtest_checklist_fetch_item($conn, $orgId, $itemId);
     if (!$item) {
         checklist_api_json_error(404, 'item_not_found', 'Checklist item not found.');
     }
@@ -299,17 +299,17 @@ function checklist_api_validate_batch_payload(mysqli $conn, array $context, arra
     $title = trim((string) ($payload['title'] ?? ''));
     $moduleName = trim((string) ($payload['module_name'] ?? ''));
     $submoduleName = trim((string) ($payload['submodule_name'] ?? ''));
-    $status = bugcatcher_checklist_normalize_enum(
+    $status = webtest_checklist_normalize_enum(
         (string) ($payload['status'] ?? 'open'),
-        BUGCATCHER_BATCH_STATUSES,
+        WEBTEST_BATCH_STATUSES,
         'open'
     );
     $assignedQaLeadId = checklist_api_get_int($payload, 'assigned_qa_lead_id');
     $notes = trim((string) ($payload['notes'] ?? ''));
     $pageUrlInput = trim((string) ($payload['page_url'] ?? ''));
-    $pageUrl = bugcatcher_checklist_normalize_page_url($pageUrlInput);
+    $pageUrl = webtest_checklist_normalize_page_url($pageUrlInput);
 
-    $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, (int) $context['org_id'], $projectId) : null;
+    $project = $projectId > 0 ? webtest_checklist_fetch_project($conn, (int) $context['org_id'], $projectId) : null;
     if (!$project) {
         checklist_api_json_error(422, 'invalid_project', 'Select a valid project in the active organization.');
     }
@@ -321,7 +321,7 @@ function checklist_api_validate_batch_payload(mysqli $conn, array $context, arra
     }
     if (
         $assignedQaLeadId > 0 &&
-        !bugcatcher_checklist_member_has_role($conn, (int) $context['org_id'], $assignedQaLeadId, ['QA Lead'])
+        !webtest_checklist_member_has_role($conn, (int) $context['org_id'], $assignedQaLeadId, ['QA Lead'])
     ) {
         checklist_api_json_error(422, 'invalid_qa_lead', 'assigned_qa_lead_id must belong to a QA Lead in this organization.');
     }
@@ -373,7 +373,7 @@ function checklist_api_create_batch(mysqli $conn, array $context, array $payload
         'severity' => 'success',
         'actor_user_id' => (int) $context['current_user_id'],
     ], array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
+        webtest_notification_org_manager_ids($conn, (int) $context['org_id']),
         [(int) $context['current_user_id']]
     )));
     return $batch;
@@ -415,7 +415,7 @@ function checklist_api_update_batch(mysqli $conn, array $context, int $batchId, 
         'severity' => 'default',
         'actor_user_id' => (int) $context['current_user_id'],
     ], array_values(array_diff(
-        bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
+        webtest_notification_org_manager_ids($conn, (int) $context['org_id']),
         [(int) $context['current_user_id']]
     )));
     return $batch;
@@ -425,7 +425,7 @@ function checklist_api_validate_item_payload(mysqli $conn, array $context, array
 {
     $sequenceNo = checklist_api_get_int($payload, 'sequence_no');
     if ($isCreate && $sequenceNo <= 0) {
-        $sequenceNo = bugcatcher_checklist_next_sequence($conn, (int) $batch['id']);
+        $sequenceNo = webtest_checklist_next_sequence($conn, (int) $batch['id']);
     }
     if (!$isCreate && $sequenceNo <= 0) {
         $sequenceNo = (int) ($payload['sequence_no'] ?? 0);
@@ -435,14 +435,14 @@ function checklist_api_validate_item_payload(mysqli $conn, array $context, array
     $moduleName = trim((string) ($payload['module_name'] ?? ($batch['module_name'] ?? '')));
     $submoduleName = trim((string) ($payload['submodule_name'] ?? ''));
     $description = trim((string) ($payload['description'] ?? ''));
-    $requiredRole = bugcatcher_checklist_normalize_enum(
+    $requiredRole = webtest_checklist_normalize_enum(
         (string) ($payload['required_role'] ?? 'QA Tester'),
-        BUGCATCHER_CHECKLIST_ALLOWED_REQUIRED_ROLES,
+        WEBTEST_CHECKLIST_ALLOWED_REQUIRED_ROLES,
         'QA Tester'
     );
-    $priority = bugcatcher_checklist_normalize_enum(
+    $priority = webtest_checklist_normalize_enum(
         (string) ($payload['priority'] ?? 'medium'),
-        BUGCATCHER_CHECKLIST_PRIORITIES,
+        WEBTEST_CHECKLIST_PRIORITIES,
         'medium'
     );
     $assignedToUserId = checklist_api_get_int($payload, 'assigned_to_user_id');
@@ -452,7 +452,7 @@ function checklist_api_validate_item_payload(mysqli $conn, array $context, array
     }
     if (
         $assignedToUserId > 0 &&
-        !bugcatcher_checklist_member_has_role($conn, (int) $context['org_id'], $assignedToUserId, ['QA Tester'])
+        !webtest_checklist_member_has_role($conn, (int) $context['org_id'], $assignedToUserId, ['QA Tester'])
     ) {
         checklist_api_json_error(422, 'invalid_assignee', 'assigned_to_user_id must belong to a QA Tester in the active organization.');
     }
@@ -466,7 +466,7 @@ function checklist_api_validate_item_payload(mysqli $conn, array $context, array
         'required_role' => $requiredRole,
         'priority' => $priority,
         'assigned_to_user_id' => $assignedToUserId,
-        'full_title' => bugcatcher_checklist_full_title($moduleName, $submoduleName, $title),
+        'full_title' => webtest_checklist_full_title($moduleName, $submoduleName, $title),
     ];
 }
 
@@ -516,7 +516,7 @@ function checklist_api_create_item(mysqli $conn, array $context, array $payload)
 
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
     $managerRecipients = array_values(array_diff(
-        array_unique(bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id'])),
+        array_unique(webtest_notification_org_manager_ids($conn, (int) $context['org_id'])),
         [(int) $context['current_user_id']]
     ));
     checklist_api_notify_item($conn, $item, [
@@ -595,7 +595,7 @@ function checklist_api_update_item(mysqli $conn, array $context, int $itemId, ar
     checklist_api_auto_create_issue_if_needed($conn, $context, $updated);
     $updated = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
     $managerRecipients = array_values(array_diff(
-        array_unique(bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id'])),
+        array_unique(webtest_notification_org_manager_ids($conn, (int) $context['org_id'])),
         [(int) $context['current_user_id']]
     ));
     checklist_api_notify_item($conn, $updated, [
@@ -626,12 +626,12 @@ function checklist_api_update_item(mysqli $conn, array $context, int $itemId, ar
 
 function checklist_api_patch_item(mysqli $conn, array $context, int $itemId, array $payload): array
 {
-    if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
+    if (webtest_checklist_is_manager_role((string) $context['org_role'])) {
         return checklist_api_update_item($conn, $context, $itemId, $payload);
     }
 
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
-    if (!bugcatcher_checklist_user_can_work_item($context, $item)) {
+    if (!webtest_checklist_user_can_work_item($context, $item)) {
         checklist_api_json_error(403, 'forbidden', 'You cannot update this item.');
     }
 
@@ -645,7 +645,7 @@ function checklist_api_patch_item(mysqli $conn, array $context, int $itemId, arr
 function checklist_api_auto_create_issue_if_needed(mysqli $conn, array $context, array $item): void
 {
     if (in_array((string) $item['status'], ['failed', 'blocked'], true) && (int) ($item['issue_id'] ?? 0) <= 0) {
-        bugcatcher_checklist_create_issue_for_item($conn, $item, (int) $context['current_user_id']);
+        webtest_checklist_create_issue_for_item($conn, $item, (int) $context['current_user_id']);
     }
 }
 
@@ -653,12 +653,12 @@ function checklist_api_change_item_status(mysqli $conn, array $context, int $ite
 {
     $item = checklist_api_find_item_or_404($conn, (int) $context['org_id'], $itemId);
 
-    if (!bugcatcher_checklist_user_can_work_item($context, $item)) {
+    if (!webtest_checklist_user_can_work_item($context, $item)) {
         checklist_api_json_error(403, 'forbidden', 'You cannot update this item.');
     }
 
-    $normalizedStatus = bugcatcher_checklist_normalize_enum($newStatus, BUGCATCHER_CHECKLIST_STATUSES, (string) $item['status']);
-    $allowed = bugcatcher_checklist_can_transition_status(
+    $normalizedStatus = webtest_checklist_normalize_enum($newStatus, WEBTEST_CHECKLIST_STATUSES, (string) $item['status']);
+    $allowed = webtest_checklist_can_transition_status(
         (string) $item['status'],
         $normalizedStatus,
         (string) $context['org_role']
@@ -668,7 +668,7 @@ function checklist_api_change_item_status(mysqli $conn, array $context, int $ite
         checklist_api_json_error(422, 'invalid_transition', 'That status transition is not allowed.');
     }
 
-    $timestamps = bugcatcher_checklist_resolve_status_timestamps(
+    $timestamps = webtest_checklist_resolve_status_timestamps(
         $normalizedStatus,
         (string) ($item['started_at'] ?? ''),
         (string) ($item['completed_at'] ?? '')
@@ -699,7 +699,7 @@ function checklist_api_change_item_status(mysqli $conn, array $context, int $ite
     $severity = in_array((string) $updated['status'], ['failed', 'blocked'], true) ? 'alert' : ((string) $updated['status'] === 'passed' ? 'success' : 'default');
     $recipients = array_values(array_diff(array_unique(array_filter([
         (int) ($updated['assigned_to_user_id'] ?? 0),
-        ...bugcatcher_notification_org_manager_ids($conn, (int) $context['org_id']),
+        ...webtest_notification_org_manager_ids($conn, (int) $context['org_id']),
     ])), [(int) $context['current_user_id']]));
     checklist_api_notify_item($conn, $updated, [
         'event_key' => 'checklist_item_status_changed',
@@ -714,9 +714,9 @@ function checklist_api_change_item_status(mysqli $conn, array $context, int $ite
 
 function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
 {
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
     $item = checklist_api_find_item_or_404($conn, $orgId, $itemId);
-    $attachments = bugcatcher_checklist_fetch_item_attachments($conn, (int) $item['id']);
+    $attachments = webtest_checklist_fetch_item_attachments($conn, (int) $item['id']);
     $remoteFiles = [];
     $legacyPaths = [];
     foreach ($attachments as $attachment) {
@@ -724,7 +724,7 @@ function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
         if ($storageKey !== '') {
             $remoteFiles[] = $attachment;
         } else {
-            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']);
+            $legacyPaths[] = webtest_checklist_upload_absolute_path((string) $attachment['file_path']);
         }
     }
 
@@ -740,13 +740,13 @@ function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
             continue;
         }
 
-        $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+        $provider = webtest_file_storage_provider_from_row($remoteFile);
         $deleteKey = $provider . '|' . $storageKey;
         if (isset($deletedRemote[$deleteKey])) {
             continue;
         }
 
-        bugcatcher_file_storage_delete_if_unreferenced(
+        webtest_file_storage_delete_if_unreferenced(
             $conn,
             $storageKey,
             null,
@@ -758,16 +758,16 @@ function checklist_api_delete_item(mysqli $conn, int $orgId, int $itemId): void
         $deletedRemote[$deleteKey] = true;
     }
     foreach ($legacyPaths as $legacyPath) {
-        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+        webtest_file_storage_delete_legacy_local($legacyPath);
     }
 }
 
 function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): void
 {
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
     checklist_api_find_batch_or_404($conn, $orgId, $batchId);
 
-    $batchAttachments = bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId);
+    $batchAttachments = webtest_openclaw_fetch_batch_attachments($conn, $batchId);
     $remoteFiles = [];
     $legacyPaths = [];
     foreach ($batchAttachments as $attachment) {
@@ -775,7 +775,7 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
         if ($storageKey !== '') {
             $remoteFiles[] = $attachment;
         } else {
-            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']);
+            $legacyPaths[] = webtest_checklist_upload_absolute_path((string) $attachment['file_path']);
         }
     }
 
@@ -795,7 +795,7 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
         if ($storageKey !== '') {
             $remoteFiles[] = $row;
         } else {
-            $legacyPaths[] = bugcatcher_checklist_upload_absolute_path((string) ($row['file_path'] ?? ''));
+            $legacyPaths[] = webtest_checklist_upload_absolute_path((string) ($row['file_path'] ?? ''));
         }
     }
 
@@ -816,13 +816,13 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
             continue;
         }
 
-        $provider = bugcatcher_file_storage_provider_from_row($remoteFile);
+        $provider = webtest_file_storage_provider_from_row($remoteFile);
         $deleteKey = $provider . '|' . $storageKey;
         if (isset($deletedRemote[$deleteKey])) {
             continue;
         }
 
-        bugcatcher_file_storage_delete_if_unreferenced(
+        webtest_file_storage_delete_if_unreferenced(
             $conn,
             $storageKey,
             null,
@@ -834,7 +834,7 @@ function checklist_api_delete_batch(mysqli $conn, int $orgId, int $batchId): voi
         $deletedRemote[$deleteKey] = true;
     }
     foreach ($legacyPaths as $legacyPath) {
-        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+        webtest_file_storage_delete_legacy_local($legacyPath);
     }
 }
 
@@ -846,8 +846,8 @@ function checklist_api_store_uploaded_batch_file(
     int $size,
     int $uploadedBy
 ): bool {
-    bugcatcher_file_storage_ensure_schema($conn);
-    $allowed = bugcatcher_checklist_allowed_mime_map();
+    webtest_file_storage_ensure_schema($conn);
+    $allowed = webtest_checklist_allowed_mime_map();
     if ($size <= 0 || !is_uploaded_file($tmpPath)) {
         return false;
     }
@@ -865,7 +865,7 @@ function checklist_api_store_uploaded_batch_file(
 
     $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
     try {
-        $stored = bugcatcher_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'checklist-batch');
+        $stored = webtest_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'checklist-batch');
     } catch (Throwable $e) {
         return false;
     }
@@ -891,10 +891,10 @@ function checklist_api_store_uploaded_batch_file(
 
 function checklist_api_delete_batch_attachment(mysqli $conn, array $attachment): void
 {
-    bugcatcher_file_storage_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
     $storageKey = (string) ($attachment['storage_key'] ?? '');
-    $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
-    $legacyPath = $storageKey === '' ? bugcatcher_checklist_upload_absolute_path((string) $attachment['file_path']) : null;
+    $storageProvider = webtest_file_storage_provider_from_row($attachment);
+    $legacyPath = $storageKey === '' ? webtest_checklist_upload_absolute_path((string) $attachment['file_path']) : null;
 
     $attachmentId = (int) $attachment['id'];
     $stmt = $conn->prepare("DELETE FROM checklist_batch_attachments WHERE id = ?");
@@ -903,7 +903,7 @@ function checklist_api_delete_batch_attachment(mysqli $conn, array $attachment):
     $stmt->close();
 
     if ($storageKey !== '') {
-        bugcatcher_file_storage_delete_if_unreferenced(
+        webtest_file_storage_delete_if_unreferenced(
             $conn,
             $storageKey,
             null,
@@ -913,6 +913,6 @@ function checklist_api_delete_batch_attachment(mysqli $conn, array $attachment):
             (string) ($attachment['mime_type'] ?? '')
         );
     } else {
-        bugcatcher_file_storage_delete_legacy_local($legacyPath);
+        webtest_file_storage_delete_legacy_local($legacyPath);
     }
 }

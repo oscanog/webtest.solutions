@@ -5,9 +5,8 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $capstoneDir = Join-Path $repoRoot 'docs\capstone'
-$sourcePath = Join-Path $capstoneDir 'BugCatcher_Capstone_Source.md'
-$erdSvgPath = Join-Path $capstoneDir 'BugCatcher_Full_ERD.svg'
-$erdPngPath = Join-Path $capstoneDir 'BugCatcher_Full_ERD.png'
+$sourcePath = Join-Path $capstoneDir 'WebTest_Capstone_Source.md'
+$erdSvgPath = Join-Path $capstoneDir 'WebTest_Full_ERD.svg'
 $finalDocxPath = Join-Path $capstoneDir 'Capstone_Project_Guidelines_For_IT.docx'
 $referenceDocxPath = Join-Path $capstoneDir 'Capstone_Project_Guidelines_For_IT_reference.docx'
 
@@ -409,7 +408,7 @@ function Write-ConsolidatedErdSvg {
     [void]$sb.AppendLine('    </marker>')
     [void]$sb.AppendLine('  </defs>')
     [void]$sb.AppendLine('  <rect width="1480" height="1300" fill="#f8fafc"/>')
-    [void]$sb.AppendLine('  <text x="40" y="42" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">BugCatcher Consolidated Full ERD</text>')
+    [void]$sb.AppendLine('  <text x="40" y="42" font-size="26" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">WebTest Consolidated Full ERD</text>')
     [void]$sb.AppendLine('  <text x="40" y="68" font-size="13" font-family="Segoe UI, Arial, sans-serif" fill="#334155">Current-system view derived from local_dev_full.sql, schema.sql, migrations, and ai_chat runtime schema helpers.</text>')
     [void]$sb.AppendLine('  <text x="40" y="760" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">AI Admin, OpenClaw, AI Chat, and Notification Domain</text>')
     [void]$sb.AppendLine('  <text x="40" y="505" font-size="18" font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#0f172a">Checklist Domain</text>')
@@ -478,9 +477,9 @@ if (-not (Test-Path $referenceDocxPath)) {
 
 Write-ConsolidatedErdSvg -OutputPath $erdSvgPath
 
-$imagePath = if (Test-Path $erdPngPath) { $erdPngPath } else { $erdSvgPath }
-$imageEntryName = if ($imagePath.ToLowerInvariant().EndsWith('.png')) { 'word/media/BugCatcher_Full_ERD.png' } else { 'word/media/BugCatcher_Full_ERD.svg' }
-$imageContentType = if ($imagePath.ToLowerInvariant().EndsWith('.png')) { 'image/png' } else { 'image/svg+xml' }
+$imagePath = $erdSvgPath
+$imageEntryName = 'word/media/WebTest_Full_ERD.svg'
+$imageContentType = 'image/svg+xml'
 $imageRelationshipTarget = Split-Path $imageEntryName -Leaf
 
 Copy-Item -LiteralPath $referenceDocxPath -Destination $finalDocxPath -Force
@@ -504,7 +503,7 @@ try {
     $sectPrXml = Extract-SectPrXml -DocumentXml $existingDocXml
     $lines = [System.IO.File]::ReadAllLines($sourcePath)
     $headings = Read-SourceHeadings -Lines $lines
-    $bodyXml = Build-DocumentBodyXml -Lines $lines -Headings $headings -ImageRelationshipId 'rIdBugCatcherErd'
+    $bodyXml = Build-DocumentBodyXml -Lines $lines -Headings $headings -ImageRelationshipId 'rIdWebTestErd'
 
     $documentXml = @"
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -548,7 +547,7 @@ $sectPrXml
         $relsReader.Dispose()
     }
 
-    $updatedRelsXml = Upsert-Relationship -Xml $relsXml -RelationshipId 'rIdBugCatcherErd' -Target "media/$imageRelationshipTarget"
+    $updatedRelsXml = Upsert-Relationship -Xml $relsXml -RelationshipId 'rIdWebTestErd' -Target "media/$imageRelationshipTarget"
     Replace-ZipEntry -Archive $zip -EntryName 'word/_rels/document.xml.rels' -Bytes ([System.Text.Encoding]::UTF8.GetBytes($updatedRelsXml))
 
     $contentTypesEntry = $zip.GetEntry('[Content_Types].xml')
@@ -573,9 +572,5 @@ $sectPrXml
 }
 
 Write-Host "Generated SVG: $erdSvgPath"
-if (Test-Path $erdPngPath) {
-    Write-Host "Using PNG image for DOCX: $erdPngPath"
-} else {
-    Write-Host "PNG export not found. Using SVG image inside DOCX: $erdSvgPath"
-}
+Write-Host "Using SVG image for DOCX: $erdSvgPath"
 Write-Host "Generated DOCX: $finalDocxPath"

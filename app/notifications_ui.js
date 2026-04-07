@@ -53,7 +53,7 @@
       read_at: record.read_at || null,
       created_at: String(record.created_at || ""),
       link_path: String(record.link_path || "/app/notifications"),
-      legacy_path: String(record.legacy_path || "/bugcatcher/app/notifications.php"),
+      legacy_path: String(record.legacy_path || "/webtest/app/notifications.php"),
       event_key: String(record.event_key || ""),
     };
   }
@@ -224,18 +224,18 @@
     connectionHint: "",
     error: "",
     fetchLimit: pageRoot ? 50 : 10,
-    pagePath: (configSource && configSource.getAttribute("data-notifications-page-url")) || "/bugcatcher/app/notifications.php",
+    pagePath: (configSource && configSource.getAttribute("data-notifications-page-url")) || "/webtest/app/notifications.php",
     notificationsEndpoint:
-      (configSource && configSource.getAttribute("data-notifications-endpoint")) || "/bugcatcher/api/v1/notifications",
+      (configSource && configSource.getAttribute("data-notifications-endpoint")) || "/webtest/api/v1/notifications",
     readEndpointTemplate:
       (configSource && configSource.getAttribute("data-notification-read-template")) ||
-      "/bugcatcher/api/v1/notifications/__ID__/read",
+      "/webtest/api/v1/notifications/__ID__/read",
     readAllEndpoint:
       (configSource && configSource.getAttribute("data-notification-read-all-endpoint")) ||
-      "/bugcatcher/api/v1/notifications/read-all",
+      "/webtest/api/v1/notifications/read-all",
     socketEndpoint:
       (configSource && configSource.getAttribute("data-notification-socket-endpoint")) ||
-      "/bugcatcher/api/v1/realtime/socket-token",
+      "/webtest/api/v1/realtime/socket-token",
   };
 
   initialPayloads.forEach(function (payload) {

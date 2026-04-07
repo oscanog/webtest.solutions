@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 CREATE TABLE IF NOT EXISTS openclaw_control_plane_state (
   id TINYINT(1) NOT NULL DEFAULT 1,

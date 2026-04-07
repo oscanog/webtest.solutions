@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 INSERT INTO labels (id, name, description, color) VALUES
   (1, 'bug', 'Something is not working', '#d73a4a'),

@@ -1,5 +1,5 @@
 {
-  "name": "bugcatcher-auth-e2e",
+  "name": "webtest-auth-e2e",
   "version": "1.0.0",
   "private": true,
   "description": "Playwright browser E2E for WebTest auth flows",

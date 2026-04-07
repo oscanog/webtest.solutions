@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function bugcatcher_notification_stmt_bind_params(mysqli_stmt $stmt, string $types, array $params): void
+function webtest_notification_stmt_bind_params(mysqli_stmt $stmt, string $types, array $params): void
 {
     $refs = [];
     foreach ($params as $key => $value) {
@@ -13,7 +13,7 @@ function bugcatcher_notification_stmt_bind_params(mysqli_stmt $stmt, string $typ
     call_user_func_array([$stmt, 'bind_param'], $refs);
 }
 
-function bugcatcher_notification_normalize_path(string $path): string
+function webtest_notification_normalize_path(string $path): string
 {
     $trimmed = trim($path);
     if ($trimmed === '') {
@@ -23,7 +23,7 @@ function bugcatcher_notification_normalize_path(string $path): string
     return '/' . ltrim($trimmed, '/');
 }
 
-function bugcatcher_notification_meta_json(?array $meta): ?string
+function webtest_notification_meta_json(?array $meta): ?string
 {
     if (!$meta) {
         return null;
@@ -32,7 +32,7 @@ function bugcatcher_notification_meta_json(?array $meta): ?string
     return json_encode($meta, JSON_UNESCAPED_SLASHES);
 }
 
-function bugcatcher_notification_parse_meta(?string $metaJson): ?array
+function webtest_notification_parse_meta(?string $metaJson): ?array
 {
     if (!is_string($metaJson) || trim($metaJson) === '') {
         return null;
@@ -42,7 +42,7 @@ function bugcatcher_notification_parse_meta(?string $metaJson): ?array
     return is_array($decoded) ? $decoded : null;
 }
 
-function bugcatcher_notification_shape(array $row): array
+function webtest_notification_shape(array $row): array
 {
     return [
         'id' => (int) $row['id'],
@@ -63,11 +63,11 @@ function bugcatcher_notification_shape(array $row): array
             'id' => isset($row['actor_user_id']) ? (int) $row['actor_user_id'] : 0,
             'username' => (string) ($row['actor_username'] ?? ''),
         ],
-        'meta' => bugcatcher_notification_parse_meta($row['meta_json'] ?? null),
+        'meta' => webtest_notification_parse_meta($row['meta_json'] ?? null),
     ];
 }
 
-function bugcatcher_notification_recipient_can_manage_checklist(mysqli $conn, int $userId, int $orgId): bool
+function webtest_notification_recipient_can_manage_checklist(mysqli $conn, int $userId, int $orgId): bool
 {
     if ($userId <= 0 || $orgId <= 0) {
         return false;
@@ -88,7 +88,7 @@ function bugcatcher_notification_recipient_can_manage_checklist(mysqli $conn, in
     return in_array($role, ['owner', 'Project Manager', 'QA Lead'], true);
 }
 
-function bugcatcher_notification_resolve_link_path(mysqli $conn, int $userId, array $row): string
+function webtest_notification_resolve_link_path(mysqli $conn, int $userId, array $row): string
 {
     $linkPath = (string) ($row['link_path'] ?? '/app/notifications');
     $itemId = isset($row['checklist_item_id']) ? (int) $row['checklist_item_id'] : 0;
@@ -120,37 +120,37 @@ function bugcatcher_notification_resolve_link_path(mysqli $conn, int $userId, ar
     }
 
     $orgId = (int) ($item['org_id'] ?? 0);
-    if (bugcatcher_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
+    if (webtest_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
         return $linkPath;
     }
 
     $batchId = (int) ($item['batch_id'] ?? 0);
-    if ($batchId > 0 && bugcatcher_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
+    if ($batchId > 0 && webtest_notification_recipient_can_manage_checklist($conn, $userId, $orgId)) {
         return '/app/checklist/batches/' . $batchId;
     }
 
     return '/app/notifications';
 }
 
-function bugcatcher_notification_shape_for_user(mysqli $conn, int $userId, array $row): array
+function webtest_notification_shape_for_user(mysqli $conn, int $userId, array $row): array
 {
-    $shape = bugcatcher_notification_shape($row);
-    $shape['link_path'] = bugcatcher_notification_resolve_link_path($conn, $userId, $row);
-    $shape['legacy_path'] = bugcatcher_notification_legacy_destination(
+    $shape = webtest_notification_shape($row);
+    $shape['link_path'] = webtest_notification_resolve_link_path($conn, $userId, $row);
+    $shape['legacy_path'] = webtest_notification_legacy_destination(
         $shape['link_path'],
         isset($shape['org_id']) ? (int) $shape['org_id'] : 0
     );
     return $shape;
 }
 
-function bugcatcher_notification_legacy_fallback_path(): string
+function webtest_notification_legacy_fallback_path(): string
 {
-    return bugcatcher_path('app/notifications.php');
+    return webtest_path('app/notifications.php');
 }
 
-function bugcatcher_notification_legacy_destination(string $linkPath, int $orgId = 0): string
+function webtest_notification_legacy_destination(string $linkPath, int $orgId = 0): string
 {
-    $normalized = bugcatcher_notification_normalize_path($linkPath);
+    $normalized = webtest_notification_normalize_path($linkPath);
     $path = (string) (parse_url($normalized, PHP_URL_PATH) ?? '');
     $query = (string) (parse_url($normalized, PHP_URL_QUERY) ?? '');
     $queryParts = [];
@@ -162,20 +162,20 @@ function bugcatcher_notification_legacy_destination(string $linkPath, int $orgId
     $suffix = $queryParts ? ('?' . http_build_query($queryParts)) : '';
 
     if ($path === '/app/notifications') {
-        $target = bugcatcher_notification_legacy_fallback_path();
+        $target = webtest_notification_legacy_fallback_path();
         return $target . $suffix;
     }
 
     if ($path === '/app/organizations') {
-        return bugcatcher_path('zen/organization.php') . $suffix;
+        return webtest_path('zen/organization.php') . $suffix;
     }
 
     if ($path === '/app/projects') {
-        return bugcatcher_path('melvin/project_list.php') . $suffix;
+        return webtest_path('melvin/project_list.php') . $suffix;
     }
 
     if ($path === '/app/checklist') {
-        return bugcatcher_path('melvin/checklist_list.php') . $suffix;
+        return webtest_path('melvin/checklist_list.php') . $suffix;
     }
 
     if ($path === '/app/reports') {
@@ -185,43 +185,43 @@ function bugcatcher_notification_legacy_destination(string $linkPath, int $orgId
             'status' => 'all',
         ], $queryParts);
 
-        return bugcatcher_path('zen/dashboard.php?' . http_build_query($issueQuery));
+        return webtest_path('zen/dashboard.php?' . http_build_query($issueQuery));
     }
 
     if (preg_match('#^/app/reports/(\d+)$#', $path, $matches)) {
         $issueQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
-        return bugcatcher_path('zen/issue_detail.php?' . http_build_query($issueQuery));
+        return webtest_path('zen/issue_detail.php?' . http_build_query($issueQuery));
     }
 
     if (preg_match('#^/app/projects/(\d+)$#', $path, $matches)) {
         $projectQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
-        return bugcatcher_path('melvin/project_detail.php?' . http_build_query($projectQuery));
+        return webtest_path('melvin/project_detail.php?' . http_build_query($projectQuery));
     }
 
     if (preg_match('#^/app/checklist/batches/(\d+)$#', $path, $matches)) {
         $batchQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
-        return bugcatcher_path('melvin/checklist_batch.php?' . http_build_query($batchQuery));
+        return webtest_path('melvin/checklist_batch.php?' . http_build_query($batchQuery));
     }
 
     if (preg_match('#^/app/checklist/items/(\d+)$#', $path, $matches)) {
         $itemQuery = array_merge(['id' => (int) $matches[1]], $queryParts);
-        return bugcatcher_path('melvin/checklist_item.php?' . http_build_query($itemQuery));
+        return webtest_path('melvin/checklist_item.php?' . http_build_query($itemQuery));
     }
 
-    return bugcatcher_notification_legacy_fallback_path();
+    return webtest_notification_legacy_fallback_path();
 }
 
-function bugcatcher_notifications_bootstrap(
+function webtest_notifications_bootstrap(
     mysqli $conn,
     int $userId,
     int $limit = 10,
     string $state = 'all'
 ): array {
-    $data = bugcatcher_notifications_list($conn, $userId, $state, $limit);
+    $data = webtest_notifications_list($conn, $userId, $state, $limit);
 
     return [
         'items' => array_map(static function (array $item): array {
-            return bugcatcher_augment_datetime_iso_fields($item);
+            return webtest_augment_datetime_iso_fields($item);
         }, $data['items']),
         'unread_count' => (int) ($data['unread_count'] ?? 0),
         'total_count' => (int) ($data['total_count'] ?? 0),
@@ -230,38 +230,38 @@ function bugcatcher_notifications_bootstrap(
     ];
 }
 
-function bugcatcher_realtime_notifications_enabled(): bool
+function webtest_realtime_notifications_enabled(): bool
 {
-    return (bool) bugcatcher_config('REALTIME_NOTIFICATIONS_ENABLED', true);
+    return (bool) webtest_config('REALTIME_NOTIFICATIONS_ENABLED', true);
 }
 
-function bugcatcher_realtime_notifications_host(): string
+function webtest_realtime_notifications_host(): string
 {
-    return trim((string) bugcatcher_config('REALTIME_NOTIFICATIONS_HOST', '127.0.0.1'));
+    return trim((string) webtest_config('REALTIME_NOTIFICATIONS_HOST', '127.0.0.1'));
 }
 
-function bugcatcher_realtime_notifications_port(): int
+function webtest_realtime_notifications_port(): int
 {
-    return max(1, (int) bugcatcher_config('REALTIME_NOTIFICATIONS_PORT', 8090));
+    return max(1, (int) webtest_config('REALTIME_NOTIFICATIONS_PORT', 8090));
 }
 
-function bugcatcher_realtime_notifications_internal_shared_secret(): string
+function webtest_realtime_notifications_internal_shared_secret(): string
 {
-    $secret = trim((string) bugcatcher_config('REALTIME_NOTIFICATIONS_INTERNAL_SHARED_SECRET', ''));
+    $secret = trim((string) webtest_config('REALTIME_NOTIFICATIONS_INTERNAL_SHARED_SECRET', ''));
     if ($secret === '') {
-        $secret = trim((string) bugcatcher_config('OPENCLAW_INTERNAL_SHARED_SECRET', ''));
+        $secret = trim((string) webtest_config('OPENCLAW_INTERNAL_SHARED_SECRET', ''));
     }
     if ($secret === '' || $secret === 'replace-me-too') {
-        $secret = 'bugcatcher-realtime-dev-secret';
+        $secret = 'webtest-realtime-dev-secret';
     }
 
     return $secret;
 }
 
-function bugcatcher_realtime_notifications_publish_url(): string
+function webtest_realtime_notifications_publish_url(): string
 {
-    $host = bugcatcher_realtime_notifications_host();
-    $port = bugcatcher_realtime_notifications_port();
+    $host = webtest_realtime_notifications_host();
+    $port = webtest_realtime_notifications_port();
     if ($host === '' || $port <= 0) {
         return '';
     }
@@ -269,12 +269,12 @@ function bugcatcher_realtime_notifications_publish_url(): string
     return sprintf('http://%s:%d/internal/publish', $host, $port);
 }
 
-function bugcatcher_notification_log(string $message): void
+function webtest_notification_log(string $message): void
 {
-    error_log('[bugcatcher-realtime] ' . $message);
+    error_log('[webtest-realtime] ' . $message);
 }
 
-function bugcatcher_notification_fetch(mysqli $conn, int $userId, int $notificationId): ?array
+function webtest_notification_fetch(mysqli $conn, int $userId, int $notificationId): ?array
 {
     if ($notificationId <= 0 || $userId <= 0) {
         return null;
@@ -292,10 +292,10 @@ function bugcatcher_notification_fetch(mysqli $conn, int $userId, int $notificat
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    return $row ? bugcatcher_notification_shape_for_user($conn, $userId, $row) : null;
+    return $row ? webtest_notification_shape_for_user($conn, $userId, $row) : null;
 }
 
-function bugcatcher_notification_counts(mysqli $conn, int $userId): array
+function webtest_notification_counts(mysqli $conn, int $userId): array
 {
     $countStmt = $conn->prepare("
         SELECT
@@ -315,11 +315,11 @@ function bugcatcher_notification_counts(mysqli $conn, int $userId): array
     ];
 }
 
-function bugcatcher_notification_realtime_publish(array $payload): void
+function webtest_notification_realtime_publish(array $payload): void
 {
     static $suppressUntil = 0.0;
 
-    if (!bugcatcher_realtime_notifications_enabled()) {
+    if (!webtest_realtime_notifications_enabled()) {
         return;
     }
 
@@ -327,15 +327,15 @@ function bugcatcher_notification_realtime_publish(array $payload): void
         return;
     }
 
-    $url = bugcatcher_realtime_notifications_publish_url();
-    $secret = bugcatcher_realtime_notifications_internal_shared_secret();
+    $url = webtest_realtime_notifications_publish_url();
+    $secret = webtest_realtime_notifications_internal_shared_secret();
     if ($url === '' || $secret === '') {
         return;
     }
 
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
     if (!is_string($json) || $json === '') {
-        bugcatcher_notification_log('Unable to encode realtime payload.');
+        webtest_notification_log('Unable to encode realtime payload.');
         return;
     }
 
@@ -358,14 +358,14 @@ function bugcatcher_notification_realtime_publish(array $payload): void
     $statusLine = $http_response_header[0] ?? '';
     if ($result === false || !preg_match('/\s2\d\d\s/', $statusLine)) {
         $suppressUntil = microtime(true) + 5.0;
-        bugcatcher_notification_log('Publish failed for ' . ($payload['type'] ?? 'unknown') . ' (' . $statusLine . ')');
+        webtest_notification_log('Publish failed for ' . ($payload['type'] ?? 'unknown') . ' (' . $statusLine . ')');
         return;
     }
 
     $suppressUntil = 0.0;
 }
 
-function bugcatcher_notification_dispatch_realtime(
+function webtest_notification_dispatch_realtime(
     mysqli $conn,
     int $userId,
     string $type,
@@ -376,7 +376,7 @@ function bugcatcher_notification_dispatch_realtime(
         return;
     }
 
-    $counts = bugcatcher_notification_counts($conn, $userId);
+    $counts = webtest_notification_counts($conn, $userId);
     $payload = array_merge([
         'type' => $type,
         'recipient_user_id' => $userId,
@@ -389,10 +389,10 @@ function bugcatcher_notification_dispatch_realtime(
         $payload['notification'] = $notification;
     }
 
-    bugcatcher_notification_realtime_publish($payload);
+    webtest_notification_realtime_publish($payload);
 }
 
-function bugcatcher_notification_create(mysqli $conn, array $payload): void
+function webtest_notification_create(mysqli $conn, array $payload): void
 {
     $recipientUserId = (int) ($payload['recipient_user_id'] ?? 0);
     if ($recipientUserId <= 0) {
@@ -403,7 +403,7 @@ function bugcatcher_notification_create(mysqli $conn, array $payload): void
     $eventKey = trim((string) ($payload['event_key'] ?? 'notification'));
     $title = trim((string) ($payload['title'] ?? 'Notification'));
     $body = trim((string) ($payload['body'] ?? ''));
-    $linkPath = bugcatcher_notification_normalize_path((string) ($payload['link_path'] ?? '/app/notifications'));
+    $linkPath = webtest_notification_normalize_path((string) ($payload['link_path'] ?? '/app/notifications'));
     $severity = trim((string) ($payload['severity'] ?? 'default'));
     if (!in_array($severity, ['default', 'success', 'alert'], true)) {
         $severity = 'default';
@@ -415,7 +415,7 @@ function bugcatcher_notification_create(mysqli $conn, array $payload): void
     $issueId = max(0, (int) ($payload['issue_id'] ?? 0));
     $checklistBatchId = max(0, (int) ($payload['checklist_batch_id'] ?? 0));
     $checklistItemId = max(0, (int) ($payload['checklist_item_id'] ?? 0));
-    $metaJson = bugcatcher_notification_meta_json($payload['meta'] ?? null);
+    $metaJson = webtest_notification_meta_json($payload['meta'] ?? null);
 
     $stmt = $conn->prepare("
         INSERT INTO notifications
@@ -446,11 +446,11 @@ function bugcatcher_notification_create(mysqli $conn, array $payload): void
     $notificationId = (int) $conn->insert_id;
     $stmt->close();
 
-    $notification = bugcatcher_notification_fetch($conn, $recipientUserId, $notificationId);
-    bugcatcher_notification_dispatch_realtime($conn, $recipientUserId, 'notification.created', $notification);
+    $notification = webtest_notification_fetch($conn, $recipientUserId, $notificationId);
+    webtest_notification_dispatch_realtime($conn, $recipientUserId, 'notification.created', $notification);
 }
 
-function bugcatcher_notifications_send(mysqli $conn, array $recipientUserIds, array $payload): void
+function webtest_notifications_send(mysqli $conn, array $recipientUserIds, array $payload): void
 {
     $unique = [];
     foreach ($recipientUserIds as $recipientUserId) {
@@ -461,13 +461,13 @@ function bugcatcher_notifications_send(mysqli $conn, array $recipientUserIds, ar
     }
 
     foreach (array_keys($unique) as $recipientUserId) {
-        bugcatcher_notification_create($conn, array_merge($payload, [
+        webtest_notification_create($conn, array_merge($payload, [
             'recipient_user_id' => $recipientUserId,
         ]));
     }
 }
 
-function bugcatcher_notification_user_ids_for_org_roles(mysqli $conn, int $orgId, array $roles): array
+function webtest_notification_user_ids_for_org_roles(mysqli $conn, int $orgId, array $roles): array
 {
     if ($orgId <= 0 || !$roles) {
         return [];
@@ -486,7 +486,7 @@ function bugcatcher_notification_user_ids_for_org_roles(mysqli $conn, int $orgId
         FROM org_members
         WHERE org_id = ? AND role IN ({$placeholders})
     ");
-    bugcatcher_notification_stmt_bind_params($stmt, $types, $params);
+    webtest_notification_stmt_bind_params($stmt, $types, $params);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
@@ -496,17 +496,17 @@ function bugcatcher_notification_user_ids_for_org_roles(mysqli $conn, int $orgId
     }, $rows));
 }
 
-function bugcatcher_notification_org_owner_ids(mysqli $conn, int $orgId): array
+function webtest_notification_org_owner_ids(mysqli $conn, int $orgId): array
 {
-    return bugcatcher_notification_user_ids_for_org_roles($conn, $orgId, ['owner']);
+    return webtest_notification_user_ids_for_org_roles($conn, $orgId, ['owner']);
 }
 
-function bugcatcher_notification_org_manager_ids(mysqli $conn, int $orgId): array
+function webtest_notification_org_manager_ids(mysqli $conn, int $orgId): array
 {
-    return bugcatcher_notification_user_ids_for_org_roles($conn, $orgId, ['owner', 'Project Manager', 'QA Lead']);
+    return webtest_notification_user_ids_for_org_roles($conn, $orgId, ['owner', 'Project Manager', 'QA Lead']);
 }
 
-function bugcatcher_notifications_list(
+function webtest_notifications_list(
     mysqli $conn,
     int $userId,
     string $state = 'all',
@@ -534,18 +534,18 @@ function bugcatcher_notifications_list(
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    $counts = bugcatcher_notification_counts($conn, $userId);
+    $counts = webtest_notification_counts($conn, $userId);
 
     return [
         'items' => array_map(static function (array $row) use ($conn, $userId): array {
-            return bugcatcher_notification_shape_for_user($conn, $userId, $row);
+            return webtest_notification_shape_for_user($conn, $userId, $row);
         }, $rows),
         'unread_count' => $counts['unread_count'],
         'total_count' => $counts['total_count'],
     ];
 }
 
-function bugcatcher_notification_mark_read(mysqli $conn, int $userId, int $notificationId): ?array
+function webtest_notification_mark_read(mysqli $conn, int $userId, int $notificationId): ?array
 {
     if ($notificationId <= 0) {
         return null;
@@ -560,15 +560,15 @@ function bugcatcher_notification_mark_read(mysqli $conn, int $userId, int $notif
     $stmt->execute();
     $stmt->close();
 
-    $notification = bugcatcher_notification_fetch($conn, $userId, $notificationId);
+    $notification = webtest_notification_fetch($conn, $userId, $notificationId);
     if ($notification) {
-        bugcatcher_notification_dispatch_realtime($conn, $userId, 'notification.read', $notification);
+        webtest_notification_dispatch_realtime($conn, $userId, 'notification.read', $notification);
     }
 
     return $notification;
 }
 
-function bugcatcher_notifications_mark_all_read(mysqli $conn, int $userId): int
+function webtest_notifications_mark_all_read(mysqli $conn, int $userId): int
 {
     $stmt = $conn->prepare("
         UPDATE notifications
@@ -580,7 +580,7 @@ function bugcatcher_notifications_mark_all_read(mysqli $conn, int $userId): int
     $affected = (int) $stmt->affected_rows;
     $stmt->close();
 
-    bugcatcher_notification_dispatch_realtime($conn, $userId, 'notification.read_all', null, [
+    webtest_notification_dispatch_realtime($conn, $userId, 'notification.read_all', null, [
         'updated' => $affected,
     ]);
 

@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { cfg } from "../src/config";
 
 const localOnlyMessage = "This suite relies on the seeded local legacy accounts.";
-const sharedPassword = "BugCatcherProd!20260323";
+const sharedPassword = "WebTestProd!20260323";
 
 const localAccounts = {
   superAdmin: {
@@ -691,8 +691,8 @@ test.describe("legacy internal shell", () => {
     await expect(page.locator("[data-profile-username]")).toContainText(originalUsername);
 
     await currentPasswordInput.fill("definitely-wrong-password");
-    await newPasswordInput.fill("BugCatcherProd!20260324");
-    await confirmPasswordInput.fill("BugCatcherProd!20260324");
+    await newPasswordInput.fill("WebTestProd!20260324");
+    await confirmPasswordInput.fill("WebTestProd!20260324");
     await page.getByRole("button", { name: "Change Password", exact: true }).click();
     await expect(passwordMessage).toContainText("Current password is incorrect.");
   });

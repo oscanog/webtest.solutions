@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/app/openclaw_lib.php';
 require_once dirname(__DIR__) . '/app/ai_admin_lib.php';
 require_once dirname(__DIR__) . '/app/checklist_shell.php';
 
-bugcatcher_require_super_admin($current_role);
+webtest_require_super_admin($current_role);
 
 function ai_post_int(string $key): int
 {
@@ -21,7 +21,7 @@ try {
         $action = (string) ($_POST['action'] ?? '');
 
         if ($action === 'save_runtime') {
-            bugcatcher_ai_admin_save_runtime_config(
+            webtest_ai_admin_save_runtime_config(
                 $conn,
                 $current_user_id,
                 isset($_POST['is_enabled']),
@@ -33,7 +33,7 @@ try {
             );
             $flash = 'AI runtime settings saved.';
         } elseif ($action === 'save_provider') {
-            bugcatcher_openclaw_save_provider(
+            webtest_openclaw_save_provider(
                 $conn,
                 $current_user_id,
                 ai_post_int('provider_id'),
@@ -47,10 +47,10 @@ try {
             );
             $flash = 'AI provider saved.';
         } elseif ($action === 'delete_provider') {
-            bugcatcher_openclaw_delete_provider($conn, ai_post_int('provider_id'), $current_user_id);
+            webtest_openclaw_delete_provider($conn, ai_post_int('provider_id'), $current_user_id);
             $flash = 'AI provider deleted.';
         } elseif ($action === 'save_model') {
-            bugcatcher_openclaw_save_model(
+            webtest_openclaw_save_model(
                 $conn,
                 ai_post_int('provider_config_id'),
                 ai_post_int('model_id'),
@@ -64,7 +64,7 @@ try {
             );
             $flash = 'AI model saved.';
         } elseif ($action === 'delete_model') {
-            bugcatcher_openclaw_delete_model($conn, ai_post_int('model_id'), $current_user_id);
+            webtest_openclaw_delete_model($conn, ai_post_int('model_id'), $current_user_id);
             $flash = 'AI model deleted.';
         } else {
             $error = 'Unknown action.';
@@ -74,7 +74,7 @@ try {
     $error = $e->getMessage();
 }
 
-$snapshot = bugcatcher_ai_admin_runtime_snapshot($conn);
+$snapshot = webtest_ai_admin_runtime_snapshot($conn);
 $runtime = $snapshot['runtime'];
 $providers = $snapshot['providers'];
 $models = $snapshot['models'];
@@ -97,14 +97,14 @@ $context = [
     'org_name' => 'Built-in AI Configuration',
 ];
 
-bugcatcher_shell_start('AI Setup', 'super_admin', $context);
+webtest_shell_start('AI Setup', 'super_admin', $context);
 ?>
 
 <?php if ($flash): ?>
-    <div class="bc-alert success"><?= bugcatcher_html($flash) ?></div>
+    <div class="bc-alert success"><?= webtest_html($flash) ?></div>
 <?php endif; ?>
 <?php if ($error): ?>
-    <div class="bc-alert error"><?= bugcatcher_html($error) ?></div>
+    <div class="bc-alert error"><?= webtest_html($error) ?></div>
 <?php endif; ?>
 
 <div class="bc-grid cols-3">
@@ -133,7 +133,7 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         </div>
         <div class="bc-field">
             <label for="assistant_name">Assistant name</label>
-            <input class="bc-input" id="assistant_name" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
+            <input class="bc-input" id="assistant_name" name="assistant_name" value="<?= webtest_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
         </div>
         <div class="bc-field">
             <label for="default_provider_config_id">Default provider</label>
@@ -141,7 +141,7 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
                 <option value="0">Select provider</option>
                 <?php foreach ($providers as $provider): ?>
                     <option value="<?= (int) $provider['id'] ?>" <?= (int) ($runtime['default_provider_config_id'] ?? 0) === (int) $provider['id'] ? 'selected' : '' ?>>
-                        <?= bugcatcher_html($provider['display_name']) ?>
+                        <?= webtest_html($provider['display_name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -152,14 +152,14 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
                 <option value="0">Select model</option>
                 <?php foreach ($models as $model): ?>
                     <option value="<?= (int) $model['id'] ?>" <?= (int) ($runtime['default_model_id'] ?? 0) === (int) $model['id'] ? 'selected' : '' ?>>
-                        <?= bugcatcher_html(($model['provider_name'] ?? 'Provider') . ' - ' . $model['display_name']) ?>
+                        <?= webtest_html(($model['provider_name'] ?? 'Provider') . ' - ' . $model['display_name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
         </div>
         <div class="bc-field full">
             <label for="system_prompt">System prompt</label>
-            <textarea class="bc-textarea" id="system_prompt" name="system_prompt" placeholder="Optional instructions for the built-in assistant."><?= bugcatcher_html((string) ($runtime['system_prompt'] ?? '')) ?></textarea>
+            <textarea class="bc-textarea" id="system_prompt" name="system_prompt" placeholder="Optional instructions for the built-in assistant."><?= webtest_html((string) ($runtime['system_prompt'] ?? '')) ?></textarea>
         </div>
         <div class="bc-field full">
             <button type="submit" class="bc-btn">Save AI Runtime</button>
@@ -175,49 +175,49 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
         <input type="hidden" name="is_enabled" value="<?= !empty($runtime['is_enabled']) ? '1' : '0' ?>">
         <input type="hidden" name="default_provider_config_id" value="<?= (int) ($runtime['default_provider_config_id'] ?? 0) ?>">
         <input type="hidden" name="default_model_id" value="<?= (int) ($runtime['default_model_id'] ?? 0) ?>">
-        <input type="hidden" name="assistant_name" value="<?= bugcatcher_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
-        <input type="hidden" name="system_prompt" value="<?= bugcatcher_html((string) ($runtime['system_prompt'] ?? '')) ?>">
+        <input type="hidden" name="assistant_name" value="<?= webtest_html((string) ($runtime['assistant_name'] ?? 'WebTest AI')) ?>">
+        <input type="hidden" name="system_prompt" value="<?= webtest_html((string) ($runtime['system_prompt'] ?? '')) ?>">
         <?php foreach ($personas as $persona): ?>
             <div class="bc-field full bc-subpanel">
-                <h3 class="m-0"><?= bugcatcher_html((string) ($persona['display_name'] ?? 'Persona')) ?></h3>
-                <p class="bc-meta m-0">Key: <?= bugcatcher_html((string) ($persona['persona_key'] ?? '')) ?></p>
+                <h3 class="m-0"><?= webtest_html((string) ($persona['display_name'] ?? 'Persona')) ?></h3>
+                <p class="bc-meta m-0">Key: <?= webtest_html((string) ($persona['persona_key'] ?? '')) ?></p>
                 <div class="bc-form-grid">
                     <div class="bc-field">
-                        <input type="hidden" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][is_enabled]" value="0">
+                        <input type="hidden" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][is_enabled]" value="0">
                         <label>
-                            <input type="checkbox" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][is_enabled]" value="1" <?= !empty($persona['is_enabled']) ? 'checked' : '' ?>>
+                            <input type="checkbox" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][is_enabled]" value="1" <?= !empty($persona['is_enabled']) ? 'checked' : '' ?>>
                             Enabled
                         </label>
                     </div>
                     <div class="bc-field">
                         <label>Provider</label>
-                        <select class="bc-select" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][provider_config_id]">
+                        <select class="bc-select" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][provider_config_id]">
                             <option value="0">Select provider</option>
                             <?php foreach ($providers as $provider): ?>
                                 <option value="<?= (int) $provider['id'] ?>" <?= (int) ($persona['provider_config_id'] ?? 0) === (int) $provider['id'] ? 'selected' : '' ?>>
-                                    <?= bugcatcher_html($provider['display_name']) ?>
+                                    <?= webtest_html($provider['display_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="bc-field">
                         <label>Model</label>
-                        <select class="bc-select" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][model_id]">
+                        <select class="bc-select" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][model_id]">
                             <option value="0">Select model</option>
                             <?php foreach ($models as $model): ?>
                                 <option value="<?= (int) $model['id'] ?>" <?= (int) ($persona['model_id'] ?? 0) === (int) $model['id'] ? 'selected' : '' ?>>
-                                    <?= bugcatcher_html(($model['provider_name'] ?? 'Provider') . ' - ' . $model['display_name']) ?>
+                                    <?= webtest_html(($model['provider_name'] ?? 'Provider') . ' - ' . $model['display_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="bc-field full">
                         <label>Assistant name</label>
-                        <input class="bc-input" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][assistant_name]" value="<?= bugcatcher_html((string) ($persona['assistant_name'] ?? '')) ?>">
+                        <input class="bc-input" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][assistant_name]" value="<?= webtest_html((string) ($persona['assistant_name'] ?? '')) ?>">
                     </div>
                     <div class="bc-field full">
                         <label>System prompt</label>
-                        <textarea class="bc-textarea" name="personas[<?= bugcatcher_html((string) $persona['persona_key']) ?>][system_prompt]"><?= bugcatcher_html((string) ($persona['system_prompt'] ?? '')) ?></textarea>
+                        <textarea class="bc-textarea" name="personas[<?= webtest_html((string) $persona['persona_key']) ?>][system_prompt]"><?= webtest_html((string) ($persona['system_prompt'] ?? '')) ?></textarea>
                     </div>
                 </div>
             </div>
@@ -250,10 +250,10 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
             <tbody>
             <?php foreach ($providers as $provider): ?>
                 <tr>
-                    <td><?= bugcatcher_html($provider['display_name']) ?><br><span class="bc-meta"><?= bugcatcher_html($provider['provider_key']) ?></span></td>
-                    <td><?= bugcatcher_html($provider['provider_type']) ?></td>
-                    <td><?= bugcatcher_html($provider['base_url'] ?: 'Default') ?></td>
-                    <td><?= bugcatcher_html((string) ($provider['api_key'] ?? 'Not set')) ?></td>
+                    <td><?= webtest_html($provider['display_name']) ?><br><span class="bc-meta"><?= webtest_html($provider['provider_key']) ?></span></td>
+                    <td><?= webtest_html($provider['provider_type']) ?></td>
+                    <td><?= webtest_html($provider['base_url'] ?: 'Default') ?></td>
+                    <td><?= webtest_html((string) ($provider['api_key'] ?? 'Not set')) ?></td>
                     <td>
                         <form method="post">
                             <input type="hidden" name="action" value="delete_provider">
@@ -279,7 +279,7 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
                 <select class="bc-select" name="provider_config_id">
                     <option value="0">Select provider</option>
                     <?php foreach ($providers as $provider): ?>
-                        <option value="<?= (int) $provider['id'] ?>"><?= bugcatcher_html($provider['display_name']) ?></option>
+                        <option value="<?= (int) $provider['id'] ?>"><?= webtest_html($provider['display_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -298,8 +298,8 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
             <tbody>
             <?php foreach ($models as $model): ?>
                 <tr>
-                    <td><?= bugcatcher_html($model['provider_name'] ?? 'Provider') ?></td>
-                    <td><?= bugcatcher_html($model['display_name']) ?><?= (int) $model['is_default'] === 1 ? ' (default)' : '' ?><br><span class="bc-meta"><?= bugcatcher_html($model['model_id']) ?></span></td>
+                    <td><?= webtest_html($model['provider_name'] ?? 'Provider') ?></td>
+                    <td><?= webtest_html($model['display_name']) ?><?= (int) $model['is_default'] === 1 ? ' (default)' : '' ?><br><span class="bc-meta"><?= webtest_html($model['model_id']) ?></span></td>
                     <td><?= $model['supports_vision'] ? 'Vision ' : '' ?><?= $model['supports_json_output'] ? 'JSON' : '' ?></td>
                     <td>
                         <form method="post">
@@ -315,4 +315,4 @@ bugcatcher_shell_start('AI Setup', 'super_admin', $context);
     </div>
 </div>
 
-<?php bugcatcher_shell_end(); ?>
+<?php webtest_shell_end(); ?>

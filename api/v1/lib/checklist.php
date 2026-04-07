@@ -68,7 +68,7 @@ function bc_v1_checklist_batches_get(mysqli $conn, array $params): void
 
     if (!bc_v1_actor_is_all_scope($actor) || $requestedOrgId > 0) {
         $org = bc_v1_org_context($conn, $actor, $requestedOrgId);
-        $batches = bugcatcher_checklist_fetch_batches($conn, (int) $org['org_id'], $projectId, $status, $search);
+        $batches = webtest_checklist_fetch_batches($conn, (int) $org['org_id'], $projectId, $status, $search);
         foreach ($batches as &$batch) {
             $batch['org_name'] = (string) $org['org_name'];
         }
@@ -82,7 +82,7 @@ function bc_v1_checklist_batches_get(mysqli $conn, array $params): void
 
     $batches = [];
     foreach (bc_v1_checklist_actor_orgs($conn, $actor) as $membership) {
-        $orgBatches = bugcatcher_checklist_fetch_batches(
+        $orgBatches = webtest_checklist_fetch_batches(
             $conn,
             (int) ($membership['org_id'] ?? 0),
             $projectId,
@@ -130,13 +130,13 @@ function bc_v1_checklist_batch_get(mysqli $conn, array $params): void
         bc_v1_json_error(404, 'batch_not_found', 'Checklist batch not found.');
     }
     $org = bc_v1_org_context($conn, $actor, $resolvedOrgId);
-    $batch = bugcatcher_checklist_fetch_batch($conn, (int) $org['org_id'], $batchId);
+    $batch = webtest_checklist_fetch_batch($conn, (int) $org['org_id'], $batchId);
     if (!$batch) {
         bc_v1_json_error(404, 'batch_not_found', 'Checklist batch not found.');
     }
 
     $batch['org_name'] = (string) $org['org_name'];
-    $items = bugcatcher_checklist_fetch_items_for_batch($conn, $batchId);
+    $items = webtest_checklist_fetch_items_for_batch($conn, $batchId);
     foreach ($items as &$item) {
         $item['org_name'] = (string) $org['org_name'];
     }
@@ -146,24 +146,24 @@ function bc_v1_checklist_batch_get(mysqli $conn, array $params): void
         'org' => $org,
         'batch' => $batch,
         'items' => $items,
-        'attachments' => bugcatcher_checklist_shape_attachments(bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId)),
-        'assignable_qa_leads' => bugcatcher_checklist_is_manager_role((string) $org['org_role'])
+        'attachments' => webtest_checklist_shape_attachments(webtest_openclaw_fetch_batch_attachments($conn, $batchId)),
+        'assignable_qa_leads' => webtest_checklist_is_manager_role((string) $org['org_role'])
             ? array_map(static function (array $member): array {
                 return [
                     'user_id' => (int) ($member['id'] ?? 0),
                     'username' => (string) ($member['username'] ?? ''),
                     'role' => (string) ($member['role'] ?? ''),
                 ];
-            }, bugcatcher_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Lead']))
+            }, webtest_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Lead']))
             : [],
-        'assignable_testers' => bugcatcher_checklist_is_manager_role((string) $org['org_role'])
+        'assignable_testers' => webtest_checklist_is_manager_role((string) $org['org_role'])
             ? array_map(static function (array $member): array {
                 return [
                     'user_id' => (int) ($member['id'] ?? 0),
                     'username' => (string) ($member['username'] ?? ''),
                     'role' => (string) ($member['role'] ?? ''),
                 ];
-            }, bugcatcher_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Tester']))
+            }, webtest_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Tester']))
             : [],
     ]);
 }
@@ -189,11 +189,11 @@ function bc_v1_checklist_item_get(mysqli $conn, array $params): void
         bc_v1_json_error(404, 'item_not_found', 'Checklist item not found.');
     }
     $org = bc_v1_org_context($conn, $actor, $resolvedOrgId);
-    $item = bugcatcher_checklist_fetch_item($conn, (int) $org['org_id'], $itemId);
+    $item = webtest_checklist_fetch_item($conn, (int) $org['org_id'], $itemId);
     if (!$item) {
         bc_v1_json_error(404, 'item_not_found', 'Checklist item not found.');
     }
-    if (!bc_v1_actor_is_admin($actor) && !bugcatcher_checklist_user_can_work_item($org, $item)) {
+    if (!bc_v1_actor_is_admin($actor) && !webtest_checklist_user_can_work_item($org, $item)) {
         bc_v1_json_error(403, 'forbidden', 'You cannot view this checklist item.');
     }
 
@@ -201,16 +201,16 @@ function bc_v1_checklist_item_get(mysqli $conn, array $params): void
     $response = [
         'org' => $org,
         'item' => $item,
-        'attachments' => bugcatcher_checklist_shape_attachments(bugcatcher_checklist_fetch_item_attachments($conn, $itemId)),
+        'attachments' => webtest_checklist_shape_attachments(webtest_checklist_fetch_item_attachments($conn, $itemId)),
     ];
-    if (bugcatcher_checklist_is_manager_role((string) $org['org_role'])) {
+    if (webtest_checklist_is_manager_role((string) $org['org_role'])) {
         $response['assignable_testers'] = array_map(static function (array $member): array {
             return [
                 'user_id' => (int) ($member['id'] ?? 0),
                 'username' => (string) ($member['username'] ?? ''),
                 'role' => (string) ($member['role'] ?? ''),
             ];
-        }, bugcatcher_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Tester']));
+        }, webtest_checklist_fetch_org_members($conn, (int) $org['org_id'], ['QA Tester']));
     }
 
     bc_v1_json_success($response);

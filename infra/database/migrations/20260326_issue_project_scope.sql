@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 SET @schema_name = DATABASE();
 

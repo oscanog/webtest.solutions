@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 function bc_v1_ai_chat_allowed(array $orgContext): bool
 {
-    if (bugcatcher_is_system_admin_role((string) ($orgContext['system_role'] ?? 'user'))) {
+    if (webtest_is_system_admin_role((string) ($orgContext['system_role'] ?? 'user'))) {
         return true;
     }
 
@@ -19,21 +19,21 @@ function bc_v1_ai_chat_context(mysqli $conn): array
         bc_v1_json_error(403, 'forbidden', 'You do not have access to AI chat.');
     }
 
-    bugcatcher_ai_chat_ensure_schema($conn);
+    webtest_ai_chat_ensure_schema($conn);
 
     return [$actor, $org];
 }
 
-function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
+function webtest_ai_chat_ensure_schema(mysqli $conn): void
 {
     static $done = false;
     if ($done) {
         return;
     }
 
-    bugcatcher_checklist_ensure_schema($conn);
-    bugcatcher_file_storage_ensure_schema($conn);
-    bugcatcher_ai_admin_seed_default_config($conn);
+    webtest_checklist_ensure_schema($conn);
+    webtest_file_storage_ensure_schema($conn);
+    webtest_ai_admin_seed_default_config($conn);
 
     $conn->query("
         CREATE TABLE IF NOT EXISTS ai_chat_threads (
@@ -68,7 +68,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     ];
 
     foreach ($threadColumns as $column => $sql) {
-        if (!bugcatcher_db_has_column($conn, 'ai_chat_threads', $column)) {
+        if (!webtest_db_has_column($conn, 'ai_chat_threads', $column)) {
             $conn->query($sql);
         }
     }
@@ -101,15 +101,15 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     ];
 
     foreach ($messageColumns as $column => $sql) {
-        if (!bugcatcher_db_has_column($conn, 'ai_chat_messages', $column)) {
+        if (!webtest_db_has_column($conn, 'ai_chat_messages', $column)) {
             $conn->query($sql);
         }
     }
 
-    if (!bugcatcher_ai_chat_db_has_index($conn, 'ai_chat_messages', 'idx_ai_chat_messages_source_user')) {
+    if (!webtest_ai_chat_db_has_index($conn, 'ai_chat_messages', 'idx_ai_chat_messages_source_user')) {
         $conn->query("ALTER TABLE ai_chat_messages ADD KEY idx_ai_chat_messages_source_user (source_user_message_id)");
     }
-    if (!bugcatcher_ai_chat_db_has_index($conn, 'ai_chat_messages', 'uq_ai_chat_messages_request')) {
+    if (!webtest_ai_chat_db_has_index($conn, 'ai_chat_messages', 'uq_ai_chat_messages_request')) {
         $conn->query("ALTER TABLE ai_chat_messages ADD UNIQUE KEY uq_ai_chat_messages_request (thread_id, role, client_request_id)");
     }
 
@@ -177,7 +177,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     ];
 
     foreach ($generatedItemColumns as $column => $sql) {
-        if (!bugcatcher_db_has_column($conn, 'ai_chat_generated_checklist_items', $column)) {
+        if (!webtest_db_has_column($conn, 'ai_chat_generated_checklist_items', $column)) {
             $conn->query($sql);
         }
     }
@@ -185,7 +185,7 @@ function bugcatcher_ai_chat_ensure_schema(mysqli $conn): void
     $done = true;
 }
 
-function bugcatcher_ai_chat_db_has_index(mysqli $conn, string $table, string $indexName): bool
+function webtest_ai_chat_db_has_index(mysqli $conn, string $table, string $indexName): bool
 {
     $sql = "
         SELECT 1
@@ -203,7 +203,7 @@ function bugcatcher_ai_chat_db_has_index(mysqli $conn, string $table, string $in
     return (bool) $row;
 }
 
-function bugcatcher_ai_chat_fetch_thread(mysqli $conn, int $threadId, int $orgId, int $userId): ?array
+function webtest_ai_chat_fetch_thread(mysqli $conn, int $threadId, int $orgId, int $userId): ?array
 {
     $stmt = $conn->prepare("
         SELECT *
@@ -218,18 +218,18 @@ function bugcatcher_ai_chat_fetch_thread(mysqli $conn, int $threadId, int $orgId
     return $row ?: null;
 }
 
-function bugcatcher_ai_chat_normalize_source_mode(?string $value, string $default = 'screenshot'): string
+function webtest_ai_chat_normalize_source_mode(?string $value, string $default = 'screenshot'): string
 {
     $normalized = strtolower(trim((string) $value));
     return in_array($normalized, ['screenshot', 'link'], true) ? $normalized : $default;
 }
 
-function bugcatcher_ai_chat_source_mode_requires_images(string $sourceMode): bool
+function webtest_ai_chat_source_mode_requires_images(string $sourceMode): bool
 {
-    return bugcatcher_ai_chat_normalize_source_mode($sourceMode) === 'screenshot';
+    return webtest_ai_chat_normalize_source_mode($sourceMode) === 'screenshot';
 }
 
-function bugcatcher_ai_chat_normalize_client_request_id(?string $value): string
+function webtest_ai_chat_normalize_client_request_id(?string $value): string
 {
     $normalized = strtolower(trim((string) $value));
     if ($normalized === '') {
@@ -245,12 +245,12 @@ function bugcatcher_ai_chat_normalize_client_request_id(?string $value): string
     return function_exists('mb_substr') ? mb_substr($normalized, 0, 64) : substr($normalized, 0, 64);
 }
 
-function bugcatcher_ai_chat_page_link_status_allows_link_draft(string $status): bool
+function webtest_ai_chat_page_link_status_allows_link_draft(string $status): bool
 {
     return in_array($status, ['ready', 'thin_content'], true);
 }
 
-function bugcatcher_ai_chat_page_link_status(string $status): string
+function webtest_ai_chat_page_link_status(string $status): string
 {
     $normalized = strtolower(trim($status));
     if ($normalized === '') {
@@ -261,7 +261,7 @@ function bugcatcher_ai_chat_page_link_status(string $status): string
         : 'invalid';
 }
 
-function bugcatcher_ai_chat_fetch_request_message_state(mysqli $conn, int $threadId, string $clientRequestId): ?array
+function webtest_ai_chat_fetch_request_message_state(mysqli $conn, int $threadId, string $clientRequestId): ?array
 {
     if ($threadId <= 0 || $clientRequestId === '') {
         return null;
@@ -292,7 +292,7 @@ function bugcatcher_ai_chat_fetch_request_message_state(mysqli $conn, int $threa
     return $row ?: null;
 }
 
-function bugcatcher_ai_chat_fetch_active_streaming_message(mysqli $conn, int $threadId): ?array
+function webtest_ai_chat_fetch_active_streaming_message(mysqli $conn, int $threadId): ?array
 {
     if ($threadId <= 0) {
         return null;
@@ -315,21 +315,21 @@ function bugcatcher_ai_chat_fetch_active_streaming_message(mysqli $conn, int $th
     return $row ?: null;
 }
 
-function bugcatcher_ai_chat_build_existing_request_result(mysqli $conn, array $thread, array $requestState): array
+function webtest_ai_chat_build_existing_request_result(mysqli $conn, array $thread, array $requestState): array
 {
-    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, (int) $thread['id'], (int) $thread['org_id'], (int) $thread['user_id']);
+    $freshThread = webtest_ai_chat_fetch_thread($conn, (int) $thread['id'], (int) $thread['org_id'], (int) $thread['user_id']);
     if (!$freshThread) {
         throw new RuntimeException('AI chat thread not found.');
     }
 
     return [
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $freshThread),
         'user_message_id' => (int) ($requestState['user_message_id'] ?? 0),
         'assistant_message_id' => (int) ($requestState['assistant_message_id'] ?? 0),
     ];
 }
 
-function bugcatcher_ai_chat_guard_draft_request(mysqli $conn, array $thread, string $clientRequestId): array
+function webtest_ai_chat_guard_draft_request(mysqli $conn, array $thread, string $clientRequestId): array
 {
     $threadId = (int) ($thread['id'] ?? 0);
     if ($threadId <= 0) {
@@ -337,13 +337,13 @@ function bugcatcher_ai_chat_guard_draft_request(mysqli $conn, array $thread, str
     }
 
     if ($clientRequestId !== '') {
-        $existingState = bugcatcher_ai_chat_fetch_request_message_state($conn, $threadId, $clientRequestId);
+        $existingState = webtest_ai_chat_fetch_request_message_state($conn, $threadId, $clientRequestId);
         if ($existingState) {
             $assistantStatus = (string) ($existingState['assistant_status'] ?? '');
             if (in_array($assistantStatus, ['completed', 'failed'], true)) {
                 return [
                     'state' => 'replay',
-                    'result' => bugcatcher_ai_chat_build_existing_request_result($conn, $thread, $existingState),
+                    'result' => webtest_ai_chat_build_existing_request_result($conn, $thread, $existingState),
                     'assistant_status' => $assistantStatus,
                 ];
             }
@@ -355,7 +355,7 @@ function bugcatcher_ai_chat_guard_draft_request(mysqli $conn, array $thread, str
         }
     }
 
-    $activeStream = bugcatcher_ai_chat_fetch_active_streaming_message($conn, $threadId);
+    $activeStream = webtest_ai_chat_fetch_active_streaming_message($conn, $threadId);
     if ($activeStream) {
         return [
             'state' => 'conflict',
@@ -366,7 +366,7 @@ function bugcatcher_ai_chat_guard_draft_request(mysqli $conn, array $thread, str
     return ['state' => 'new'];
 }
 
-function bugcatcher_ai_chat_fetch_message_attachments(mysqli $conn, array $messageIds): array
+function webtest_ai_chat_fetch_message_attachments(mysqli $conn, array $messageIds): array
 {
     if (!$messageIds) {
         return [];
@@ -404,7 +404,7 @@ function bugcatcher_ai_chat_fetch_message_attachments(mysqli $conn, array $messa
     return $map;
 }
 
-function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistantMessageIds): array
+function webtest_ai_chat_fetch_generated_items(mysqli $conn, array $assistantMessageIds): array
 {
     if (!$assistantMessageIds) {
         return [];
@@ -436,7 +436,7 @@ function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistant
             'id' => (int) $row['id'],
             'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
             'project_id' => (int) $row['project_id'],
-            'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
+            'source_mode' => webtest_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
             'target_mode' => (string) $row['target_mode'],
             'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
             'batch_title' => (string) $row['batch_title'],
@@ -464,15 +464,15 @@ function bugcatcher_ai_chat_fetch_generated_items(mysqli $conn, array $assistant
     return $map;
 }
 
-function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): array
+function webtest_ai_chat_thread_context_shape(mysqli $conn, array $thread): array
 {
     $projectId = isset($thread['checklist_project_id']) ? (int) $thread['checklist_project_id'] : 0;
     $existingBatchId = isset($thread['checklist_existing_batch_id']) ? (int) $thread['checklist_existing_batch_id'] : 0;
     $resolvedBatchId = isset($thread['checklist_resolved_batch_id']) ? (int) $thread['checklist_resolved_batch_id'] : 0;
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
-    $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, (int) $thread['org_id'], $projectId) : null;
-    $existingBatch = $existingBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $existingBatchId) : null;
-    $resolvedBatch = $resolvedBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $thread['org_id'], $resolvedBatchId) : null;
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $project = $projectId > 0 ? webtest_checklist_fetch_project($conn, (int) $thread['org_id'], $projectId) : null;
+    $existingBatch = $existingBatchId > 0 ? webtest_checklist_fetch_batch($conn, (int) $thread['org_id'], $existingBatchId) : null;
+    $resolvedBatch = $resolvedBatchId > 0 ? webtest_checklist_fetch_batch($conn, (int) $thread['org_id'], $resolvedBatchId) : null;
     $threadPageUrl = trim((string) ($thread['checklist_page_url'] ?? ''));
     $resolvedBatchPageUrl = trim((string) ($resolvedBatch['page_url'] ?? ''));
     $existingBatchPageUrl = trim((string) ($existingBatch['page_url'] ?? ''));
@@ -507,7 +507,7 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
         $warningParts[] = 'This link differs from the current checklist batch link and will update the batch after an approved AI item is saved.';
     }
 
-    $pageLinkStatus = bugcatcher_ai_chat_page_link_status((string) ($thread['page_link_status'] ?? 'invalid'));
+    $pageLinkStatus = webtest_ai_chat_page_link_status((string) ($thread['page_link_status'] ?? 'invalid'));
     $hasSavedCredentials = trim((string) ($thread['page_link_basic_auth_username'] ?? '')) !== ''
         || trim((string) ($thread['page_link_basic_auth_password'] ?? '')) !== '';
 
@@ -532,7 +532,7 @@ function bugcatcher_ai_chat_thread_context_shape(mysqli $conn, array $thread): a
     ];
 }
 
-function bugcatcher_ai_chat_fetch_messages(mysqli $conn, int $threadId): array
+function webtest_ai_chat_fetch_messages(mysqli $conn, int $threadId): array
 {
     $stmt = $conn->prepare("
         SELECT *
@@ -550,8 +550,8 @@ function bugcatcher_ai_chat_fetch_messages(mysqli $conn, int $threadId): array
         static fn(array $row): int => (string) ($row['role'] ?? '') === 'assistant' ? (int) $row['id'] : 0,
         $rows
     )));
-    $attachmentMap = bugcatcher_ai_chat_fetch_message_attachments($conn, $messageIds);
-    $generatedItemMap = bugcatcher_ai_chat_fetch_generated_items($conn, $assistantMessageIds);
+    $attachmentMap = webtest_ai_chat_fetch_message_attachments($conn, $messageIds);
+    $generatedItemMap = webtest_ai_chat_fetch_generated_items($conn, $assistantMessageIds);
 
     return array_map(static function (array $row) use ($attachmentMap, $generatedItemMap): array {
         $messageId = (int) $row['id'];
@@ -569,7 +569,7 @@ function bugcatcher_ai_chat_fetch_messages(mysqli $conn, int $threadId): array
     }, $rows);
 }
 
-function bugcatcher_ai_chat_thread_shape(mysqli $conn, array $thread): array
+function webtest_ai_chat_thread_shape(mysqli $conn, array $thread): array
 {
     return [
         'id' => (int) $thread['id'],
@@ -579,12 +579,12 @@ function bugcatcher_ai_chat_thread_shape(mysqli $conn, array $thread): array
         'created_at' => (string) $thread['created_at'],
         'updated_at' => (string) ($thread['updated_at'] ?? ''),
         'last_message_at' => (string) ($thread['last_message_at'] ?? ''),
-        'draft_context' => bugcatcher_ai_chat_thread_context_shape($conn, $thread),
-        'messages' => bugcatcher_ai_chat_fetch_messages($conn, (int) $thread['id']),
+        'draft_context' => webtest_ai_chat_thread_context_shape($conn, $thread),
+        'messages' => webtest_ai_chat_fetch_messages($conn, (int) $thread['id']),
     ];
 }
 
-function bugcatcher_ai_chat_touch_thread(mysqli $conn, int $threadId): void
+function webtest_ai_chat_touch_thread(mysqli $conn, int $threadId): void
 {
     $stmt = $conn->prepare("
         UPDATE ai_chat_threads
@@ -597,7 +597,7 @@ function bugcatcher_ai_chat_touch_thread(mysqli $conn, int $threadId): void
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_summarize_title(string $message): string
+function webtest_ai_chat_summarize_title(string $message): string
 {
     $normalized = preg_replace('/\s+/', ' ', trim($message));
     if ($normalized === '') {
@@ -609,9 +609,9 @@ function bugcatcher_ai_chat_summarize_title(string $message): string
         : substr($normalized, 0, 60);
 }
 
-function bugcatcher_ai_chat_update_thread_title_if_placeholder(mysqli $conn, int $threadId, string $message): void
+function webtest_ai_chat_update_thread_title_if_placeholder(mysqli $conn, int $threadId, string $message): void
 {
-    $title = bugcatcher_ai_chat_summarize_title($message);
+    $title = webtest_ai_chat_summarize_title($message);
     $stmt = $conn->prepare("
         UPDATE ai_chat_threads
         SET title = CASE
@@ -627,7 +627,7 @@ function bugcatcher_ai_chat_update_thread_title_if_placeholder(mysqli $conn, int
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_update_thread_title_from_context(mysqli $conn, int $threadId, string $batchTitle): void
+function webtest_ai_chat_update_thread_title_from_context(mysqli $conn, int $threadId, string $batchTitle): void
 {
     $title = trim($batchTitle);
     if ($title === '') {
@@ -648,11 +648,11 @@ function bugcatcher_ai_chat_update_thread_title_from_context(mysqli $conn, int $
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_context_from_thread(array $thread): array
+function webtest_ai_chat_context_from_thread(array $thread): array
 {
     return [
         'project_id' => (int) ($thread['checklist_project_id'] ?? 0),
-        'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
+        'source_mode' => webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
         'target_mode' => (string) ($thread['checklist_target_mode'] ?? ''),
         'existing_batch_id' => (int) ($thread['checklist_existing_batch_id'] ?? 0),
         'batch_title' => trim((string) ($thread['checklist_batch_title'] ?? '')),
@@ -662,9 +662,9 @@ function bugcatcher_ai_chat_context_from_thread(array $thread): array
     ];
 }
 
-function bugcatcher_ai_chat_thread_has_ready_context(array $thread): bool
+function webtest_ai_chat_thread_has_ready_context(array $thread): bool
 {
-    $context = bugcatcher_ai_chat_context_from_thread($thread);
+    $context = webtest_ai_chat_context_from_thread($thread);
     if (
         $context['project_id'] <= 0
         || !in_array($context['source_mode'], ['screenshot', 'link'], true)
@@ -680,15 +680,15 @@ function bugcatcher_ai_chat_thread_has_ready_context(array $thread): bool
     return $context['batch_title'] !== '' && $context['module_name'] !== '' && $context['page_url'] !== '';
 }
 
-function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, array $payload): array
+function webtest_ai_chat_validate_draft_context(mysqli $conn, int $orgId, array $payload): array
 {
     $projectId = bc_v1_get_int($payload, 'project_id', 0);
-    $project = $projectId > 0 ? bugcatcher_checklist_fetch_project($conn, $orgId, $projectId) : null;
+    $project = $projectId > 0 ? webtest_checklist_fetch_project($conn, $orgId, $projectId) : null;
     if (!$project) {
         throw new RuntimeException('Select a valid project in the active organization.');
     }
 
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($payload['source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($payload['source_mode'] ?? 'screenshot'));
     $targetMode = trim((string) ($payload['target_mode'] ?? ''));
     if (!in_array($targetMode, ['new', 'existing'], true)) {
         throw new RuntimeException('Select whether the draft should save to a new or existing checklist batch.');
@@ -696,13 +696,13 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
 
     if ($targetMode === 'existing') {
         $existingBatchId = bc_v1_get_int($payload, 'existing_batch_id', 0);
-        $batch = $existingBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, $orgId, $existingBatchId) : null;
+        $batch = $existingBatchId > 0 ? webtest_checklist_fetch_batch($conn, $orgId, $existingBatchId) : null;
         if (!$batch || (int) ($batch['project_id'] ?? 0) !== $projectId) {
             throw new RuntimeException('Select a valid existing checklist batch from the chosen project.');
         }
 
-        $requestedPageUrl = bugcatcher_checklist_normalize_page_url(trim((string) ($payload['page_url'] ?? '')));
-        $existingPageUrl = bugcatcher_checklist_normalize_page_url(trim((string) ($batch['page_url'] ?? '')));
+        $requestedPageUrl = webtest_checklist_normalize_page_url(trim((string) ($payload['page_url'] ?? '')));
+        $existingPageUrl = webtest_checklist_normalize_page_url(trim((string) ($batch['page_url'] ?? '')));
         $pageUrl = $requestedPageUrl !== '' ? $requestedPageUrl : $existingPageUrl;
         if ($pageUrl === '') {
             throw new RuntimeException('Link is required and must be a valid http:// or https:// URL for this checklist target.');
@@ -734,7 +734,7 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
     $moduleName = trim((string) ($payload['module_name'] ?? ''));
     $submoduleName = trim((string) ($payload['submodule_name'] ?? ''));
     $pageUrlInput = trim((string) ($payload['page_url'] ?? ''));
-    $pageUrl = bugcatcher_checklist_normalize_page_url($pageUrlInput);
+    $pageUrl = webtest_checklist_normalize_page_url($pageUrlInput);
     if ($batchTitle === '' || $moduleName === '') {
         throw new RuntimeException('Batch title and module name are required for a new checklist batch target.');
     }
@@ -754,11 +754,11 @@ function bugcatcher_ai_chat_validate_draft_context(mysqli $conn, int $orgId, arr
     ];
 }
 
-function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context): bool
+function webtest_ai_chat_thread_context_matches(array $thread, array $context): bool
 {
     return (int) ($thread['checklist_project_id'] ?? 0) === (int) $context['project_id']
-        && bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'))
-            === bugcatcher_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'))
+        && webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'))
+            === webtest_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'))
         && (string) ($thread['checklist_target_mode'] ?? '') === (string) $context['target_mode']
         && (int) ($thread['checklist_existing_batch_id'] ?? 0) === (int) ($context['existing_batch_id'] ?? 0)
         && trim((string) ($thread['checklist_batch_title'] ?? '')) === trim((string) ($context['batch_title'] ?? ''))
@@ -767,11 +767,11 @@ function bugcatcher_ai_chat_thread_context_matches(array $thread, array $context
         && trim((string) ($thread['checklist_page_url'] ?? '')) === trim((string) ($context['page_url'] ?? ''));
 }
 
-function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context, ?array $currentThread = null): void
+function webtest_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, array $context, ?array $currentThread = null): void
 {
     $existingBatchId = (int) ($context['existing_batch_id'] ?? 0);
     $projectId = (int) ($context['project_id'] ?? 0);
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($context['source_mode'] ?? 'screenshot'));
     $targetMode = (string) ($context['target_mode'] ?? '');
     $batchTitle = (string) ($context['batch_title'] ?? '');
     $moduleName = (string) ($context['module_name'] ?? '');
@@ -805,7 +805,7 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
     $stmt->execute();
     $stmt->close();
 
-    $currentSourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($currentThread['checklist_source_mode'] ?? 'screenshot'));
+    $currentSourceMode = webtest_ai_chat_normalize_source_mode((string) ($currentThread['checklist_source_mode'] ?? 'screenshot'));
     $currentPageUrl = trim((string) ($currentThread['checklist_page_url'] ?? ''));
     if ($currentThread && ($currentSourceMode !== $sourceMode || strcasecmp($currentPageUrl, $pageUrl) !== 0)) {
         $stmt = $conn->prepare("
@@ -823,25 +823,25 @@ function bugcatcher_ai_chat_upsert_thread_context(mysqli $conn, int $threadId, a
     }
 }
 
-function bugcatcher_ai_chat_resolve_runtime(mysqli $conn): array
+function webtest_ai_chat_resolve_runtime(mysqli $conn): array
 {
-    return bugcatcher_ai_admin_resolve_runtime($conn);
+    return webtest_ai_admin_resolve_runtime($conn);
 }
 
-function bugcatcher_ai_chat_resolve_draft_runtime(mysqli $conn, array $thread): array
+function webtest_ai_chat_resolve_draft_runtime(mysqli $conn, array $thread): array
 {
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
-    $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
-    $generator = bugcatcher_ai_admin_resolve_persona_runtime(
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $runtime = webtest_ai_chat_resolve_runtime($conn);
+    $generator = webtest_ai_admin_resolve_persona_runtime(
         $conn,
         'checklist_generator',
-        bugcatcher_ai_chat_source_mode_requires_images($sourceMode)
+        webtest_ai_chat_source_mode_requires_images($sourceMode)
     );
 
     $reviewer = null;
     $reviewerError = '';
     try {
-        $reviewer = bugcatcher_ai_admin_resolve_persona_runtime($conn, 'checklist_reviewer', false);
+        $reviewer = webtest_ai_admin_resolve_persona_runtime($conn, 'checklist_reviewer', false);
     } catch (Throwable $e) {
         $reviewerError = $e->getMessage();
     }
@@ -856,7 +856,7 @@ function bugcatcher_ai_chat_resolve_draft_runtime(mysqli $conn, array $thread): 
     ];
 }
 
-function bugcatcher_ai_chat_has_image_context(mysqli $conn, int $threadId): bool
+function webtest_ai_chat_has_image_context(mysqli $conn, int $threadId): bool
 {
     $stmt = $conn->prepare("
         SELECT 1
@@ -874,11 +874,11 @@ function bugcatcher_ai_chat_has_image_context(mysqli $conn, int $threadId): bool
     return (bool) $row;
 }
 
-function bugcatcher_ai_chat_saved_basic_auth_credentials(array $thread): array
+function webtest_ai_chat_saved_basic_auth_credentials(array $thread): array
 {
     $username = trim((string) ($thread['page_link_basic_auth_username'] ?? ''));
     $encryptedPassword = trim((string) ($thread['page_link_basic_auth_password'] ?? ''));
-    $password = $encryptedPassword !== '' ? bugcatcher_openclaw_decrypt_secret($encryptedPassword) : '';
+    $password = $encryptedPassword !== '' ? webtest_openclaw_decrypt_secret($encryptedPassword) : '';
 
     return [
         'username' => $username,
@@ -886,7 +886,7 @@ function bugcatcher_ai_chat_saved_basic_auth_credentials(array $thread): array
     ];
 }
 
-function bugcatcher_ai_chat_extract_page_text(string $html): array
+function webtest_ai_chat_extract_page_text(string $html): array
 {
     $title = '';
     $description = '';
@@ -943,7 +943,7 @@ function bugcatcher_ai_chat_extract_page_text(string $html): array
     ];
 }
 
-function bugcatcher_ai_chat_marker_count(string $haystack, array $markers): int
+function webtest_ai_chat_marker_count(string $haystack, array $markers): int
 {
     $count = 0;
     foreach ($markers as $marker) {
@@ -955,20 +955,20 @@ function bugcatcher_ai_chat_marker_count(string $haystack, array $markers): int
     return $count;
 }
 
-function bugcatcher_ai_chat_has_password_field(string $html, string $htmlHaystack): bool
+function webtest_ai_chat_has_password_field(string $html, string $htmlHaystack): bool
 {
     return preg_match('/<input[^>]+type=["\']?password\b/i', $html) === 1
         || strpos($htmlHaystack, 'current-password') !== false
         || preg_match('/\b(name|id|autocomplete)=["\']?(password|passcode|passwd|current-password)\b/i', $html) === 1;
 }
 
-function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHaystack, string $textHaystack): bool
+function webtest_ai_chat_has_auth_form_signature(string $html, string $htmlHaystack, string $textHaystack): bool
 {
     if (preg_match('/<form\b/i', $html) !== 1) {
         return false;
     }
 
-    $identifierMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+    $identifierMarkerCount = webtest_ai_chat_marker_count($htmlHaystack, [
         'autocomplete="username"',
         "autocomplete='username'",
         'name="username"',
@@ -980,7 +980,7 @@ function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHa
         'type="email"',
         "type='email'",
     ]);
-    $authActionMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+    $authActionMarkerCount = webtest_ai_chat_marker_count($htmlHaystack, [
         'action="/login',
         "action='/login",
         'action="/signin',
@@ -990,11 +990,11 @@ function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHa
         'action="/oauth',
         "action='/oauth",
     ]);
-    $submitMarkerCount = bugcatcher_ai_chat_marker_count($htmlHaystack, [
+    $submitMarkerCount = webtest_ai_chat_marker_count($htmlHaystack, [
         'type="submit"',
         "type='submit'",
     ]);
-    $buttonMarkerCount = bugcatcher_ai_chat_marker_count($textHaystack, [
+    $buttonMarkerCount = webtest_ai_chat_marker_count($textHaystack, [
         'login',
         'log in',
         'sign in',
@@ -1008,7 +1008,7 @@ function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHa
         'forgot password',
         'reset password',
     ]);
-    $hasPasswordField = bugcatcher_ai_chat_has_password_field($html, $htmlHaystack);
+    $hasPasswordField = webtest_ai_chat_has_password_field($html, $htmlHaystack);
 
     if ($hasPasswordField && ($identifierMarkerCount >= 1 || $authActionMarkerCount >= 1 || $submitMarkerCount >= 1 || $buttonMarkerCount >= 2)) {
         return true;
@@ -1020,7 +1020,7 @@ function bugcatcher_ai_chat_has_auth_form_signature(string $html, string $htmlHa
         && $buttonMarkerCount >= 3;
 }
 
-function bugcatcher_ai_chat_detect_auth_surface(string $effectiveUrl, string $html, string $title, string $text): array
+function webtest_ai_chat_detect_auth_surface(string $effectiveUrl, string $html, string $title, string $text): array
 {
     $urlHaystack = strtolower($effectiveUrl);
     $titleHaystack = strtolower($title);
@@ -1037,8 +1037,8 @@ function bugcatcher_ai_chat_detect_auth_surface(string $effectiveUrl, string $ht
         ];
     }
 
-    $hasPasswordField = bugcatcher_ai_chat_has_password_field($html, $htmlHaystack);
-    $hasAuthFormSignature = bugcatcher_ai_chat_has_auth_form_signature($html, $htmlHaystack, $textHaystack);
+    $hasPasswordField = webtest_ai_chat_has_password_field($html, $htmlHaystack);
+    $hasAuthFormSignature = webtest_ai_chat_has_auth_form_signature($html, $htmlHaystack, $textHaystack);
     $urlTitleMarkers = [
         '/login',
         '/signin',
@@ -1068,9 +1068,9 @@ function bugcatcher_ai_chat_detect_auth_surface(string $effectiveUrl, string $ht
         'continue with microsoft',
     ];
 
-    $urlTitleCount = bugcatcher_ai_chat_marker_count($urlAndTitle, $urlTitleMarkers);
-    $loginMarkerCount = bugcatcher_ai_chat_marker_count($combined, $loginMarkers);
-    $ssoMarkerCount = bugcatcher_ai_chat_marker_count($combined, [
+    $urlTitleCount = webtest_ai_chat_marker_count($urlAndTitle, $urlTitleMarkers);
+    $loginMarkerCount = webtest_ai_chat_marker_count($combined, $loginMarkers);
+    $ssoMarkerCount = webtest_ai_chat_marker_count($combined, [
         'single sign-on',
         'sso',
         'continue with google',
@@ -1131,9 +1131,9 @@ function bugcatcher_ai_chat_detect_auth_surface(string $effectiveUrl, string $ht
     ];
 }
 
-function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAuthUsername = '', string $basicAuthPassword = ''): array
+function webtest_ai_chat_fetch_page_preview(string $pageUrl, string $basicAuthUsername = '', string $basicAuthPassword = ''): array
 {
-    $normalizedUrl = bugcatcher_checklist_normalize_page_url($pageUrl);
+    $normalizedUrl = webtest_checklist_normalize_page_url($pageUrl);
     if ($normalizedUrl === '') {
         return [
             'page_url' => trim($pageUrl),
@@ -1275,7 +1275,7 @@ function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAut
     }
 
     $parsed = $isHtml
-        ? bugcatcher_ai_chat_extract_page_text($body)
+        ? webtest_ai_chat_extract_page_text($body)
         : [
             'title' => '',
             'description' => '',
@@ -1288,7 +1288,7 @@ function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAut
     $excerpt = function_exists('mb_substr') ? mb_substr($excerptSource, 0, 600) : substr($excerptSource, 0, 600);
 
     $authSurface = $isHtml
-        ? bugcatcher_ai_chat_detect_auth_surface($effectiveUrl, $body, $pageTitle, $text)
+        ? webtest_ai_chat_detect_auth_surface($effectiveUrl, $body, $pageTitle, $text)
         : ['requires_auth' => false];
     if ($isHtml && !empty($authSurface['requires_auth'])) {
         return [
@@ -1325,16 +1325,16 @@ function bugcatcher_ai_chat_fetch_page_preview(string $pageUrl, string $basicAut
     ];
 }
 
-function bugcatcher_ai_chat_store_page_link_preview_state(
+function webtest_ai_chat_store_page_link_preview_state(
     mysqli $conn,
     int $threadId,
     array $preview,
     string $basicAuthUsername = '',
     string $basicAuthPassword = ''
 ): array {
-    $status = bugcatcher_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
+    $status = webtest_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
     $warning = trim((string) ($preview['warning_message'] ?? ''));
-    $pageUrl = bugcatcher_checklist_normalize_page_url((string) ($preview['page_url'] ?? ''));
+    $pageUrl = webtest_checklist_normalize_page_url((string) ($preview['page_url'] ?? ''));
     $storeUsername = '';
     $storePassword = '';
     if (
@@ -1343,7 +1343,7 @@ function bugcatcher_ai_chat_store_page_link_preview_state(
         && $basicAuthPassword !== ''
     ) {
         $storeUsername = trim($basicAuthUsername);
-        $storePassword = bugcatcher_openclaw_encrypt_secret($basicAuthPassword);
+        $storePassword = webtest_openclaw_encrypt_secret($basicAuthPassword);
     }
 
     $stmt = $conn->prepare("
@@ -1364,9 +1364,9 @@ function bugcatcher_ai_chat_store_page_link_preview_state(
     return $preview;
 }
 
-function bugcatcher_ai_chat_fetch_page_context_for_thread(array $thread, bool $required): array
+function webtest_ai_chat_fetch_page_context_for_thread(array $thread, bool $required): array
 {
-    $pageUrl = bugcatcher_checklist_normalize_page_url((string) ($thread['checklist_page_url'] ?? ''));
+    $pageUrl = webtest_checklist_normalize_page_url((string) ($thread['checklist_page_url'] ?? ''));
     if ($pageUrl === '') {
         if ($required) {
             throw new RuntimeException('Enter a valid page link before generating checklist items.');
@@ -1375,10 +1375,10 @@ function bugcatcher_ai_chat_fetch_page_context_for_thread(array $thread, bool $r
         return [];
     }
 
-    $credentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
-    $preview = bugcatcher_ai_chat_fetch_page_preview($pageUrl, $credentials['username'], $credentials['password']);
-    $status = bugcatcher_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
-    if ($required && !bugcatcher_ai_chat_page_link_status_allows_link_draft($status)) {
+    $credentials = webtest_ai_chat_saved_basic_auth_credentials($thread);
+    $preview = webtest_ai_chat_fetch_page_preview($pageUrl, $credentials['username'], $credentials['password']);
+    $status = webtest_ai_chat_page_link_status((string) ($preview['status'] ?? ''));
+    if ($required && !webtest_ai_chat_page_link_status_allows_link_draft($status)) {
         if ($status === 'auth_required_basic') {
             throw new RuntimeException('This page requires HTTP Basic Auth. Add credentials in the page link step before generating checklist items.');
         }
@@ -1391,7 +1391,7 @@ function bugcatcher_ai_chat_fetch_page_context_for_thread(array $thread, bool $r
     return $preview;
 }
 
-function bugcatcher_ai_chat_build_shared_schema_prompt(): string
+function webtest_ai_chat_build_shared_schema_prompt(): string
 {
     return implode("\n", [
         'Return valid JSON only. Do not wrap it in markdown fences.',
@@ -1412,11 +1412,11 @@ function bugcatcher_ai_chat_build_shared_schema_prompt(): string
     ]);
 }
 
-function bugcatcher_ai_chat_build_target_context_lines(array $thread): array
+function webtest_ai_chat_build_target_context_lines(array $thread): array
 {
     return [
         'Target context:',
-        '- Source mode: ' . bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
+        '- Source mode: ' . webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
         '- Project ID: ' . (int) ($thread['checklist_project_id'] ?? 0),
         '- Batch title: ' . trim((string) ($thread['checklist_batch_title'] ?? '')),
         '- Module: ' . trim((string) ($thread['checklist_module_name'] ?? '')),
@@ -1426,7 +1426,7 @@ function bugcatcher_ai_chat_build_target_context_lines(array $thread): array
     ];
 }
 
-function bugcatcher_ai_chat_build_page_context_lines(array $pageContext): array
+function webtest_ai_chat_build_page_context_lines(array $pageContext): array
 {
     if (!$pageContext) {
         return [];
@@ -1446,9 +1446,9 @@ function bugcatcher_ai_chat_build_page_context_lines(array $pageContext): array
     return $lines;
 }
 
-function bugcatcher_ai_chat_build_generator_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
+function webtest_ai_chat_build_generator_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
 {
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     $parts = [];
     $basePrompt = trim((string) ($personaRuntime['system_prompt'] ?? ''));
     if ($basePrompt !== '') {
@@ -1465,10 +1465,10 @@ function bugcatcher_ai_chat_build_generator_system_prompt(array $personaRuntime,
         'Create focused, non-duplicative checklist items. Prefer 3 to 8 items unless the user asks otherwise.',
         'Keep titles concise and make descriptions practical for manual QA execution.',
         'Descriptions must stay readable as plain text. Use short paragraphs and explicit section labels when useful, especially Steps to replicate, Actual result, and Expected result.',
-        bugcatcher_ai_chat_build_shared_schema_prompt(),
-        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+        webtest_ai_chat_build_shared_schema_prompt(),
+        implode("\n", webtest_ai_chat_build_target_context_lines($thread)),
     ];
-    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    $pageLines = webtest_ai_chat_build_page_context_lines($pageContext);
     if ($pageLines) {
         $instructions[] = implode("\n", $pageLines);
     }
@@ -1477,7 +1477,7 @@ function bugcatcher_ai_chat_build_generator_system_prompt(array $personaRuntime,
     return implode("\n\n", array_filter($parts));
 }
 
-function bugcatcher_ai_chat_build_reviewer_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
+function webtest_ai_chat_build_reviewer_system_prompt(array $personaRuntime, array $thread, array $pageContext): string
 {
     $parts = [];
     $basePrompt = trim((string) ($personaRuntime['system_prompt'] ?? ''));
@@ -1491,10 +1491,10 @@ function bugcatcher_ai_chat_build_reviewer_system_prompt(array $personaRuntime, 
         'You may rewrite assistant_reply and items, but keep the final answer in the same JSON schema.',
         'Do not invent a different project, batch, or page link.',
         'Descriptions must remain readable as plain text and should preserve section labels such as Steps to replicate, Actual result, and Expected result when present.',
-        bugcatcher_ai_chat_build_shared_schema_prompt(),
-        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+        webtest_ai_chat_build_shared_schema_prompt(),
+        implode("\n", webtest_ai_chat_build_target_context_lines($thread)),
     ];
-    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    $pageLines = webtest_ai_chat_build_page_context_lines($pageContext);
     if ($pageLines) {
         $instructions[] = implode("\n", $pageLines);
     }
@@ -1503,16 +1503,16 @@ function bugcatcher_ai_chat_build_reviewer_system_prompt(array $personaRuntime, 
     return implode("\n\n", array_filter($parts));
 }
 
-function bugcatcher_ai_chat_build_generator_messages(mysqli $conn, int $threadId, array $personaRuntime, array $thread, array $pageContext): array
+function webtest_ai_chat_build_generator_messages(mysqli $conn, int $threadId, array $personaRuntime, array $thread, array $pageContext): array
 {
-    $messages = bugcatcher_ai_chat_fetch_messages($conn, $threadId);
+    $messages = webtest_ai_chat_fetch_messages($conn, $threadId);
     $payload = [[
         'role' => 'system',
-        'content' => bugcatcher_ai_chat_build_generator_system_prompt($personaRuntime, $thread, $pageContext),
+        'content' => webtest_ai_chat_build_generator_system_prompt($personaRuntime, $thread, $pageContext),
     ]];
 
     $supportsVision = (bool) ($personaRuntime['model']['supports_vision'] ?? false);
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     foreach ($messages as $message) {
         $content = trim((string) ($message['content'] ?? ''));
         $attachments = $message['attachments'] ?? [];
@@ -1575,7 +1575,7 @@ function bugcatcher_ai_chat_build_generator_messages(mysqli $conn, int $threadId
     return $payload;
 }
 
-function bugcatcher_ai_chat_build_reviewer_messages(array $personaRuntime, array $thread, array $pageContext, array $parsedGenerator): array
+function webtest_ai_chat_build_reviewer_messages(array $personaRuntime, array $thread, array $pageContext, array $parsedGenerator): array
 {
     $candidateJson = json_encode([
         'assistant_reply' => (string) ($parsedGenerator['assistant_reply'] ?? ''),
@@ -1597,7 +1597,7 @@ function bugcatcher_ai_chat_build_reviewer_messages(array $personaRuntime, array
     return [
         [
             'role' => 'system',
-            'content' => bugcatcher_ai_chat_build_reviewer_system_prompt($personaRuntime, $thread, $pageContext),
+            'content' => webtest_ai_chat_build_reviewer_system_prompt($personaRuntime, $thread, $pageContext),
         ],
         [
             'role' => 'user',
@@ -1606,9 +1606,9 @@ function bugcatcher_ai_chat_build_reviewer_messages(array $personaRuntime, array
     ];
 }
 
-function bugcatcher_ai_chat_build_reasoning_messages(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
+function webtest_ai_chat_build_reasoning_messages(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
 {
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     $systemParts = [];
     $basePrompt = trim((string) ($personaRuntime['system_prompt'] ?? ''));
     if ($basePrompt !== '') {
@@ -1625,8 +1625,8 @@ function bugcatcher_ai_chat_build_reasoning_messages(array $personaRuntime, arra
             : 'Mention what you are checking in the screenshots, what UI evidence stands out, and what checklist areas you are shaping.',
         'Do not output JSON, markdown code fences, or final checklist items.',
     ];
-    $instructions[] = implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread));
-    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    $instructions[] = implode("\n", webtest_ai_chat_build_target_context_lines($thread));
+    $pageLines = webtest_ai_chat_build_page_context_lines($pageContext);
     if ($pageLines) {
         $instructions[] = implode("\n", $pageLines);
     }
@@ -1649,9 +1649,9 @@ function bugcatcher_ai_chat_build_reasoning_messages(array $personaRuntime, arra
     ];
 }
 
-function bugcatcher_ai_chat_build_estimate_messages(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
+function webtest_ai_chat_build_estimate_messages(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
 {
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     $instructions = [
         'You are WebTest AI Checklist Estimate.',
         'Return only JSON with this exact shape: {"planned_count": number, "coverage_summary": "short text"}.',
@@ -1661,10 +1661,10 @@ function bugcatcher_ai_chat_build_estimate_messages(array $personaRuntime, array
         $sourceMode === 'link'
             ? 'Estimate how many checklist items are likely from the page link evidence and the user request.'
             : 'Estimate how many checklist items are likely from the screenshots, page link evidence, and the user request.',
-        implode("\n", bugcatcher_ai_chat_build_target_context_lines($thread)),
+        implode("\n", webtest_ai_chat_build_target_context_lines($thread)),
     ];
 
-    $pageLines = bugcatcher_ai_chat_build_page_context_lines($pageContext);
+    $pageLines = webtest_ai_chat_build_page_context_lines($pageContext);
     if ($pageLines) {
         $instructions[] = implode("\n", $pageLines);
     }
@@ -1684,9 +1684,9 @@ function bugcatcher_ai_chat_build_estimate_messages(array $personaRuntime, array
     ];
 }
 
-function bugcatcher_ai_chat_parse_progress_estimate(string $rawContent): array
+function webtest_ai_chat_parse_progress_estimate(string $rawContent): array
 {
-    $jsonPayload = bugcatcher_ai_chat_extract_json_payload($rawContent);
+    $jsonPayload = webtest_ai_chat_extract_json_payload($rawContent);
     if ($jsonPayload === '') {
         return ['planned_count' => null, 'coverage_summary' => ''];
     }
@@ -1703,7 +1703,7 @@ function bugcatcher_ai_chat_parse_progress_estimate(string $rawContent): array
         $plannedCount = 12;
     }
 
-    $coverageSummary = bugcatcher_ai_chat_normalize_multiline_text((string) ($decoded['coverage_summary'] ?? ''));
+    $coverageSummary = webtest_ai_chat_normalize_multiline_text((string) ($decoded['coverage_summary'] ?? ''));
     if ($coverageSummary !== '') {
         $coverageSummary = function_exists('mb_substr') ? mb_substr($coverageSummary, 0, 220) : substr($coverageSummary, 0, 220);
     }
@@ -1714,27 +1714,27 @@ function bugcatcher_ai_chat_parse_progress_estimate(string $rawContent): array
     ];
 }
 
-function bugcatcher_ai_chat_estimate_draft_progress(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
+function webtest_ai_chat_estimate_draft_progress(array $personaRuntime, array $thread, array $pageContext, string $messageText): array
 {
-    $estimateMessages = bugcatcher_ai_chat_build_estimate_messages($personaRuntime, $thread, $pageContext, $messageText);
-    $rawEstimate = bugcatcher_ai_chat_stream_provider_reply($personaRuntime, $estimateMessages, static function (string $delta): void {
+    $estimateMessages = webtest_ai_chat_build_estimate_messages($personaRuntime, $thread, $pageContext, $messageText);
+    $rawEstimate = webtest_ai_chat_stream_provider_reply($personaRuntime, $estimateMessages, static function (string $delta): void {
         // Estimate output is emitted as one parsed progress event only.
     });
 
-    return bugcatcher_ai_chat_parse_progress_estimate($rawEstimate);
+    return webtest_ai_chat_parse_progress_estimate($rawEstimate);
 }
 
-function bugcatcher_ai_chat_stream_live_reasoning(array $personaRuntime, array $thread, array $pageContext, string $messageText, ?callable $onDelta = null): string
+function webtest_ai_chat_stream_live_reasoning(array $personaRuntime, array $thread, array $pageContext, string $messageText, ?callable $onDelta = null): string
 {
-    $reasoningMessages = bugcatcher_ai_chat_build_reasoning_messages($personaRuntime, $thread, $pageContext, $messageText);
-    return bugcatcher_ai_chat_stream_provider_reply($personaRuntime, $reasoningMessages, static function (string $delta) use ($onDelta): void {
+    $reasoningMessages = webtest_ai_chat_build_reasoning_messages($personaRuntime, $thread, $pageContext, $messageText);
+    return webtest_ai_chat_stream_provider_reply($personaRuntime, $reasoningMessages, static function (string $delta) use ($onDelta): void {
         if ($onDelta !== null) {
             $onDelta($delta);
         }
     });
 }
 
-function bugcatcher_ai_chat_stream_event(string $event, array $payload): void
+function webtest_ai_chat_stream_event(string $event, array $payload): void
 {
     echo "event: {$event}\n";
     echo 'data: ' . json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n\n";
@@ -1744,7 +1744,7 @@ function bugcatcher_ai_chat_stream_event(string $event, array $payload): void
     flush();
 }
 
-function bugcatcher_ai_chat_start_stream_response(): void
+function webtest_ai_chat_start_stream_response(): void
 {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-store');
@@ -1755,7 +1755,7 @@ function bugcatcher_ai_chat_start_stream_response(): void
     set_time_limit(0);
 }
 
-function bugcatcher_ai_chat_mock_provider_reply(array $messages): string
+function webtest_ai_chat_mock_provider_reply(array $messages): string
 {
     $systemText = '';
     $lastUserContent = '';
@@ -1807,7 +1807,7 @@ function bugcatcher_ai_chat_mock_provider_reply(array $messages): string
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{"assistant_reply":"I drafted 2 checklist items for review.","items":[]}';
 }
 
-function bugcatcher_ai_chat_friendly_provider_error(int $statusCode, string $responseBody): string
+function webtest_ai_chat_friendly_provider_error(int $statusCode, string $responseBody): string
 {
     $decoded = json_decode(trim($responseBody), true);
     $message = '';
@@ -1822,12 +1822,12 @@ function bugcatcher_ai_chat_friendly_provider_error(int $statusCode, string $res
     return $message !== '' ? $message : 'AI chat could not complete the reply. Please try again.';
 }
 
-function bugcatcher_ai_chat_stream_provider_reply(array $providerRuntime, array $messages, callable $onDelta): string
+function webtest_ai_chat_stream_provider_reply(array $providerRuntime, array $messages, callable $onDelta): string
 {
     $providerType = strtolower(trim((string) ($providerRuntime['provider']['provider_type'] ?? '')));
     $providerKey = strtolower(trim((string) ($providerRuntime['provider']['provider_key'] ?? '')));
     if ($providerType === 'mock' || $providerKey === 'mock') {
-        $content = bugcatcher_ai_chat_mock_provider_reply($messages);
+        $content = webtest_ai_chat_mock_provider_reply($messages);
         if ($content !== '') {
             $onDelta($content);
         }
@@ -1908,7 +1908,7 @@ function bugcatcher_ai_chat_stream_provider_reply(array $providerRuntime, array 
     curl_close($curl);
 
     if ($statusCode < 200 || $statusCode >= 300) {
-        throw new RuntimeException(bugcatcher_ai_chat_friendly_provider_error($statusCode, $rawResponse));
+        throw new RuntimeException(webtest_ai_chat_friendly_provider_error($statusCode, $rawResponse));
     }
 
     if (trim($assistantText) === '') {
@@ -1918,7 +1918,7 @@ function bugcatcher_ai_chat_stream_provider_reply(array $providerRuntime, array 
     return $assistantText;
 }
 
-function bugcatcher_ai_chat_extract_json_payload(string $rawContent): string
+function webtest_ai_chat_extract_json_payload(string $rawContent): string
 {
     $trimmed = trim($rawContent);
     if ($trimmed === '') {
@@ -1941,7 +1941,7 @@ function bugcatcher_ai_chat_extract_json_payload(string $rawContent): string
     return '';
 }
 
-function bugcatcher_ai_chat_canonical_section_heading(string $heading): string
+function webtest_ai_chat_canonical_section_heading(string $heading): string
 {
     $normalized = strtolower(trim(preg_replace('/\s+/', ' ', $heading)));
     $map = [
@@ -1961,7 +1961,7 @@ function bugcatcher_ai_chat_canonical_section_heading(string $heading): string
     return $map[$normalized] ?? trim($heading);
 }
 
-function bugcatcher_ai_chat_normalize_multiline_text(string $value): string
+function webtest_ai_chat_normalize_multiline_text(string $value): string
 {
     $normalized = str_replace(["\r\n", "\r"], "\n", $value);
     $normalized = preg_replace("/[ \t]+\n/", "\n", $normalized);
@@ -1983,7 +1983,7 @@ function bugcatcher_ai_chat_normalize_multiline_text(string $value): string
         }
 
         if (preg_match('/^(steps?\s+to\s+(?:reproduce|replicate)|actual\s+results?|expected\s+results?|preconditions|test\s+data|notes)\s*[:\-]?\s*(.*)$/i', $trimmedLine, $matches)) {
-            $heading = bugcatcher_ai_chat_canonical_section_heading((string) ($matches[1] ?? ''));
+            $heading = webtest_ai_chat_canonical_section_heading((string) ($matches[1] ?? ''));
             if (!empty($formatted) && end($formatted) !== '') {
                 $formatted[] = '';
             }
@@ -2003,7 +2003,7 @@ function bugcatcher_ai_chat_normalize_multiline_text(string $value): string
     return trim((string) $text);
 }
 
-function bugcatcher_ai_chat_normalize_draft_item(array $payload, array $thread, int $sequenceNo): ?array
+function webtest_ai_chat_normalize_draft_item(array $payload, array $thread, int $sequenceNo): ?array
 {
     $title = trim((string) ($payload['title'] ?? ''));
     if ($title === '') {
@@ -2016,15 +2016,15 @@ function bugcatcher_ai_chat_normalize_draft_item(array $payload, array $thread, 
     }
 
     $submoduleName = trim((string) ($payload['submodule_name'] ?? $thread['checklist_submodule_name'] ?? ''));
-    $description = bugcatcher_ai_chat_normalize_multiline_text((string) ($payload['description'] ?? ''));
-    $priority = bugcatcher_checklist_normalize_enum(
+    $description = webtest_ai_chat_normalize_multiline_text((string) ($payload['description'] ?? ''));
+    $priority = webtest_checklist_normalize_enum(
         (string) ($payload['priority'] ?? 'medium'),
-        BUGCATCHER_CHECKLIST_PRIORITIES,
+        WEBTEST_CHECKLIST_PRIORITIES,
         'medium'
     );
-    $requiredRole = bugcatcher_checklist_normalize_enum(
+    $requiredRole = webtest_checklist_normalize_enum(
         (string) ($payload['required_role'] ?? 'QA Tester'),
-        BUGCATCHER_CHECKLIST_ALLOWED_REQUIRED_ROLES,
+        WEBTEST_CHECKLIST_ALLOWED_REQUIRED_ROLES,
         'QA Tester'
     );
 
@@ -2039,12 +2039,12 @@ function bugcatcher_ai_chat_normalize_draft_item(array $payload, array $thread, 
     ];
 }
 
-function bugcatcher_ai_chat_parse_draft_response(string $rawContent, array $thread): array
+function webtest_ai_chat_parse_draft_response(string $rawContent, array $thread): array
 {
-    $jsonPayload = bugcatcher_ai_chat_extract_json_payload($rawContent);
+    $jsonPayload = webtest_ai_chat_extract_json_payload($rawContent);
     if ($jsonPayload === '') {
         return [
-            'assistant_reply' => bugcatcher_ai_chat_normalize_multiline_text($rawContent),
+            'assistant_reply' => webtest_ai_chat_normalize_multiline_text($rawContent),
             'items' => [],
             'parsed' => false,
         ];
@@ -2053,13 +2053,13 @@ function bugcatcher_ai_chat_parse_draft_response(string $rawContent, array $thre
     $decoded = json_decode($jsonPayload, true);
     if (!is_array($decoded)) {
         return [
-            'assistant_reply' => bugcatcher_ai_chat_normalize_multiline_text($rawContent),
+            'assistant_reply' => webtest_ai_chat_normalize_multiline_text($rawContent),
             'items' => [],
             'parsed' => false,
         ];
     }
 
-    $assistantReply = bugcatcher_ai_chat_normalize_multiline_text((string) ($decoded['assistant_reply'] ?? $decoded['reply'] ?? ''));
+    $assistantReply = webtest_ai_chat_normalize_multiline_text((string) ($decoded['assistant_reply'] ?? $decoded['reply'] ?? ''));
     $itemsPayload = is_array($decoded['items'] ?? null) ? $decoded['items'] : [];
     $items = [];
     foreach ($itemsPayload as $index => $itemPayload) {
@@ -2067,7 +2067,7 @@ function bugcatcher_ai_chat_parse_draft_response(string $rawContent, array $thre
             continue;
         }
 
-        $normalized = bugcatcher_ai_chat_normalize_draft_item($itemPayload, $thread, $index + 1);
+        $normalized = webtest_ai_chat_normalize_draft_item($itemPayload, $thread, $index + 1);
         if ($normalized !== null) {
             $items[] = $normalized;
         }
@@ -2077,7 +2077,7 @@ function bugcatcher_ai_chat_parse_draft_response(string $rawContent, array $thre
         $assistantReply = sprintf('I drafted %d checklist item%s for review.', count($items), count($items) === 1 ? '' : 's');
     }
     if ($assistantReply === '') {
-        $assistantReply = bugcatcher_ai_chat_normalize_multiline_text($rawContent);
+        $assistantReply = webtest_ai_chat_normalize_multiline_text($rawContent);
     }
 
     return [
@@ -2087,13 +2087,13 @@ function bugcatcher_ai_chat_parse_draft_response(string $rawContent, array $thre
     ];
 }
 
-function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messageId, array &$uploadedKeys): void
+function webtest_ai_chat_store_uploaded_attachments(mysqli $conn, int $messageId, array &$uploadedKeys): void
 {
     if (empty($_FILES['attachments']) || !is_array($_FILES['attachments']['name'] ?? null)) {
         return;
     }
 
-    $allowed = bugcatcher_checklist_allowed_mime_map();
+    $allowed = webtest_checklist_allowed_mime_map();
     $count = count($_FILES['attachments']['name']);
     $stmtAttachment = $conn->prepare("
         INSERT INTO ai_chat_message_attachments
@@ -2123,7 +2123,7 @@ function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messag
         }
 
         $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', (string) ($_FILES['attachments']['name'][$index] ?? 'image'));
-        $stored = bugcatcher_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'ai-chat');
+        $stored = webtest_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'ai-chat');
         $filePath = (string) $stored['file_path'];
         $storageKey = (string) ($stored['storage_key'] ?? '');
         $storageProvider = (string) ($stored['storage_provider'] ?? '');
@@ -2141,13 +2141,13 @@ function bugcatcher_ai_chat_store_uploaded_attachments(mysqli $conn, int $messag
     $stmtAttachment->close();
 }
 
-function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantMessageId, array $thread, array $items): void
+function webtest_ai_chat_insert_generated_items(mysqli $conn, int $assistantMessageId, array $thread, array $items): void
 {
     if (!$items) {
         return;
     }
 
-    $duplicates = bugcatcher_openclaw_find_duplicates($conn, (int) $thread['checklist_project_id'], $items);
+    $duplicates = webtest_openclaw_find_duplicates($conn, (int) $thread['checklist_project_id'], $items);
     $stmt = $conn->prepare("
         INSERT INTO ai_chat_generated_checklist_items
             (assistant_message_id, source_user_message_id, thread_id, org_id, project_id, source_mode, target_mode, target_batch_id, batch_title, module_name,
@@ -2162,7 +2162,7 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
         $threadRowId = (int) ($thread['id'] ?? 0);
         $orgId = (int) ($thread['org_id'] ?? 0);
         $projectId = (int) ($thread['checklist_project_id'] ?? 0);
-        $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+        $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
         $targetMode = (string) ($thread['checklist_target_mode'] ?? '');
         $targetBatchId = (string) ($thread['checklist_target_mode'] ?? '') === 'existing'
             ? (int) ($thread['checklist_existing_batch_id'] ?? 0)
@@ -2209,7 +2209,7 @@ function bugcatcher_ai_chat_insert_generated_items(mysqli $conn, int $assistantM
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_record_persona_run(
+function webtest_ai_chat_record_persona_run(
     mysqli $conn,
     int $threadId,
     int $sourceUserMessageId,
@@ -2255,21 +2255,21 @@ function bugcatcher_ai_chat_record_persona_run(
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_fetch_request_result(mysqli $conn, array $thread, string $clientRequestId): ?array
+function webtest_ai_chat_fetch_request_result(mysqli $conn, array $thread, string $clientRequestId): ?array
 {
     $threadId = (int) ($thread['id'] ?? 0);
-    $state = bugcatcher_ai_chat_fetch_request_message_state($conn, $threadId, $clientRequestId);
+    $state = webtest_ai_chat_fetch_request_message_state($conn, $threadId, $clientRequestId);
     if (!$state) {
         return null;
     }
 
-    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) ($thread['org_id'] ?? 0), (int) ($thread['user_id'] ?? 0));
+    $freshThread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) ($thread['org_id'] ?? 0), (int) ($thread['user_id'] ?? 0));
     if (!$freshThread) {
         return null;
     }
 
     return [
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $freshThread),
         'user_message_id' => (int) ($state['user_message_id'] ?? 0),
         'assistant_message_id' => (int) ($state['assistant_message_id'] ?? 0),
         'assistant_status' => (string) ($state['assistant_status'] ?? ''),
@@ -2278,14 +2278,14 @@ function bugcatcher_ai_chat_fetch_request_result(mysqli $conn, array $thread, st
     ];
 }
 
-function bugcatcher_ai_chat_emit_draft_event(?callable $onEvent, string $event, array $payload = []): void
+function webtest_ai_chat_emit_draft_event(?callable $onEvent, string $event, array $payload = []): void
 {
     if ($onEvent !== null) {
         $onEvent($event, $payload);
     }
 }
 
-function bugcatcher_ai_chat_generate_checklist_draft(
+function webtest_ai_chat_generate_checklist_draft(
     mysqli $conn,
     array $thread,
     array $runtime,
@@ -2294,18 +2294,18 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     string $clientRequestId = '',
     ?callable $onEvent = null
 ): array {
-    if (!bugcatcher_ai_chat_thread_has_ready_context($thread)) {
+    if (!webtest_ai_chat_thread_has_ready_context($thread)) {
         throw new RuntimeException('Select a project and checklist batch target before generating draft items.');
     }
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot'));
     if (
-        bugcatcher_ai_chat_source_mode_requires_images($sourceMode)
+        webtest_ai_chat_source_mode_requires_images($sourceMode)
         && !$hasAttachments
-        && !bugcatcher_ai_chat_has_image_context($conn, (int) $thread['id'])
+        && !webtest_ai_chat_has_image_context($conn, (int) $thread['id'])
     ) {
         throw new RuntimeException('Add at least 1 screenshot before generating checklist items.');
     }
-    if (bugcatcher_ai_chat_source_mode_requires_images($sourceMode) && $messageText === '' && !$hasAttachments) {
+    if (webtest_ai_chat_source_mode_requires_images($sourceMode) && $messageText === '' && !$hasAttachments) {
         throw new RuntimeException('Add a message or screenshot before drafting checklist items.');
     }
 
@@ -2324,13 +2324,13 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     $generatorRunRecorded = false;
 
     if ($clientRequestId !== '') {
-        $existingResult = bugcatcher_ai_chat_fetch_request_result($conn, $thread, $clientRequestId);
+        $existingResult = webtest_ai_chat_fetch_request_result($conn, $thread, $clientRequestId);
         if ($existingResult !== null) {
             return $existingResult;
         }
     }
 
-    $activeStream = bugcatcher_ai_chat_fetch_active_streaming_message($conn, $threadId);
+    $activeStream = webtest_ai_chat_fetch_active_streaming_message($conn, $threadId);
     if ($activeStream !== null) {
         throw new RuntimeException('A checklist draft is already in progress for this chat. Please wait for it to finish.');
     }
@@ -2346,7 +2346,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         $userMessageId = (int) $stmt->insert_id;
         $stmt->close();
 
-        bugcatcher_ai_chat_store_uploaded_attachments($conn, $userMessageId, $uploadedKeys);
+        webtest_ai_chat_store_uploaded_attachments($conn, $userMessageId, $uploadedKeys);
 
         $stmt = $conn->prepare("
             INSERT INTO ai_chat_messages (thread_id, role, source_user_message_id, content, status, provider_config_id, model_id, client_request_id, updated_at)
@@ -2359,18 +2359,18 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         $assistantMessageId = (int) $stmt->insert_id;
         $stmt->close();
 
-        bugcatcher_ai_chat_touch_thread($conn, $threadId);
+        webtest_ai_chat_touch_thread($conn, $threadId);
         if (trim((string) ($thread['checklist_batch_title'] ?? '')) !== '') {
-            bugcatcher_ai_chat_update_thread_title_from_context($conn, $threadId, (string) $thread['checklist_batch_title']);
+            webtest_ai_chat_update_thread_title_from_context($conn, $threadId, (string) $thread['checklist_batch_title']);
         } else {
-            bugcatcher_ai_chat_update_thread_title_if_placeholder($conn, $threadId, $messageText);
+            webtest_ai_chat_update_thread_title_if_placeholder($conn, $threadId, $messageText);
         }
         $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
         foreach ($uploadedKeys as $uploadedKey) {
             try {
-                bugcatcher_file_storage_delete($uploadedKey);
+                webtest_file_storage_delete($uploadedKey);
             } catch (Throwable $deleteError) {
                 // Ignore rollback cleanup failures.
             }
@@ -2379,23 +2379,23 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     }
 
     try {
-        bugcatcher_ai_chat_emit_draft_event($onEvent, 'start', [
+        webtest_ai_chat_emit_draft_event($onEvent, 'start', [
             'thread_id' => $threadId,
             'user_message_id' => $userMessageId,
             'assistant_message_id' => $assistantMessageId,
-            'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
+            'assistant_name' => (string) ($runtime['assistant_name'] ?? webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
             'source_mode' => $sourceMode,
         ]);
 
-        bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+        webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
             'stage' => $sourceMode === 'link' ? 'analyzing_link' : 'reading_screenshots',
             'source_mode' => $sourceMode,
         ]);
 
-        $pageContext = bugcatcher_ai_chat_fetch_page_context_for_thread($thread, $sourceMode === 'link');
-        $savedCredentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
+        $pageContext = webtest_ai_chat_fetch_page_context_for_thread($thread, $sourceMode === 'link');
+        $savedCredentials = webtest_ai_chat_saved_basic_auth_credentials($thread);
         if ($pageContext) {
-            bugcatcher_ai_chat_store_page_link_preview_state(
+            webtest_ai_chat_store_page_link_preview_state(
                 $conn,
                 $threadId,
                 $pageContext,
@@ -2404,32 +2404,32 @@ function bugcatcher_ai_chat_generate_checklist_draft(
             );
         }
 
-        bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+        webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
             'stage' => $sourceMode === 'link' ? 'reading_page' : 'reasoning',
             'source_mode' => $sourceMode,
         ]);
         if ($sourceMode === 'link') {
-            bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+            webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
                 'stage' => 'reasoning',
                 'source_mode' => $sourceMode,
             ]);
         }
         $draftingStageEmitted = false;
         try {
-            bugcatcher_ai_chat_stream_live_reasoning(
+            webtest_ai_chat_stream_live_reasoning(
                 $runtime['generator'],
                 $thread,
                 $pageContext,
                 $messageText,
                 static function (string $delta) use ($onEvent, $sourceMode): void {
-                    bugcatcher_ai_chat_emit_draft_event($onEvent, 'reasoning_delta', [
+                    webtest_ai_chat_emit_draft_event($onEvent, 'reasoning_delta', [
                         'delta' => $delta,
                         'source_mode' => $sourceMode,
                     ]);
                 }
             );
         } catch (Throwable $reasoningError) {
-            bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+            webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
                 'stage' => 'drafting',
                 'source_mode' => $sourceMode,
             ]);
@@ -2437,12 +2437,12 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         }
 
         try {
-            $progressEstimate = bugcatcher_ai_chat_estimate_draft_progress($runtime['generator'], $thread, $pageContext, $messageText);
+            $progressEstimate = webtest_ai_chat_estimate_draft_progress($runtime['generator'], $thread, $pageContext, $messageText);
         } catch (Throwable $estimateError) {
             $progressEstimate = ['planned_count' => null, 'coverage_summary' => ''];
         }
         if ($progressEstimate['planned_count'] !== null || trim((string) ($progressEstimate['coverage_summary'] ?? '')) !== '') {
-            bugcatcher_ai_chat_emit_draft_event($onEvent, 'progress', [
+            webtest_ai_chat_emit_draft_event($onEvent, 'progress', [
                 'planned_count' => $progressEstimate['planned_count'],
                 'coverage_summary' => (string) ($progressEstimate['coverage_summary'] ?? ''),
                 'source_mode' => $sourceMode,
@@ -2450,17 +2450,17 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         }
 
         if (!$draftingStageEmitted) {
-            bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+            webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
                 'stage' => 'drafting',
                 'source_mode' => $sourceMode,
             ]);
         }
-        $generatorMessages = bugcatcher_ai_chat_build_generator_messages($conn, $threadId, $runtime['generator'], $thread, $pageContext);
-        $rawGeneratorContent = bugcatcher_ai_chat_stream_provider_reply($runtime['generator'], $generatorMessages, static function (string $delta): void {
+        $generatorMessages = webtest_ai_chat_build_generator_messages($conn, $threadId, $runtime['generator'], $thread, $pageContext);
+        $rawGeneratorContent = webtest_ai_chat_stream_provider_reply($runtime['generator'], $generatorMessages, static function (string $delta): void {
             // Streaming deltas are not surfaced in the checklist-draft JSON flow.
         });
-        $parsed = bugcatcher_ai_chat_parse_draft_response($rawGeneratorContent, $thread);
-        bugcatcher_ai_chat_record_persona_run(
+        $parsed = webtest_ai_chat_parse_draft_response($rawGeneratorContent, $thread);
+        webtest_ai_chat_record_persona_run(
             $conn,
             $threadId,
             $userMessageId,
@@ -2480,16 +2480,16 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         $rawAssistantContent = $rawGeneratorContent;
         if (is_array($runtime['reviewer'] ?? null)) {
             try {
-                bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+                webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
                     'stage' => 'reviewing',
                     'source_mode' => $sourceMode,
                 ]);
-                $reviewerMessages = bugcatcher_ai_chat_build_reviewer_messages($runtime['reviewer'], $thread, $pageContext, $parsed);
-                $rawReviewerContent = bugcatcher_ai_chat_stream_provider_reply($runtime['reviewer'], $reviewerMessages, static function (string $delta): void {
+                $reviewerMessages = webtest_ai_chat_build_reviewer_messages($runtime['reviewer'], $thread, $pageContext, $parsed);
+                $rawReviewerContent = webtest_ai_chat_stream_provider_reply($runtime['reviewer'], $reviewerMessages, static function (string $delta): void {
                     // Hidden reviewer pass has no streamed UI deltas.
                 });
-                $parsedReviewer = bugcatcher_ai_chat_parse_draft_response($rawReviewerContent, $thread);
-                bugcatcher_ai_chat_record_persona_run(
+                $parsedReviewer = webtest_ai_chat_parse_draft_response($rawReviewerContent, $thread);
+                webtest_ai_chat_record_persona_run(
                     $conn,
                     $threadId,
                     $userMessageId,
@@ -2509,7 +2509,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
                 $activeProviderId = (int) ($runtime['reviewer']['provider']['id'] ?? $activeProviderId);
                 $activeModelId = (int) ($runtime['reviewer']['model']['id'] ?? $activeModelId);
             } catch (Throwable $reviewError) {
-                bugcatcher_ai_chat_record_persona_run(
+                webtest_ai_chat_record_persona_run(
                     $conn,
                     $threadId,
                     $userMessageId,
@@ -2526,7 +2526,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
                 );
             }
         } elseif (trim((string) ($runtime['reviewer_error'] ?? '')) !== '') {
-            bugcatcher_ai_chat_record_persona_run(
+            webtest_ai_chat_record_persona_run(
                 $conn,
                 $threadId,
                 $userMessageId,
@@ -2549,9 +2549,9 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         }
         $items = is_array($finalParsed['items'] ?? null) ? $finalParsed['items'] : [];
         $thread['source_user_message_id'] = $userMessageId;
-        $assistantReply = bugcatcher_ai_chat_normalize_multiline_text($assistantReply);
+        $assistantReply = webtest_ai_chat_normalize_multiline_text($assistantReply);
 
-        bugcatcher_ai_chat_emit_draft_event($onEvent, 'stage', [
+        webtest_ai_chat_emit_draft_event($onEvent, 'stage', [
             'stage' => 'finalizing',
             'source_mode' => $sourceMode,
         ]);
@@ -2570,14 +2570,14 @@ function bugcatcher_ai_chat_generate_checklist_draft(
         $stmt->execute();
         $stmt->close();
 
-        bugcatcher_ai_chat_insert_generated_items($conn, $assistantMessageId, $thread, $items);
-        bugcatcher_ai_chat_touch_thread($conn, $threadId);
+        webtest_ai_chat_insert_generated_items($conn, $assistantMessageId, $thread, $items);
+        webtest_ai_chat_touch_thread($conn, $threadId);
         $conn->commit();
     } catch (Throwable $e) {
         $friendly = $e->getMessage() !== '' ? $e->getMessage() : 'AI chat could not complete the reply. Please try again.';
         $assistantStatus = 'failed';
         if (!$generatorRunRecorded) {
-            bugcatcher_ai_chat_record_persona_run(
+            webtest_ai_chat_record_persona_run(
                 $conn,
                 $threadId,
                 $userMessageId,
@@ -2598,20 +2598,20 @@ function bugcatcher_ai_chat_generate_checklist_draft(
             SET content = ?, status = 'failed', error_message = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $fallbackContent = $assistantReply !== '' ? $assistantReply : bugcatcher_ai_chat_normalize_multiline_text($rawAssistantContent);
+        $fallbackContent = $assistantReply !== '' ? $assistantReply : webtest_ai_chat_normalize_multiline_text($rawAssistantContent);
         $stmt->bind_param('ssi', $fallbackContent, $friendly, $assistantMessageId);
         $stmt->execute();
         $stmt->close();
-        bugcatcher_ai_chat_touch_thread($conn, $threadId);
+        webtest_ai_chat_touch_thread($conn, $threadId);
     }
 
-    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $thread['org_id'], (int) $thread['user_id']);
+    $freshThread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $thread['org_id'], (int) $thread['user_id']);
     if (!$freshThread) {
         throw new RuntimeException('AI chat thread not found after saving the checklist draft.');
     }
 
     return [
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $freshThread),
         'user_message_id' => $userMessageId,
         'assistant_message_id' => $assistantMessageId,
         'assistant_status' => $assistantStatus,
@@ -2619,7 +2619,7 @@ function bugcatcher_ai_chat_generate_checklist_draft(
     ];
 }
 
-function bugcatcher_ai_chat_fetch_generated_item_for_actor(mysqli $conn, int $generatedItemId, int $orgId, int $userId): ?array
+function webtest_ai_chat_fetch_generated_item_for_actor(mysqli $conn, int $generatedItemId, int $orgId, int $userId): ?array
 {
     $stmt = $conn->prepare("
         SELECT gi.*, t.checklist_resolved_batch_id
@@ -2636,9 +2636,9 @@ function bugcatcher_ai_chat_fetch_generated_item_for_actor(mysqli $conn, int $ge
     return $row ?: null;
 }
 
-function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $generatedItemId, int $orgId, int $userId): array
+function webtest_ai_chat_fetch_generated_item_shape(mysqli $conn, int $generatedItemId, int $orgId, int $userId): array
 {
-    $row = bugcatcher_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, $orgId, $userId);
+    $row = webtest_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, $orgId, $userId);
     if (!$row) {
         throw new RuntimeException('Generated checklist item not found.');
     }
@@ -2652,7 +2652,7 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
         'id' => (int) $row['id'],
         'source_user_message_id' => isset($row['source_user_message_id']) ? (int) $row['source_user_message_id'] : null,
         'project_id' => (int) $row['project_id'],
-        'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
+        'source_mode' => webtest_ai_chat_normalize_source_mode((string) ($row['source_mode'] ?? 'screenshot')),
         'target_mode' => (string) $row['target_mode'],
         'target_batch_id' => isset($row['target_batch_id']) ? (int) $row['target_batch_id'] : null,
         'batch_title' => (string) $row['batch_title'],
@@ -2677,16 +2677,16 @@ function bugcatcher_ai_chat_fetch_generated_item_shape(mysqli $conn, int $genera
     ];
 }
 
-function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $item, int $actorUserId, string $actorOrgRole = ''): array
+function webtest_ai_chat_resolve_generated_item_batch(mysqli $conn, array $item, int $actorUserId, string $actorOrgRole = ''): array
 {
-    $project = bugcatcher_checklist_fetch_project($conn, (int) $item['org_id'], (int) $item['project_id']);
+    $project = webtest_checklist_fetch_project($conn, (int) $item['org_id'], (int) $item['project_id']);
     if (!$project) {
         throw new RuntimeException('The selected project is no longer available. Please reselect the checklist target.');
     }
 
     $resolvedBatchId = (int) ($item['checklist_resolved_batch_id'] ?? 0);
     if ($resolvedBatchId > 0) {
-        $resolvedBatch = bugcatcher_checklist_fetch_batch($conn, (int) $item['org_id'], $resolvedBatchId);
+        $resolvedBatch = webtest_checklist_fetch_batch($conn, (int) $item['org_id'], $resolvedBatchId);
         if (!$resolvedBatch) {
             throw new RuntimeException('The resolved checklist batch is no longer available. Please reselect the checklist target.');
         }
@@ -2695,14 +2695,14 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
 
     if ((string) ($item['target_mode'] ?? '') === 'existing') {
         $targetBatchId = (int) ($item['target_batch_id'] ?? 0);
-        $batch = $targetBatchId > 0 ? bugcatcher_checklist_fetch_batch($conn, (int) $item['org_id'], $targetBatchId) : null;
+        $batch = $targetBatchId > 0 ? webtest_checklist_fetch_batch($conn, (int) $item['org_id'], $targetBatchId) : null;
         if (!$batch || (int) ($batch['project_id'] ?? 0) !== (int) $item['project_id']) {
             throw new RuntimeException('The selected checklist batch is no longer available. Please reselect the checklist target.');
         }
         return $batch;
     }
 
-    $existing = bugcatcher_checklist_find_batch_by_exact_target(
+    $existing = webtest_checklist_find_batch_by_exact_target(
         $conn,
         (int) $item['org_id'],
         (int) $item['project_id'],
@@ -2714,7 +2714,7 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
         return $existing;
     }
 
-    $sourceMode = bugcatcher_ai_chat_normalize_source_mode((string) ($item['source_mode'] ?? 'screenshot'));
+    $sourceMode = webtest_ai_chat_normalize_source_mode((string) ($item['source_mode'] ?? 'screenshot'));
     $sourceReference = sprintf('ai-chat:%d:%s', (int) ($item['thread_id'] ?? 0), $sourceMode);
     $assignedQaLeadId = $actorOrgRole === 'QA Lead' ? $actorUserId : 0;
     $stmt = $conn->prepare("
@@ -2746,7 +2746,7 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
     $batchId = (int) $stmt->insert_id;
     $stmt->close();
 
-    $batch = bugcatcher_checklist_fetch_batch($conn, (int) $item['org_id'], $batchId);
+    $batch = webtest_checklist_fetch_batch($conn, (int) $item['org_id'], $batchId);
     if (!$batch) {
         throw new RuntimeException('Checklist batch was created but could not be loaded.');
     }
@@ -2754,9 +2754,9 @@ function bugcatcher_ai_chat_resolve_generated_item_batch(mysqli $conn, array $it
     return $batch;
 }
 
-function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array $generatedItem, array $batch, int $actorUserId): int
+function webtest_ai_chat_create_item_from_generated_item(mysqli $conn, array $generatedItem, array $batch, int $actorUserId): int
 {
-    $sequenceNo = bugcatcher_checklist_next_sequence($conn, (int) $batch['id']);
+    $sequenceNo = webtest_checklist_next_sequence($conn, (int) $batch['id']);
     $assignedToUserId = 0;
     $submoduleName = trim((string) ($generatedItem['submodule_name'] ?? ''));
     $description = trim((string) ($generatedItem['description'] ?? ''));
@@ -2767,7 +2767,7 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     $priority = (string) ($generatedItem['priority'] ?? 'medium');
     $requiredRole = (string) ($generatedItem['required_role'] ?? 'QA Tester');
     $batchId = (int) ($batch['id'] ?? 0);
-    $fullTitle = bugcatcher_checklist_full_title($moduleName, $submoduleName, $title);
+    $fullTitle = webtest_checklist_full_title($moduleName, $submoduleName, $title);
     $stmt = $conn->prepare("
         INSERT INTO checklist_items
             (batch_id, org_id, project_id, sequence_no, title, module_name, submodule_name, full_title, description,
@@ -2798,14 +2798,14 @@ function bugcatcher_ai_chat_create_item_from_generated_item(mysqli $conn, array 
     return $itemId;
 }
 
-function bugcatcher_ai_chat_sync_batch_page_url_from_generated_item(mysqli $conn, array $generatedItem, array $batch, int $actorUserId): void
+function webtest_ai_chat_sync_batch_page_url_from_generated_item(mysqli $conn, array $generatedItem, array $batch, int $actorUserId): void
 {
-    $newPageUrl = bugcatcher_checklist_normalize_page_url((string) ($generatedItem['page_url'] ?? ''));
+    $newPageUrl = webtest_checklist_normalize_page_url((string) ($generatedItem['page_url'] ?? ''));
     if ($newPageUrl === '') {
         return;
     }
 
-    $currentPageUrl = bugcatcher_checklist_normalize_page_url((string) ($batch['page_url'] ?? ''));
+    $currentPageUrl = webtest_checklist_normalize_page_url((string) ($batch['page_url'] ?? ''));
     if ($currentPageUrl !== '' && strcasecmp($currentPageUrl, $newPageUrl) === 0) {
         return;
     }
@@ -2827,20 +2827,20 @@ function bugcatcher_ai_chat_sync_batch_page_url_from_generated_item(mysqli $conn
     $stmt->close();
 }
 
-function bugcatcher_ai_chat_fetch_message_attachments_for_message(mysqli $conn, int $messageId): array
+function webtest_ai_chat_fetch_message_attachments_for_message(mysqli $conn, int $messageId): array
 {
     if ($messageId <= 0) {
         return [];
     }
 
-    $map = bugcatcher_ai_chat_fetch_message_attachments($conn, [$messageId]);
+    $map = webtest_ai_chat_fetch_message_attachments($conn, [$messageId]);
     return $map[$messageId] ?? [];
 }
 
-function bugcatcher_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, array $attachment): bool
+function webtest_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, array $attachment): bool
 {
     $storageKey = trim((string) ($attachment['storage_key'] ?? ''));
-    $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
+    $storageProvider = webtest_file_storage_provider_from_row($attachment);
     $filePath = trim((string) ($attachment['file_path'] ?? ''));
 
     if ($storageKey !== '') {
@@ -2871,13 +2871,13 @@ function bugcatcher_ai_chat_batch_has_attachment(mysqli $conn, int $batchId, arr
     return (bool) $row;
 }
 
-function bugcatcher_ai_chat_promote_message_attachments_to_batch(
+function webtest_ai_chat_promote_message_attachments_to_batch(
     mysqli $conn,
     int $batchId,
     int $sourceMessageId,
     int $actorUserId
 ): void {
-    $attachments = bugcatcher_ai_chat_fetch_message_attachments_for_message($conn, $sourceMessageId);
+    $attachments = webtest_ai_chat_fetch_message_attachments_for_message($conn, $sourceMessageId);
     if (!$attachments) {
         return;
     }
@@ -2889,13 +2889,13 @@ function bugcatcher_ai_chat_promote_message_attachments_to_batch(
     ");
 
     foreach ($attachments as $attachment) {
-        if (bugcatcher_ai_chat_batch_has_attachment($conn, $batchId, $attachment)) {
+        if (webtest_ai_chat_batch_has_attachment($conn, $batchId, $attachment)) {
             continue;
         }
 
         $filePath = (string) ($attachment['file_path'] ?? '');
         $storageKey = (string) ($attachment['storage_key'] ?? '');
-        $storageProvider = bugcatcher_file_storage_provider_from_row($attachment);
+        $storageProvider = webtest_file_storage_provider_from_row($attachment);
         $originalName = (string) ($attachment['original_name'] ?? 'screenshot');
         $mimeType = (string) ($attachment['mime_type'] ?? 'application/octet-stream');
         $fileSize = (int) ($attachment['file_size'] ?? 0);
@@ -2910,7 +2910,7 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
 {
     bc_v1_require_method(['GET']);
     [, $org] = bc_v1_ai_chat_context($conn);
-    $snapshot = bugcatcher_ai_admin_runtime_snapshot($conn);
+    $snapshot = webtest_ai_admin_runtime_snapshot($conn);
     $readiness = $snapshot['readiness'] ?? [
         'link' => ['enabled' => false, 'warning_message' => ''],
         'screenshot' => ['enabled' => false, 'warning_message' => ''],
@@ -2918,7 +2918,7 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
     $personas = $snapshot['personas'] ?? [];
 
     try {
-        $runtime = bugcatcher_ai_chat_resolve_runtime($conn);
+        $runtime = webtest_ai_chat_resolve_runtime($conn);
         bc_v1_json_success([
             'enabled' => true,
             'assistant_name' => $runtime['assistant_name'],
@@ -2957,7 +2957,7 @@ function bc_v1_ai_chat_bootstrap_get(mysqli $conn, array $params): void
     } catch (Throwable $e) {
         bc_v1_json_success([
             'enabled' => false,
-            'assistant_name' => (string) bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'),
+            'assistant_name' => (string) webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI'),
             'error_message' => $e->getMessage(),
             'source_modes' => [
                 'link' => [
@@ -3010,7 +3010,7 @@ function bc_v1_ai_chat_threads_get(mysqli $conn, array $params): void
                 'created_at' => (string) $row['created_at'],
                 'updated_at' => (string) ($row['updated_at'] ?? ''),
                 'last_message_at' => (string) ($row['last_message_at'] ?? ''),
-                'draft_context' => bugcatcher_ai_chat_thread_context_shape($conn, $row),
+                'draft_context' => webtest_ai_chat_thread_context_shape($conn, $row),
             ];
         }, $rows),
     ]);
@@ -3037,9 +3037,9 @@ function bc_v1_ai_chat_threads_post(mysqli $conn, array $params): void
     $threadId = (int) $stmt->insert_id;
     $stmt->close();
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, $orgId, $userId);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, $orgId, $userId);
     bc_v1_json_success([
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $thread ?: [
+        'thread' => webtest_ai_chat_thread_shape($conn, $thread ?: [
             'id' => $threadId,
             'org_id' => $orgId,
             'user_id' => $userId,
@@ -3060,13 +3060,13 @@ function bc_v1_ai_chat_threads_id_get(mysqli $conn, array $params): void
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
 
     bc_v1_json_success([
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $thread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $thread),
     ]);
 }
 
@@ -3079,7 +3079,7 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
@@ -3109,14 +3109,14 @@ function bc_v1_ai_chat_threads_id_delete(mysqli $conn, array $params): void
             continue;
         }
 
-        $provider = bugcatcher_file_storage_provider_from_row($row);
+        $provider = webtest_file_storage_provider_from_row($row);
         $deleteKey = $provider . '|' . $storageKey;
         if (isset($deletedRemote[$deleteKey])) {
             continue;
         }
 
         try {
-            bugcatcher_file_storage_delete_if_unreferenced(
+            webtest_file_storage_delete_if_unreferenced(
                 $conn,
                 $storageKey,
                 null,
@@ -3146,31 +3146,31 @@ function bc_v1_ai_chat_threads_id_draft_context_patch(mysqli $conn, array $param
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
 
     try {
-        $context = bugcatcher_ai_chat_validate_draft_context($conn, (int) $org['org_id'], bc_v1_request_data());
+        $context = webtest_ai_chat_validate_draft_context($conn, (int) $org['org_id'], bc_v1_request_data());
     } catch (Throwable $e) {
         bc_v1_json_error(422, 'invalid_draft_context', $e->getMessage());
     }
 
-    if ((int) ($thread['checklist_resolved_batch_id'] ?? 0) > 0 && !bugcatcher_ai_chat_thread_context_matches($thread, $context)) {
+    if ((int) ($thread['checklist_resolved_batch_id'] ?? 0) > 0 && !webtest_ai_chat_thread_context_matches($thread, $context)) {
         bc_v1_json_error(409, 'draft_context_locked', 'This chat already saved approved checklist items. Start a new chat to change the checklist target.');
     }
 
-    bugcatcher_ai_chat_upsert_thread_context($conn, $threadId, $context, $thread);
-    bugcatcher_ai_chat_update_thread_title_from_context($conn, $threadId, (string) $context['batch_title']);
+    webtest_ai_chat_upsert_thread_context($conn, $threadId, $context, $thread);
+    webtest_ai_chat_update_thread_title_from_context($conn, $threadId, (string) $context['batch_title']);
 
-    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $freshThread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$freshThread) {
         bc_v1_json_error(500, 'thread_reload_failed', 'Unable to reload the AI chat thread.');
     }
 
     bc_v1_json_success([
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $freshThread),
     ]);
 }
 
@@ -3183,7 +3183,7 @@ function bc_v1_ai_chat_threads_id_page_link_preview_post(mysqli $conn, array $pa
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
@@ -3192,14 +3192,14 @@ function bc_v1_ai_chat_threads_id_page_link_preview_post(mysqli $conn, array $pa
     $pageUrl = trim((string) ($payload['page_url'] ?? ''));
     $basicAuthUsername = trim((string) ($payload['basic_auth_username'] ?? ''));
     $basicAuthPassword = trim((string) ($payload['basic_auth_password'] ?? ''));
-    $savedCredentials = bugcatcher_ai_chat_saved_basic_auth_credentials($thread);
+    $savedCredentials = webtest_ai_chat_saved_basic_auth_credentials($thread);
     $useSavedCredentials = $basicAuthUsername === '' && $basicAuthPassword === '';
     $effectiveUsername = $useSavedCredentials ? $savedCredentials['username'] : $basicAuthUsername;
     $effectivePassword = $useSavedCredentials ? $savedCredentials['password'] : $basicAuthPassword;
 
     try {
-        $preview = bugcatcher_ai_chat_fetch_page_preview($pageUrl, $effectiveUsername, $effectivePassword);
-        $preview = bugcatcher_ai_chat_store_page_link_preview_state(
+        $preview = webtest_ai_chat_fetch_page_preview($pageUrl, $effectiveUsername, $effectivePassword);
+        $preview = webtest_ai_chat_store_page_link_preview_state(
             $conn,
             $threadId,
             $preview,
@@ -3210,7 +3210,7 @@ function bc_v1_ai_chat_threads_id_page_link_preview_post(mysqli $conn, array $pa
         bc_v1_json_error(422, 'page_link_preview_failed', $e->getMessage());
     }
 
-    $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $freshThread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$freshThread) {
         bc_v1_json_error(500, 'thread_reload_failed', 'Unable to reload the AI chat thread.');
     }
@@ -3225,7 +3225,7 @@ function bc_v1_ai_chat_threads_id_page_link_preview_post(mysqli $conn, array $pa
             'requires_credentials' => (bool) ($preview['requires_credentials'] ?? false),
             'credentials_saved' => (bool) ($preview['credentials_saved'] ?? false),
         ],
-        'thread' => bugcatcher_ai_chat_thread_shape($conn, $freshThread),
+        'thread' => webtest_ai_chat_thread_shape($conn, $freshThread),
     ]);
 }
 
@@ -3238,19 +3238,19 @@ function bc_v1_ai_chat_threads_id_checklist_drafts_post(mysqli $conn, array $par
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
 
     $payload = bc_v1_request_data();
     $messageText = trim((string) ($payload['message'] ?? ''));
-    $clientRequestId = bugcatcher_ai_chat_normalize_client_request_id($payload['client_request_id'] ?? '');
+    $clientRequestId = webtest_ai_chat_normalize_client_request_id($payload['client_request_id'] ?? '');
     $hasAttachments = !empty($_FILES['attachments']) && is_array($_FILES['attachments']['name'] ?? null);
 
     try {
-        $runtime = bugcatcher_ai_chat_resolve_draft_runtime($conn, $thread);
-        $result = bugcatcher_ai_chat_generate_checklist_draft($conn, $thread, $runtime, $messageText, $hasAttachments, $clientRequestId);
+        $runtime = webtest_ai_chat_resolve_draft_runtime($conn, $thread);
+        $result = webtest_ai_chat_generate_checklist_draft($conn, $thread, $runtime, $messageText, $hasAttachments, $clientRequestId);
     } catch (Throwable $e) {
         $statusCode = stripos($e->getMessage(), 'already in progress') !== false ? 409 : 422;
         $code = $statusCode === 409 ? 'draft_already_active' : 'draft_generation_failed';
@@ -3269,13 +3269,13 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
         bc_v1_json_error(422, 'invalid_generated_item', 'Generated checklist item id is invalid.');
     }
 
-    $generatedItem = bugcatcher_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $generatedItem = webtest_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$generatedItem) {
         bc_v1_json_error(404, 'generated_item_not_found', 'Generated checklist item not found.');
     }
     if ((string) ($generatedItem['review_status'] ?? '') === 'approved') {
         bc_v1_json_success([
-            'generated_item' => bugcatcher_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
+            'generated_item' => webtest_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
         ]);
     }
     if ((string) ($generatedItem['review_status'] ?? '') === 'rejected') {
@@ -3286,11 +3286,11 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
 
     try {
         $conn->begin_transaction();
-        $batch = bugcatcher_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId, (string) ($org['org_role'] ?? ''));
-        bugcatcher_ai_chat_sync_batch_page_url_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
-        $batch = bugcatcher_checklist_fetch_batch($conn, (int) $generatedItem['org_id'], (int) $batch['id']) ?: $batch;
-        $itemId = bugcatcher_ai_chat_create_item_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
-        bugcatcher_ai_chat_promote_message_attachments_to_batch(
+        $batch = webtest_ai_chat_resolve_generated_item_batch($conn, $generatedItem, $actorUserId, (string) ($org['org_role'] ?? ''));
+        webtest_ai_chat_sync_batch_page_url_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
+        $batch = webtest_checklist_fetch_batch($conn, (int) $generatedItem['org_id'], (int) $batch['id']) ?: $batch;
+        $itemId = webtest_ai_chat_create_item_from_generated_item($conn, $generatedItem, $batch, $actorUserId);
+        webtest_ai_chat_promote_message_attachments_to_batch(
             $conn,
             (int) $batch['id'],
             (int) ($generatedItem['source_user_message_id'] ?? 0),
@@ -3331,7 +3331,7 @@ function bc_v1_ai_chat_generated_items_id_approve_post(mysqli $conn, array $para
     }
 
     bc_v1_json_success([
-        'generated_item' => bugcatcher_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
+        'generated_item' => webtest_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
     ]);
 }
 
@@ -3344,7 +3344,7 @@ function bc_v1_ai_chat_generated_items_id_reject_post(mysqli $conn, array $param
         bc_v1_json_error(422, 'invalid_generated_item', 'Generated checklist item id is invalid.');
     }
 
-    $generatedItem = bugcatcher_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $generatedItem = webtest_ai_chat_fetch_generated_item_for_actor($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$generatedItem) {
         bc_v1_json_error(404, 'generated_item_not_found', 'Generated checklist item not found.');
     }
@@ -3366,7 +3366,7 @@ function bc_v1_ai_chat_generated_items_id_reject_post(mysqli $conn, array $param
     $stmt->close();
 
     bc_v1_json_success([
-        'generated_item' => bugcatcher_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
+        'generated_item' => webtest_ai_chat_fetch_generated_item_shape($conn, $generatedItemId, (int) $org['org_id'], (int) $actor['user']['id']),
     ]);
 }
 
@@ -3379,26 +3379,26 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
         bc_v1_json_error(422, 'invalid_thread', 'Thread id is invalid.');
     }
 
-    $thread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+    $thread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
     if (!$thread) {
         bc_v1_json_error(404, 'thread_not_found', 'AI chat thread not found.');
     }
 
     $payload = bc_v1_request_data();
     $messageText = trim((string) ($payload['message'] ?? ''));
-    $clientRequestId = bugcatcher_ai_chat_normalize_client_request_id($payload['client_request_id'] ?? '');
+    $clientRequestId = webtest_ai_chat_normalize_client_request_id($payload['client_request_id'] ?? '');
     $hasAttachments = !empty($_FILES['attachments']) && is_array($_FILES['attachments']['name'] ?? null);
 
     try {
-        $runtime = bugcatcher_ai_chat_resolve_draft_runtime($conn, $thread);
+        $runtime = webtest_ai_chat_resolve_draft_runtime($conn, $thread);
     } catch (Throwable $e) {
         bc_v1_json_error(422, 'draft_generation_failed', $e->getMessage());
     }
 
-    bugcatcher_ai_chat_start_stream_response();
+    webtest_ai_chat_start_stream_response();
 
     try {
-        $result = bugcatcher_ai_chat_generate_checklist_draft(
+        $result = webtest_ai_chat_generate_checklist_draft(
             $conn,
             $thread,
             $runtime,
@@ -3406,24 +3406,24 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
             $hasAttachments,
             $clientRequestId,
             static function (string $event, array $eventPayload): void {
-                bugcatcher_ai_chat_stream_event($event, $eventPayload);
+                webtest_ai_chat_stream_event($event, $eventPayload);
             }
         );
 
         if (!empty($result['reused'])) {
-            bugcatcher_ai_chat_stream_event('start', [
+            webtest_ai_chat_stream_event('start', [
                 'thread_id' => $threadId,
                 'user_message_id' => (int) ($result['user_message_id'] ?? 0),
                 'assistant_message_id' => (int) ($result['assistant_message_id'] ?? 0),
-                'assistant_name' => (string) ($runtime['assistant_name'] ?? bugcatcher_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
-                'source_mode' => bugcatcher_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
+                'assistant_name' => (string) ($runtime['assistant_name'] ?? webtest_config('AI_CHAT_DEFAULT_ASSISTANT_NAME', 'WebTest AI')),
+                'source_mode' => webtest_ai_chat_normalize_source_mode((string) ($thread['checklist_source_mode'] ?? 'screenshot')),
                 'reused' => true,
             ]);
         }
 
         $assistantError = trim((string) ($result['assistant_error_message'] ?? ''));
         if ((string) ($result['assistant_status'] ?? '') === 'failed') {
-            bugcatcher_ai_chat_stream_event('error', [
+            webtest_ai_chat_stream_event('error', [
                 'thread_id' => $threadId,
                 'user_message_id' => (int) ($result['user_message_id'] ?? 0),
                 'assistant_message_id' => (int) ($result['assistant_message_id'] ?? 0),
@@ -3434,7 +3434,7 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
             exit;
         }
 
-        bugcatcher_ai_chat_stream_event('done', [
+        webtest_ai_chat_stream_event('done', [
             'thread_id' => $threadId,
             'user_message_id' => (int) ($result['user_message_id'] ?? 0),
             'assistant_message_id' => (int) ($result['assistant_message_id'] ?? 0),
@@ -3443,12 +3443,12 @@ function bc_v1_ai_chat_threads_messages_stream_post(mysqli $conn, array $params)
             'final_count' => isset($result['final_count']) ? (int) $result['final_count'] : null,
         ]);
     } catch (Throwable $e) {
-        $freshThread = bugcatcher_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
-        bugcatcher_ai_chat_stream_event('error', [
+        $freshThread = webtest_ai_chat_fetch_thread($conn, $threadId, (int) $org['org_id'], (int) $actor['user']['id']);
+        webtest_ai_chat_stream_event('error', [
             'thread_id' => $threadId,
             'message' => $e->getMessage(),
             'code' => stripos($e->getMessage(), 'already in progress') !== false ? 'draft_already_active' : 'draft_generation_failed',
-            'thread' => $freshThread ? bugcatcher_ai_chat_thread_shape($conn, $freshThread) : null,
+            'thread' => $freshThread ? webtest_ai_chat_thread_shape($conn, $freshThread) : null,
         ]);
     }
 

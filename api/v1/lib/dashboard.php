@@ -214,7 +214,7 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
             ];
         }
 
-        $counts = bugcatcher_notifications_list($conn, (int) $actor['user']['id'], 'all', 5);
+        $counts = webtest_notifications_list($conn, (int) $actor['user']['id'], 'all', 5);
         $summary['unread_notifications'] = (int) ($counts['unread_count'] ?? 0);
 
         $recentIssues = [];
@@ -372,7 +372,7 @@ function bc_v1_dashboard_summary_get(mysqli $conn, array $params): void
     $stmt->close();
     $summary['checklist_open_items'] = (int) ($row['total'] ?? 0);
 
-    $counts = bugcatcher_notifications_list($conn, (int) $actor['user']['id'], 'all', 5);
+    $counts = webtest_notifications_list($conn, (int) $actor['user']['id'], 'all', 5);
     $summary['unread_notifications'] = (int) ($counts['unread_count'] ?? 0);
 
     $days = [];

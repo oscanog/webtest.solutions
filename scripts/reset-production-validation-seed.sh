@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-BUGCATCHER_ROOT="${BUGCATCHER_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-CONFIG_PATH="${BUGCATCHER_CONFIG_PATH:-}"
+WEBTEST_ROOT="${WEBTEST_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+CONFIG_PATH="${WEBTEST_CONFIG_PATH:-}"
 
 resolve_config_path() {
     local root="$1"
@@ -34,19 +34,19 @@ resolve_config_path() {
     return 1
 }
 
-CONFIG_PATH="$(resolve_config_path "$BUGCATCHER_ROOT" "$CONFIG_PATH")"
+CONFIG_PATH="$(resolve_config_path "$WEBTEST_ROOT" "$CONFIG_PATH")"
 
-if [[ "${BUGCATCHER_ALLOW_DESTRUCTIVE_RESET:-}" != "1" ]]; then
-    echo "Refusing destructive reset. Set BUGCATCHER_ALLOW_DESTRUCTIVE_RESET=1 to continue." >&2
+if [[ "${WEBTEST_ALLOW_DESTRUCTIVE_RESET:-}" != "1" ]]; then
+    echo "Refusing destructive reset. Set WEBTEST_ALLOW_DESTRUCTIVE_RESET=1 to continue." >&2
     exit 1
 fi
 
-if [[ -z "${BUGCATCHER_VALIDATION_SHARED_PASSWORD:-}" ]]; then
-    echo "Set BUGCATCHER_VALIDATION_SHARED_PASSWORD before running the production reset." >&2
+if [[ -z "${WEBTEST_VALIDATION_SHARED_PASSWORD:-}" ]]; then
+    echo "Set WEBTEST_VALIDATION_SHARED_PASSWORD before running the production reset." >&2
     exit 1
 fi
 
-export BUGCATCHER_ROOT
-export BUGCATCHER_CONFIG_PATH="$CONFIG_PATH"
+export WEBTEST_ROOT
+export WEBTEST_CONFIG_PATH="$CONFIG_PATH"
 
-php "$BUGCATCHER_ROOT/scripts/reset-production-validation-seed.php"
+php "$WEBTEST_ROOT/scripts/reset-production-validation-seed.php"

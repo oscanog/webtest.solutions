@@ -1,5 +1,5 @@
 (function () {
-  var storageKey = "bugcatcher-theme";
+  var storageKey = "webtest-theme";
 
   function getRootTheme() {
     var root = document.documentElement;

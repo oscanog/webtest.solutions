@@ -16,10 +16,10 @@ if (!$user) {
 }
 
 $activeOrgId = (int) ($_SESSION['active_org_id'] ?? 0);
-$membership = $activeOrgId > 0 ? bugcatcher_fetch_org_membership($conn, $activeOrgId, $current_user_id) : null;
+$membership = $activeOrgId > 0 ? webtest_fetch_org_membership($conn, $activeOrgId, $current_user_id) : null;
 $orgRole = is_array($membership) ? (string) ($membership['role'] ?? '') : null;
 $orgName = is_array($membership) ? (string) ($membership['org_name'] ?? '') : null;
-$displayRole = bugcatcher_display_role_label($current_role, $orgRole);
+$displayRole = webtest_display_role_label($current_role, $orgRole);
 $workspaceLabel = trim((string) $orgName) !== '' ? (string) $orgName : 'No active workspace selected';
 
 $context = [
@@ -29,18 +29,18 @@ $context = [
     'org_name' => $orgName,
 ];
 
-bugcatcher_shell_start('Profile', 'profile', $context);
+webtest_shell_start('Profile', 'profile', $context);
 ?>
 
 <div
     class="bc-grid"
     data-profile-root
-    data-profile-endpoint="<?= htmlspecialchars(bugcatcher_path('api/v1/auth/profile')) ?>"
-    data-password-endpoint="<?= htmlspecialchars(bugcatcher_path('api/v1/auth/change-password')) ?>"
+    data-profile-endpoint="<?= htmlspecialchars(webtest_path('api/v1/auth/profile')) ?>"
+    data-password-endpoint="<?= htmlspecialchars(webtest_path('api/v1/auth/change-password')) ?>"
 >
     <div class="bc-card bc-hero-card">
         <div class="profile-hero">
-            <div class="profile-hero__avatar" data-profile-avatar><?= htmlspecialchars(bugcatcher_user_initials((string) $user['username'])) ?></div>
+            <div class="profile-hero__avatar" data-profile-avatar><?= htmlspecialchars(webtest_user_initials((string) $user['username'])) ?></div>
             <div class="profile-hero__copy">
                 <span class="profile-hero__eyebrow">Account Summary</span>
                 <strong data-profile-username><?= htmlspecialchars((string) $user['username']) ?></strong>
@@ -153,6 +153,6 @@ bugcatcher_shell_start('Profile', 'profile', $context);
     </div>
 </div>
 
-<script src="<?= htmlspecialchars(bugcatcher_path('app/profile_page.js?v=1')) ?>"></script>
+<script src="<?= htmlspecialchars(webtest_path('app/profile_page.js?v=1')) ?>"></script>
 
-<?php bugcatcher_shell_end(); ?>
+<?php webtest_shell_end(); ?>

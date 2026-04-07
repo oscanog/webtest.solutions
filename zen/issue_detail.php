@@ -6,7 +6,7 @@ require_once dirname(__DIR__) . '/app/sidebar.php';
 
 function issue_badge_class(string $workflowStatus): string
 {
-    switch (bugcatcher_issue_workflow_normalize($workflowStatus)) {
+    switch (webtest_issue_workflow_normalize($workflowStatus)) {
         case 'with_senior':
             return 'badge-senior';
         case 'with_junior':
@@ -30,13 +30,13 @@ function issue_badge_class(string $workflowStatus): string
     }
 }
 
-$orgId = bugcatcher_sync_active_org_from_request($conn);
+$orgId = webtest_sync_active_org_from_request($conn);
 if ($orgId <= 0) {
-    header("Location: " . bugcatcher_path('zen/organization.php'));
+    header("Location: " . webtest_path('zen/organization.php'));
     exit;
 }
 
-$membership = bugcatcher_issue_find_membership($conn, $orgId, (int) $current_user_id);
+$membership = webtest_issue_find_membership($conn, $orgId, (int) $current_user_id);
 if (!$membership) {
     die("You are not a member of the active organization.");
 }
@@ -79,8 +79,8 @@ if (!$issue) {
     die("Issue not found in this organization.");
 }
 
-$workflowStatus = bugcatcher_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
-$workflowLabel = bugcatcher_issue_workflow_label($workflowStatus);
+$workflowStatus = webtest_issue_workflow_normalize((string) ($issue['workflow_status'] ?? ''));
+$workflowLabel = webtest_issue_workflow_label($workflowStatus);
 $badgeClass = issue_badge_class($workflowStatus);
 
 $labels = [];
@@ -131,17 +131,17 @@ $metaRows = [
     <meta charset="UTF-8">
     <title>Issue Detail · WebTest</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <?php bugcatcher_render_theme_bootstrap(); ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
+    <?php webtest_render_theme_bootstrap(); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_theme.css')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_issues.css')) ?>">
 </head>
 
 <body>
-    <?php bugcatcher_render_sidebar('issues', $current_username, $current_role, (string) ($membership['role'] ?? ''), null); ?>
+    <?php webtest_render_sidebar('issues', $current_username, $current_role, (string) ($membership['role'] ?? ''), null); ?>
 
     <main class="main">
-        <?php bugcatcher_render_page_header(
+        <?php webtest_render_page_header(
             'Issue #' . (int) $issueId,
             $current_username,
             $current_role,
@@ -237,9 +237,9 @@ $metaRows = [
         </div>
     </main>
 
-    <?php bugcatcher_render_legacy_ui_script(); ?>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
+    <?php webtest_render_legacy_ui_script(); ?>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/mobile_nav.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/notifications_ui.js')) ?>"></script>
 </body>
 
 </html>

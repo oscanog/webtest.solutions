@@ -1,4 +1,4 @@
-﻿import { expect, request, test, APIRequestContext } from "@playwright/test";
+import { expect, request, test, APIRequestContext } from "@playwright/test";
 import { cfg } from "../src/config";
 import { authHeaders, loginRole } from "./helpers/auth";
 import {
@@ -95,7 +95,7 @@ test("login, me, refresh, active-org, logout", async () => {
 
 test("signup then login works for a new account", async () => {
   const marker = Date.now();
-  const email = `api.v1.signup.${marker}@bugcatcher.test`;
+  const email = `api.v1.signup.${marker}@webtest.test`;
   const password = `E2E!Signup${marker}`;
 
   const signup = await apiPostJson<

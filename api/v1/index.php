@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/core.php';
 require_once __DIR__ . '/lib/routes.php';
 
-bugcatcher_start_session();
+webtest_start_session();
 header('Content-Type: application/json');
 header('Cache-Control: no-store');
 
@@ -15,7 +15,7 @@ if (bc_v1_method() === 'OPTIONS') {
 }
 
 try {
-    $conn = bugcatcher_db_connection();
+    $conn = webtest_db_connection();
 } catch (RuntimeException $e) {
     bc_v1_json_error(500, 'db_connection_failed', $e->getMessage());
 }

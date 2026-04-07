@@ -1,5 +1,5 @@
 {
-    "name": "bugcatcher/bugcatcher",
+    "name": "webtest/webtest",
     "description": "WebTest authentication and issue tracking app",
     "type": "project",
     "require": {

@@ -7,21 +7,21 @@ $batchId = checklist_api_require_id_from_query('id');
 
 if ($method === 'GET') {
     $batch = checklist_api_find_batch_or_404($conn, (int) $context['org_id'], $batchId);
-    $items = bugcatcher_checklist_fetch_items_for_batch($conn, $batchId);
-    $attachments = bugcatcher_openclaw_fetch_batch_attachments($conn, $batchId);
+    $items = webtest_checklist_fetch_items_for_batch($conn, $batchId);
+    $attachments = webtest_openclaw_fetch_batch_attachments($conn, $batchId);
     $response = [
         'batch' => $batch,
         'items' => $items,
-        'attachments' => bugcatcher_checklist_shape_attachments($attachments),
+        'attachments' => webtest_checklist_shape_attachments($attachments),
     ];
-    if (bugcatcher_checklist_is_manager_role((string) $context['org_role'])) {
+    if (webtest_checklist_is_manager_role((string) $context['org_role'])) {
         $response['assignable_qa_leads'] = array_map(static function (array $member): array {
             return [
                 'user_id' => (int) ($member['id'] ?? 0),
                 'username' => (string) ($member['username'] ?? ''),
                 'role' => (string) ($member['role'] ?? ''),
             ];
-        }, bugcatcher_checklist_fetch_org_members($conn, (int) $context['org_id'], ['QA Lead']));
+        }, webtest_checklist_fetch_org_members($conn, (int) $context['org_id'], ['QA Lead']));
     }
 
     checklist_api_json_response(200, $response);

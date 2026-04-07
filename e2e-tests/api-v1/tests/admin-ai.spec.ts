@@ -689,7 +689,7 @@ test("ai chat bootstrap and page link preview statuses support saved basic auth 
   expect(invalidPreview.page_link_preview.warning_message).toContain("valid http:// or https://");
 
   const unreachablePreview = await previewPageLink(thread.id, {
-    page_url: "http://127.0.0.1:9/bugcatcher-ai-unreachable",
+    page_url: "http://127.0.0.1:9/webtest-ai-unreachable",
   });
   expect(unreachablePreview.page_link_preview.status).toBe("unreachable");
 

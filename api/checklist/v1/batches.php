@@ -9,7 +9,7 @@ if ($method === 'GET') {
     $status = trim((string) ($_GET['status'] ?? ''));
     $search = trim((string) ($_GET['q'] ?? ''));
 
-    $batches = bugcatcher_checklist_fetch_batches($conn, (int) $context['org_id'], $projectId, $status, $search);
+    $batches = webtest_checklist_fetch_batches($conn, (int) $context['org_id'], $projectId, $status, $search);
     checklist_api_json_response(200, [
         'batches' => $batches,
     ]);

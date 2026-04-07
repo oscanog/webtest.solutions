@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 ALTER TABLE users
   MODIFY COLUMN role ENUM('super_admin', 'admin', 'user') DEFAULT 'user';

@@ -20,7 +20,7 @@ function normalizeBaseUrl(value: string): string {
 }
 
 const localFallbacks = {
-  E2E_BASE_URL: "http://localhost/bugcatcher",
+  E2E_BASE_URL: "http://localhost/webtest",
   E2E_AUTH_EMAIL: "admin@local.dev",
   E2E_AUTH_PASSWORD: "DevPass123!",
   E2E_RESET_EMAIL: "admin@local.dev",

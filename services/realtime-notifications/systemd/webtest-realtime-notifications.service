@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=mvine
 Group=mvine
-WorkingDirectory=/var/www/bugcatcher/services/realtime-notifications
-Environment=BUGCATCHER_CONFIG_PATH=/var/www/bugcatcher/shared/config.php
-ExecStart=/usr/bin/node /var/www/bugcatcher/services/realtime-notifications/server.cjs
+WorkingDirectory=/var/www/webtest/services/realtime-notifications
+Environment=WEBTEST_CONFIG_PATH=/var/www/webtest/shared/config.php
+ExecStart=/usr/bin/node /var/www/webtest/services/realtime-notifications/server.cjs
 Restart=always
 RestartSec=5
 

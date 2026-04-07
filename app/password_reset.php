@@ -2,35 +2,35 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/mail.php';
 
-const BUGCATCHER_PASSWORD_RESET_SESSION_KEY = 'bugcatcher_password_reset';
-const BUGCATCHER_PASSWORD_RESET_CSRF_SESSION_KEY = 'bugcatcher_password_reset_csrf';
+const WEBTEST_PASSWORD_RESET_SESSION_KEY = 'webtest_password_reset';
+const WEBTEST_PASSWORD_RESET_CSRF_SESSION_KEY = 'webtest_password_reset_csrf';
 
-function bugcatcher_password_reset_ttl_seconds(): int
+function webtest_password_reset_ttl_seconds(): int
 {
-    return (int) bugcatcher_config('PASSWORD_RESET_OTP_TTL_SECONDS', 600);
+    return (int) webtest_config('PASSWORD_RESET_OTP_TTL_SECONDS', 600);
 }
 
-function bugcatcher_password_reset_resend_cooldown_seconds(): int
+function webtest_password_reset_resend_cooldown_seconds(): int
 {
-    return (int) bugcatcher_config('PASSWORD_RESET_RESEND_COOLDOWN_SECONDS', 60);
+    return (int) webtest_config('PASSWORD_RESET_RESEND_COOLDOWN_SECONDS', 60);
 }
 
-function bugcatcher_password_reset_max_verify_attempts(): int
+function webtest_password_reset_max_verify_attempts(): int
 {
-    return (int) bugcatcher_config('PASSWORD_RESET_MAX_VERIFY_ATTEMPTS', 5);
+    return (int) webtest_config('PASSWORD_RESET_MAX_VERIFY_ATTEMPTS', 5);
 }
 
-function bugcatcher_password_reset_max_resends(): int
+function webtest_password_reset_max_resends(): int
 {
-    return (int) bugcatcher_config('PASSWORD_RESET_MAX_RESENDS', 3);
+    return (int) webtest_config('PASSWORD_RESET_MAX_RESENDS', 3);
 }
 
-function bugcatcher_password_reset_now(): string
+function webtest_password_reset_now(): string
 {
     return gmdate('Y-m-d H:i:s');
 }
 
-function bugcatcher_password_reset_utc_timestamp(?string $value): ?int
+function webtest_password_reset_utc_timestamp(?string $value): ?int
 {
     $rawValue = trim((string) $value);
     if ($rawValue === '') {
@@ -45,14 +45,14 @@ function bugcatcher_password_reset_utc_timestamp(?string $value): ?int
     return $date->getTimestamp();
 }
 
-function bugcatcher_password_reset_normalize_email(string $email): string
+function webtest_password_reset_normalize_email(string $email): string
 {
     return strtolower(trim($email));
 }
 
-function bugcatcher_password_reset_mask_email(string $email): string
+function webtest_password_reset_mask_email(string $email): string
 {
-    $email = bugcatcher_password_reset_normalize_email($email);
+    $email = webtest_password_reset_normalize_email($email);
     $parts = explode('@', $email, 2);
     if (count($parts) !== 2 || $parts[0] === '') {
         return $email;
@@ -67,46 +67,46 @@ function bugcatcher_password_reset_mask_email(string $email): string
     return $visible . str_repeat('*', max(2, strlen($local) - strlen($visible))) . '@' . $parts[1];
 }
 
-function bugcatcher_password_reset_session_state(): array
+function webtest_password_reset_session_state(): array
 {
-    bugcatcher_start_session();
-    $state = $_SESSION[BUGCATCHER_PASSWORD_RESET_SESSION_KEY] ?? [];
+    webtest_start_session();
+    $state = $_SESSION[WEBTEST_PASSWORD_RESET_SESSION_KEY] ?? [];
     return is_array($state) ? $state : [];
 }
 
-function bugcatcher_password_reset_set_state(array $state): void
+function webtest_password_reset_set_state(array $state): void
 {
-    bugcatcher_start_session();
-    $_SESSION[BUGCATCHER_PASSWORD_RESET_SESSION_KEY] = $state;
+    webtest_start_session();
+    $_SESSION[WEBTEST_PASSWORD_RESET_SESSION_KEY] = $state;
 }
 
-function bugcatcher_password_reset_begin_otp_step(string $email): void
+function webtest_password_reset_begin_otp_step(string $email): void
 {
-    bugcatcher_password_reset_set_state([
-        'email' => bugcatcher_password_reset_normalize_email($email),
+    webtest_password_reset_set_state([
+        'email' => webtest_password_reset_normalize_email($email),
         'verified_request_id' => 0,
     ]);
 }
 
-function bugcatcher_password_reset_mark_verified(string $email, int $requestId): void
+function webtest_password_reset_mark_verified(string $email, int $requestId): void
 {
-    bugcatcher_password_reset_set_state([
-        'email' => bugcatcher_password_reset_normalize_email($email),
+    webtest_password_reset_set_state([
+        'email' => webtest_password_reset_normalize_email($email),
         'verified_request_id' => $requestId,
     ]);
 }
 
-function bugcatcher_password_reset_clear_state(): void
+function webtest_password_reset_clear_state(): void
 {
-    bugcatcher_start_session();
-    $email = bugcatcher_password_reset_session_email();
-    unset($_SESSION[BUGCATCHER_PASSWORD_RESET_SESSION_KEY]);
-    bugcatcher_mail_preview_clear('password_reset_otp', $email);
+    webtest_start_session();
+    $email = webtest_password_reset_session_email();
+    unset($_SESSION[WEBTEST_PASSWORD_RESET_SESSION_KEY]);
+    webtest_mail_preview_clear('password_reset_otp', $email);
 }
 
-function bugcatcher_password_reset_current_step(): string
+function webtest_password_reset_current_step(): string
 {
-    $state = bugcatcher_password_reset_session_state();
+    $state = webtest_password_reset_session_state();
     $email = (string) ($state['email'] ?? '');
     $verifiedRequestId = (int) ($state['verified_request_id'] ?? 0);
 
@@ -117,55 +117,55 @@ function bugcatcher_password_reset_current_step(): string
     return ($verifiedRequestId > 0) ? 'reset' : 'otp';
 }
 
-function bugcatcher_password_reset_session_email(): string
+function webtest_password_reset_session_email(): string
 {
-    $state = bugcatcher_password_reset_session_state();
+    $state = webtest_password_reset_session_state();
     return (string) ($state['email'] ?? '');
 }
 
-function bugcatcher_password_reset_verified_request_id(): int
+function webtest_password_reset_verified_request_id(): int
 {
-    $state = bugcatcher_password_reset_session_state();
+    $state = webtest_password_reset_session_state();
     return (int) ($state['verified_request_id'] ?? 0);
 }
 
-function bugcatcher_password_reset_csrf_token(): string
+function webtest_password_reset_csrf_token(): string
 {
-    bugcatcher_start_session();
-    $token = (string) ($_SESSION[BUGCATCHER_PASSWORD_RESET_CSRF_SESSION_KEY] ?? '');
+    webtest_start_session();
+    $token = (string) ($_SESSION[WEBTEST_PASSWORD_RESET_CSRF_SESSION_KEY] ?? '');
     if ($token === '') {
         $token = bin2hex(random_bytes(32));
-        $_SESSION[BUGCATCHER_PASSWORD_RESET_CSRF_SESSION_KEY] = $token;
+        $_SESSION[WEBTEST_PASSWORD_RESET_CSRF_SESSION_KEY] = $token;
     }
 
     return $token;
 }
 
-function bugcatcher_password_reset_verify_csrf(string $token): bool
+function webtest_password_reset_verify_csrf(string $token): bool
 {
-    bugcatcher_start_session();
-    $expected = (string) ($_SESSION[BUGCATCHER_PASSWORD_RESET_CSRF_SESSION_KEY] ?? '');
+    webtest_start_session();
+    $expected = (string) ($_SESSION[WEBTEST_PASSWORD_RESET_CSRF_SESSION_KEY] ?? '');
     return ($expected !== '' && $token !== '' && hash_equals($expected, $token));
 }
 
-function bugcatcher_password_reset_dev_preview_enabled(): bool
+function webtest_password_reset_dev_preview_enabled(): bool
 {
-    return bugcatcher_mail_mailer_name() === 'preview';
+    return webtest_mail_mailer_name() === 'preview';
 }
 
-function bugcatcher_password_reset_clear_dev_preview(): void
+function webtest_password_reset_clear_dev_preview(): void
 {
-    $email = bugcatcher_password_reset_session_email();
-    bugcatcher_mail_preview_clear('password_reset_otp', $email);
+    $email = webtest_password_reset_session_email();
+    webtest_mail_preview_clear('password_reset_otp', $email);
 }
 
-function bugcatcher_password_reset_dev_preview_otp(string $email = ''): string
+function webtest_password_reset_dev_preview_otp(string $email = ''): string
 {
-    if (!bugcatcher_password_reset_dev_preview_enabled()) {
+    if (!webtest_password_reset_dev_preview_enabled()) {
         return '';
     }
 
-    $message = bugcatcher_mail_preview_latest_message('password_reset_otp', bugcatcher_password_reset_normalize_email($email));
+    $message = webtest_mail_preview_latest_message('password_reset_otp', webtest_password_reset_normalize_email($email));
     if (!$message) {
         return '';
     }
@@ -178,17 +178,17 @@ function bugcatcher_password_reset_dev_preview_otp(string $email = ''): string
     return $otp;
 }
 
-function bugcatcher_password_reset_generate_otp(): string
+function webtest_password_reset_generate_otp(): string
 {
     return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-function bugcatcher_password_reset_hash_otp(string $otp): string
+function webtest_password_reset_hash_otp(string $otp): string
 {
     return hash('sha256', $otp);
 }
 
-function bugcatcher_password_reset_find_user(mysqli $conn, string $email): ?array
+function webtest_password_reset_find_user(mysqli $conn, string $email): ?array
 {
     $stmt = $conn->prepare("SELECT id, username, email FROM users WHERE email = ? LIMIT 1");
     $stmt->bind_param('s', $email);
@@ -198,7 +198,7 @@ function bugcatcher_password_reset_find_user(mysqli $conn, string $email): ?arra
     return $row;
 }
 
-function bugcatcher_password_reset_find_latest_request(mysqli $conn, int $userId): ?array
+function webtest_password_reset_find_latest_request(mysqli $conn, int $userId): ?array
 {
     $stmt = $conn->prepare("
         SELECT
@@ -225,13 +225,13 @@ function bugcatcher_password_reset_find_latest_request(mysqli $conn, int $userId
     return $row;
 }
 
-function bugcatcher_password_reset_request_is_expired(?array $request): bool
+function webtest_password_reset_request_is_expired(?array $request): bool
 {
     if (!$request || empty($request['expires_at'])) {
         return true;
     }
 
-    $expiresAt = bugcatcher_password_reset_utc_timestamp((string) $request['expires_at']);
+    $expiresAt = webtest_password_reset_utc_timestamp((string) $request['expires_at']);
     if ($expiresAt === null) {
         return true;
     }
@@ -239,24 +239,24 @@ function bugcatcher_password_reset_request_is_expired(?array $request): bool
     return $expiresAt < time();
 }
 
-function bugcatcher_password_reset_cooldown_remaining(?array $request): int
+function webtest_password_reset_cooldown_remaining(?array $request): int
 {
     if (!$request || empty($request['last_sent_at'])) {
         return 0;
     }
 
-    $lastSentAt = bugcatcher_password_reset_utc_timestamp((string) $request['last_sent_at']);
+    $lastSentAt = webtest_password_reset_utc_timestamp((string) $request['last_sent_at']);
     if ($lastSentAt === null) {
         return 0;
     }
 
-    $remaining = ($lastSentAt + bugcatcher_password_reset_resend_cooldown_seconds()) - time();
+    $remaining = ($lastSentAt + webtest_password_reset_resend_cooldown_seconds()) - time();
     return max(0, $remaining);
 }
 
-function bugcatcher_password_reset_mark_request_used(mysqli $conn, int $requestId): void
+function webtest_password_reset_mark_request_used(mysqli $conn, int $requestId): void
 {
-    $usedAt = bugcatcher_password_reset_now();
+    $usedAt = webtest_password_reset_now();
     $stmt = $conn->prepare("
         UPDATE password_reset_requests
         SET used_at = ?, updated_at = ?
@@ -267,9 +267,9 @@ function bugcatcher_password_reset_mark_request_used(mysqli $conn, int $requestI
     $stmt->close();
 }
 
-function bugcatcher_password_reset_invalidate_unused_requests(mysqli $conn, int $userId): void
+function webtest_password_reset_invalidate_unused_requests(mysqli $conn, int $userId): void
 {
-    $usedAt = bugcatcher_password_reset_now();
+    $usedAt = webtest_password_reset_now();
     $stmt = $conn->prepare("
         UPDATE password_reset_requests
         SET used_at = ?, updated_at = ?
@@ -280,29 +280,29 @@ function bugcatcher_password_reset_invalidate_unused_requests(mysqli $conn, int 
     $stmt->close();
 }
 
-function bugcatcher_password_reset_send_email(string $toEmail, string $toName, string $otp): void
+function webtest_password_reset_send_email(string $toEmail, string $toName, string $otp): void
 {
-    bugcatcher_mail_send_message(
-        bugcatcher_mail_password_reset_message(
+    webtest_mail_send_message(
+        webtest_mail_password_reset_message(
             $toEmail,
             $toName,
             $otp,
-            bugcatcher_password_reset_ttl_seconds()
+            webtest_password_reset_ttl_seconds()
         )
     );
 }
 
-function bugcatcher_password_reset_should_bypass_cooldown_for_preview(?array $request, string $email): bool
+function webtest_password_reset_should_bypass_cooldown_for_preview(?array $request, string $email): bool
 {
-    if (!$request || !bugcatcher_password_reset_dev_preview_enabled()) {
+    if (!$request || !webtest_password_reset_dev_preview_enabled()) {
         return false;
     }
 
-    return bugcatcher_password_reset_cooldown_remaining($request) > 0 &&
-        bugcatcher_password_reset_dev_preview_otp($email) === '';
+    return webtest_password_reset_cooldown_remaining($request) > 0 &&
+        webtest_password_reset_dev_preview_otp($email) === '';
 }
 
-function bugcatcher_password_reset_generic_sent_message(bool $resent = false, int $cooldownRemaining = 0): string
+function webtest_password_reset_generic_sent_message(bool $resent = false, int $cooldownRemaining = 0): string
 {
     if ($cooldownRemaining > 0) {
         return "If an account exists for that email, a reset code is already on the way. Please wait {$cooldownRemaining} seconds before requesting another one.";
@@ -315,42 +315,42 @@ function bugcatcher_password_reset_generic_sent_message(bool $resent = false, in
     return 'If an account exists for that email, we sent a 6-digit reset code. Enter it below.';
 }
 
-function bugcatcher_password_reset_request_otp(mysqli $conn, string $email): array
+function webtest_password_reset_request_otp(mysqli $conn, string $email): array
 {
-    $email = bugcatcher_password_reset_normalize_email($email);
+    $email = webtest_password_reset_normalize_email($email);
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'Enter a valid email address.'];
     }
 
-    $mailError = bugcatcher_mail_validate_config();
+    $mailError = webtest_mail_validate_config();
     if ($mailError !== null) {
         return ['ok' => false, 'error' => 'Password reset email is unavailable right now.'];
     }
 
-    bugcatcher_password_reset_begin_otp_step($email);
+    webtest_password_reset_begin_otp_step($email);
 
-    $user = bugcatcher_password_reset_find_user($conn, $email);
+    $user = webtest_password_reset_find_user($conn, $email);
     if (!$user) {
-        return ['ok' => true, 'message' => bugcatcher_password_reset_generic_sent_message()];
+        return ['ok' => true, 'message' => webtest_password_reset_generic_sent_message()];
     }
 
-    $latest = bugcatcher_password_reset_find_latest_request($conn, (int) $user['id']);
-    $cooldownRemaining = bugcatcher_password_reset_cooldown_remaining($latest);
-    if ($cooldownRemaining > 0 && !bugcatcher_password_reset_should_bypass_cooldown_for_preview($latest, $email)) {
+    $latest = webtest_password_reset_find_latest_request($conn, (int) $user['id']);
+    $cooldownRemaining = webtest_password_reset_cooldown_remaining($latest);
+    if ($cooldownRemaining > 0 && !webtest_password_reset_should_bypass_cooldown_for_preview($latest, $email)) {
         return [
             'ok' => true,
-            'message' => bugcatcher_password_reset_generic_sent_message(false, $cooldownRemaining),
+            'message' => webtest_password_reset_generic_sent_message(false, $cooldownRemaining),
         ];
     }
 
-    $otp = bugcatcher_password_reset_generate_otp();
-    $otpHash = bugcatcher_password_reset_hash_otp($otp);
-    $now = bugcatcher_password_reset_now();
-    $expiresAt = gmdate('Y-m-d H:i:s', time() + bugcatcher_password_reset_ttl_seconds());
+    $otp = webtest_password_reset_generate_otp();
+    $otpHash = webtest_password_reset_hash_otp($otp);
+    $now = webtest_password_reset_now();
+    $expiresAt = gmdate('Y-m-d H:i:s', time() + webtest_password_reset_ttl_seconds());
 
     $conn->begin_transaction();
     try {
-        bugcatcher_password_reset_invalidate_unused_requests($conn, (int) $user['id']);
+        webtest_password_reset_invalidate_unused_requests($conn, (int) $user['id']);
 
         $stmt = $conn->prepare("
             INSERT INTO password_reset_requests
@@ -370,61 +370,61 @@ function bugcatcher_password_reset_request_otp(mysqli $conn, string $email): arr
         return ['ok' => false, 'error' => 'Unable to start the password reset right now.'];
     }
 
-    bugcatcher_mail_preview_clear('password_reset_otp', (string) $user['email']);
+    webtest_mail_preview_clear('password_reset_otp', (string) $user['email']);
 
     if ($mailError === null) {
         try {
-            bugcatcher_password_reset_send_email((string) $user['email'], (string) $user['username'], $otp);
+            webtest_password_reset_send_email((string) $user['email'], (string) $user['username'], $otp);
         } catch (RuntimeException $e) {
-            bugcatcher_password_reset_mark_request_used($conn, $requestId);
-            bugcatcher_password_reset_clear_state();
+            webtest_password_reset_mark_request_used($conn, $requestId);
+            webtest_password_reset_clear_state();
             return ['ok' => false, 'error' => 'Password reset email could not be sent right now.'];
         }
     }
 
-    return ['ok' => true, 'message' => bugcatcher_password_reset_generic_sent_message()];
+    return ['ok' => true, 'message' => webtest_password_reset_generic_sent_message()];
 }
 
-function bugcatcher_password_reset_resend_otp(mysqli $conn, string $email): array
+function webtest_password_reset_resend_otp(mysqli $conn, string $email): array
 {
-    $email = bugcatcher_password_reset_normalize_email($email);
+    $email = webtest_password_reset_normalize_email($email);
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'Enter a valid email address.'];
     }
 
-    $mailError = bugcatcher_mail_validate_config();
+    $mailError = webtest_mail_validate_config();
     if ($mailError !== null) {
         return ['ok' => false, 'error' => 'Password reset email is unavailable right now.'];
     }
 
-    bugcatcher_password_reset_begin_otp_step($email);
+    webtest_password_reset_begin_otp_step($email);
 
-    $user = bugcatcher_password_reset_find_user($conn, $email);
+    $user = webtest_password_reset_find_user($conn, $email);
     if (!$user) {
-        return ['ok' => true, 'message' => bugcatcher_password_reset_generic_sent_message(true)];
+        return ['ok' => true, 'message' => webtest_password_reset_generic_sent_message(true)];
     }
 
-    $request = bugcatcher_password_reset_find_latest_request($conn, (int) $user['id']);
-    if (!$request || !empty($request['verified_at']) || bugcatcher_password_reset_request_is_expired($request)) {
-        return bugcatcher_password_reset_request_otp($conn, $email);
+    $request = webtest_password_reset_find_latest_request($conn, (int) $user['id']);
+    if (!$request || !empty($request['verified_at']) || webtest_password_reset_request_is_expired($request)) {
+        return webtest_password_reset_request_otp($conn, $email);
     }
 
-    $cooldownRemaining = bugcatcher_password_reset_cooldown_remaining($request);
-    if ($cooldownRemaining > 0 && !bugcatcher_password_reset_should_bypass_cooldown_for_preview($request, $email)) {
+    $cooldownRemaining = webtest_password_reset_cooldown_remaining($request);
+    if ($cooldownRemaining > 0 && !webtest_password_reset_should_bypass_cooldown_for_preview($request, $email)) {
         return [
             'ok' => true,
-            'message' => bugcatcher_password_reset_generic_sent_message(true, $cooldownRemaining),
+            'message' => webtest_password_reset_generic_sent_message(true, $cooldownRemaining),
         ];
     }
 
-    if ((int) ($request['resend_count'] ?? 0) >= bugcatcher_password_reset_max_resends()) {
+    if ((int) ($request['resend_count'] ?? 0) >= webtest_password_reset_max_resends()) {
         return ['ok' => false, 'error' => 'You have reached the resend limit. Start over to request a new code.'];
     }
 
-    $otp = bugcatcher_password_reset_generate_otp();
-    $otpHash = bugcatcher_password_reset_hash_otp($otp);
-    $now = bugcatcher_password_reset_now();
-    $expiresAt = gmdate('Y-m-d H:i:s', time() + bugcatcher_password_reset_ttl_seconds());
+    $otp = webtest_password_reset_generate_otp();
+    $otpHash = webtest_password_reset_hash_otp($otp);
+    $now = webtest_password_reset_now();
+    $expiresAt = gmdate('Y-m-d H:i:s', time() + webtest_password_reset_ttl_seconds());
 
     $stmt = $conn->prepare("
         UPDATE password_reset_requests
@@ -442,24 +442,24 @@ function bugcatcher_password_reset_resend_otp(mysqli $conn, string $email): arra
     $stmt->execute();
     $stmt->close();
 
-    bugcatcher_mail_preview_clear('password_reset_otp', (string) $user['email']);
+    webtest_mail_preview_clear('password_reset_otp', (string) $user['email']);
 
     if ($mailError === null) {
         try {
-            bugcatcher_password_reset_send_email((string) $user['email'], (string) $user['username'], $otp);
+            webtest_password_reset_send_email((string) $user['email'], (string) $user['username'], $otp);
         } catch (RuntimeException $e) {
-            bugcatcher_password_reset_mark_request_used($conn, $requestId);
-            bugcatcher_password_reset_clear_state();
+            webtest_password_reset_mark_request_used($conn, $requestId);
+            webtest_password_reset_clear_state();
             return ['ok' => false, 'error' => 'Password reset email could not be sent right now.'];
         }
     }
 
-    return ['ok' => true, 'message' => bugcatcher_password_reset_generic_sent_message(true)];
+    return ['ok' => true, 'message' => webtest_password_reset_generic_sent_message(true)];
 }
 
-function bugcatcher_password_reset_verify_otp(mysqli $conn, string $email, string $otp): array
+function webtest_password_reset_verify_otp(mysqli $conn, string $email, string $otp): array
 {
-    $email = bugcatcher_password_reset_normalize_email($email);
+    $email = webtest_password_reset_normalize_email($email);
     $otp = trim($otp);
 
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -470,30 +470,30 @@ function bugcatcher_password_reset_verify_otp(mysqli $conn, string $email, strin
         return ['ok' => false, 'error' => 'Enter the 6-digit code from your email.'];
     }
 
-    $user = bugcatcher_password_reset_find_user($conn, $email);
+    $user = webtest_password_reset_find_user($conn, $email);
     if (!$user) {
         return ['ok' => false, 'error' => 'The code is invalid or expired.'];
     }
 
-    $request = bugcatcher_password_reset_find_latest_request($conn, (int) $user['id']);
+    $request = webtest_password_reset_find_latest_request($conn, (int) $user['id']);
     if (!$request) {
         return ['ok' => false, 'error' => 'The code is invalid or expired.'];
     }
 
-    if (bugcatcher_password_reset_request_is_expired($request)) {
-        bugcatcher_password_reset_mark_request_used($conn, (int) $request['id']);
+    if (webtest_password_reset_request_is_expired($request)) {
+        webtest_password_reset_mark_request_used($conn, (int) $request['id']);
         return ['ok' => false, 'error' => 'The code is invalid or expired. Request a new one and try again.'];
     }
 
-    if ((int) ($request['verify_attempt_count'] ?? 0) >= bugcatcher_password_reset_max_verify_attempts()) {
-        bugcatcher_password_reset_mark_request_used($conn, (int) $request['id']);
+    if ((int) ($request['verify_attempt_count'] ?? 0) >= webtest_password_reset_max_verify_attempts()) {
+        webtest_password_reset_mark_request_used($conn, (int) $request['id']);
         return ['ok' => false, 'error' => 'Too many incorrect codes. Request a new code to continue.'];
     }
 
-    $otpHash = bugcatcher_password_reset_hash_otp($otp);
+    $otpHash = webtest_password_reset_hash_otp($otp);
     if (!hash_equals((string) ($request['otp_hash'] ?? ''), $otpHash)) {
         $newAttemptCount = (int) ($request['verify_attempt_count'] ?? 0) + 1;
-        $now = bugcatcher_password_reset_now();
+        $now = webtest_password_reset_now();
         $stmt = $conn->prepare("
             UPDATE password_reset_requests
             SET verify_attempt_count = ?, updated_at = ?
@@ -504,15 +504,15 @@ function bugcatcher_password_reset_verify_otp(mysqli $conn, string $email, strin
         $stmt->execute();
         $stmt->close();
 
-        if ($newAttemptCount >= bugcatcher_password_reset_max_verify_attempts()) {
-            bugcatcher_password_reset_mark_request_used($conn, $requestId);
+        if ($newAttemptCount >= webtest_password_reset_max_verify_attempts()) {
+            webtest_password_reset_mark_request_used($conn, $requestId);
             return ['ok' => false, 'error' => 'Too many incorrect codes. Request a new code to continue.'];
         }
 
         return ['ok' => false, 'error' => 'The code is invalid or expired.'];
     }
 
-    $now = bugcatcher_password_reset_now();
+    $now = webtest_password_reset_now();
     $stmt = $conn->prepare("
         UPDATE password_reset_requests
         SET verified_at = ?, updated_at = ?
@@ -523,7 +523,7 @@ function bugcatcher_password_reset_verify_otp(mysqli $conn, string $email, strin
     $stmt->execute();
     $stmt->close();
 
-    bugcatcher_password_reset_mark_verified($email, $requestId);
+    webtest_password_reset_mark_verified($email, $requestId);
 
     return [
         'ok' => true,
@@ -532,9 +532,9 @@ function bugcatcher_password_reset_verify_otp(mysqli $conn, string $email, strin
     ];
 }
 
-function bugcatcher_password_reset_update_password(mysqli $conn, int $requestId, string $email, string $password, string $confirmPassword): array
+function webtest_password_reset_update_password(mysqli $conn, int $requestId, string $email, string $password, string $confirmPassword): array
 {
-    $email = bugcatcher_password_reset_normalize_email($email);
+    $email = webtest_password_reset_normalize_email($email);
     if ($requestId <= 0 || $email === '') {
         return ['ok' => false, 'error' => 'Start the reset flow again and request a new code.'];
     }
@@ -567,7 +567,7 @@ function bugcatcher_password_reset_update_password(mysqli $conn, int $requestId,
             throw new RuntimeException('Reset request not found.');
         }
 
-        if (bugcatcher_password_reset_normalize_email((string) ($request['email'] ?? '')) !== $email) {
+        if (webtest_password_reset_normalize_email((string) ($request['email'] ?? '')) !== $email) {
             throw new RuntimeException('Reset request email mismatch.');
         }
 
@@ -582,7 +582,7 @@ function bugcatcher_password_reset_update_password(mysqli $conn, int $requestId,
         $stmt->execute();
         $stmt->close();
 
-        $usedAt = bugcatcher_password_reset_now();
+        $usedAt = webtest_password_reset_now();
         $stmt = $conn->prepare("
             UPDATE password_reset_requests
             SET used_at = ?, updated_at = ?
@@ -607,7 +607,7 @@ function bugcatcher_password_reset_update_password(mysqli $conn, int $requestId,
         return ['ok' => false, 'error' => 'Unable to reset the password right now.'];
     }
 
-    bugcatcher_password_reset_clear_state();
+    webtest_password_reset_clear_state();
 
     return ['ok' => true];
 }

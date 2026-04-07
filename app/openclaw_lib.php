@@ -3,15 +3,15 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/checklist_lib.php';
 
-function bugcatcher_require_super_admin(string $role): void
+function webtest_require_super_admin(string $role): void
 {
-    if (!bugcatcher_is_super_admin_role($role)) {
+    if (!webtest_is_super_admin_role($role)) {
         http_response_code(403);
         die('Only super admins can access this area.');
     }
 }
 
-function bugcatcher_openclaw_json_response(int $statusCode, array $payload): void
+function webtest_openclaw_json_response(int $statusCode, array $payload): void
 {
     http_response_code($statusCode);
     header('Content-Type: application/json');
@@ -19,35 +19,35 @@ function bugcatcher_openclaw_json_response(int $statusCode, array $payload): voi
     exit;
 }
 
-function bugcatcher_openclaw_json_request_body(): array
+function webtest_openclaw_json_request_body(): array
 {
     $raw = file_get_contents('php://input');
     $decoded = json_decode($raw ?: '', true);
     return is_array($decoded) ? $decoded : [];
 }
 
-function bugcatcher_openclaw_authorization_header(): string
+function webtest_openclaw_authorization_header(): string
 {
     return (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
 }
 
-function bugcatcher_openclaw_require_internal_request(): void
+function webtest_openclaw_require_internal_request(): void
 {
-    $expected = bugcatcher_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
-    $header = bugcatcher_openclaw_authorization_header();
+    $expected = webtest_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
+    $header = webtest_openclaw_authorization_header();
     $token = '';
     if (stripos($header, 'Bearer ') === 0) {
         $token = trim(substr($header, 7));
     }
 
     if ($expected === '' || $token === '' || !hash_equals($expected, $token)) {
-        bugcatcher_openclaw_json_response(401, ['error' => 'Invalid or missing OpenClaw bearer token.']);
+        webtest_openclaw_json_response(401, ['error' => 'Invalid or missing OpenClaw bearer token.']);
     }
 }
 
-function bugcatcher_openclaw_encryption_key(): string
+function webtest_openclaw_encryption_key(): string
 {
-    $key = (string) bugcatcher_config('OPENCLAW_ENCRYPTION_KEY', '');
+    $key = (string) webtest_config('OPENCLAW_ENCRYPTION_KEY', '');
     if ($key === '') {
         throw new RuntimeException('OPENCLAW_ENCRYPTION_KEY is not configured.');
     }
@@ -55,14 +55,14 @@ function bugcatcher_openclaw_encryption_key(): string
     return hash('sha256', $key, true);
 }
 
-function bugcatcher_openclaw_encrypt_secret(string $value): string
+function webtest_openclaw_encrypt_secret(string $value): string
 {
     if ($value === '') {
         return '';
     }
 
     $iv = random_bytes(16);
-    $ciphertext = openssl_encrypt($value, 'AES-256-CBC', bugcatcher_openclaw_encryption_key(), OPENSSL_RAW_DATA, $iv);
+    $ciphertext = openssl_encrypt($value, 'AES-256-CBC', webtest_openclaw_encryption_key(), OPENSSL_RAW_DATA, $iv);
     if ($ciphertext === false) {
         throw new RuntimeException('Failed to encrypt secret.');
     }
@@ -70,7 +70,7 @@ function bugcatcher_openclaw_encrypt_secret(string $value): string
     return base64_encode($iv . $ciphertext);
 }
 
-function bugcatcher_openclaw_decrypt_secret(?string $value): string
+function webtest_openclaw_decrypt_secret(?string $value): string
 {
     if (!is_string($value) || $value === '') {
         return '';
@@ -83,15 +83,15 @@ function bugcatcher_openclaw_decrypt_secret(?string $value): string
 
     $iv = substr($decoded, 0, 16);
     $ciphertext = substr($decoded, 16);
-    $plaintext = openssl_decrypt($ciphertext, 'AES-256-CBC', bugcatcher_openclaw_encryption_key(), OPENSSL_RAW_DATA, $iv);
+    $plaintext = openssl_decrypt($ciphertext, 'AES-256-CBC', webtest_openclaw_encryption_key(), OPENSSL_RAW_DATA, $iv);
 
     return $plaintext === false ? '' : $plaintext;
 }
 
-function bugcatcher_openclaw_mask_secret(?string $value): string
+function webtest_openclaw_mask_secret(?string $value): string
 {
     try {
-        $value = bugcatcher_openclaw_decrypt_secret($value);
+        $value = webtest_openclaw_decrypt_secret($value);
     } catch (Throwable $e) {
         return 'Configured (encryption key unavailable)';
     }
@@ -105,7 +105,7 @@ function bugcatcher_openclaw_mask_secret(?string $value): string
     return substr($value, 0, 3) . str_repeat('*', max(4, strlen($value) - 6)) . substr($value, -3);
 }
 
-function bugcatcher_openclaw_mask_plain_secret(?string $value): string
+function webtest_openclaw_mask_plain_secret(?string $value): string
 {
     $value = trim((string) $value);
     if ($value === '') {
@@ -118,14 +118,14 @@ function bugcatcher_openclaw_mask_plain_secret(?string $value): string
     return substr($value, 0, 3) . str_repeat('*', max(4, strlen($value) - 6)) . substr($value, -3);
 }
 
-function bugcatcher_openclaw_config_version_now(): string
+function webtest_openclaw_config_version_now(): string
 {
     return gmdate('Y-m-d\TH:i:s\Z');
 }
 
-function bugcatcher_openclaw_control_plane_ensure(mysqli $conn): void
+function webtest_openclaw_control_plane_ensure(mysqli $conn): void
 {
-    $version = bugcatcher_openclaw_config_version_now();
+    $version = webtest_openclaw_config_version_now();
     $stmt = $conn->prepare("
         INSERT INTO openclaw_control_plane_state
             (id, config_version, updated_at)
@@ -138,9 +138,9 @@ function bugcatcher_openclaw_control_plane_ensure(mysqli $conn): void
     $stmt->close();
 }
 
-function bugcatcher_openclaw_queue_reload_request(mysqli $conn, ?int $actorUserId, string $reason): int
+function webtest_openclaw_queue_reload_request(mysqli $conn, ?int $actorUserId, string $reason): int
 {
-    bugcatcher_openclaw_control_plane_ensure($conn);
+    webtest_openclaw_control_plane_ensure($conn);
     $reason = substr(trim($reason), 0, 120);
     $requestedAt = date('Y-m-d H:i:s');
     $requestedBy = max(0, (int) ($actorUserId ?? 0));
@@ -170,10 +170,10 @@ function bugcatcher_openclaw_queue_reload_request(mysqli $conn, ?int $actorUserI
     return $reloadRequestId;
 }
 
-function bugcatcher_openclaw_mark_config_changed(mysqli $conn, ?int $actorUserId, string $reason): int
+function webtest_openclaw_mark_config_changed(mysqli $conn, ?int $actorUserId, string $reason): int
 {
-    bugcatcher_openclaw_control_plane_ensure($conn);
-    $version = bugcatcher_openclaw_config_version_now();
+    webtest_openclaw_control_plane_ensure($conn);
+    $version = webtest_openclaw_config_version_now();
     $requestedAt = date('Y-m-d H:i:s');
     $requestedBy = max(0, (int) ($actorUserId ?? 0));
     $reason = substr(trim($reason), 0, 120);
@@ -191,12 +191,12 @@ function bugcatcher_openclaw_mark_config_changed(mysqli $conn, ?int $actorUserId
     $stmt->execute();
     $stmt->close();
 
-    return bugcatcher_openclaw_queue_reload_request($conn, $actorUserId, $reason);
+    return webtest_openclaw_queue_reload_request($conn, $actorUserId, $reason);
 }
 
-function bugcatcher_openclaw_temp_dir_ensure(): string
+function webtest_openclaw_temp_dir_ensure(): string
 {
-    $dir = bugcatcher_openclaw_temp_dir();
+    $dir = webtest_openclaw_temp_dir();
     if ($dir === '') {
         throw new RuntimeException('OPENCLAW_TEMP_UPLOAD_DIR is not configured.');
     }
@@ -206,7 +206,7 @@ function bugcatcher_openclaw_temp_dir_ensure(): string
     return $dir;
 }
 
-function bugcatcher_openclaw_resolve_temp_file(string $token): ?string
+function webtest_openclaw_resolve_temp_file(string $token): ?string
 {
     $token = preg_replace('/[^a-zA-Z0-9._-]/', '', $token);
     if ($token === '') {
@@ -214,8 +214,8 @@ function bugcatcher_openclaw_resolve_temp_file(string $token): ?string
     }
 
     $candidates = [
-        bugcatcher_openclaw_temp_dir() . DIRECTORY_SEPARATOR . $token,
-        bugcatcher_checklist_uploads_dir() . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . $token,
+        webtest_openclaw_temp_dir() . DIRECTORY_SEPARATOR . $token,
+        webtest_checklist_uploads_dir() . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . $token,
     ];
 
     foreach ($candidates as $candidate) {
@@ -227,9 +227,9 @@ function bugcatcher_openclaw_resolve_temp_file(string $token): ?string
     return null;
 }
 
-function bugcatcher_openclaw_fetch_runtime_config(mysqli $conn): ?array
+function webtest_openclaw_fetch_runtime_config(mysqli $conn): ?array
 {
-    bugcatcher_openclaw_runtime_config_ensure_schema($conn);
+    webtest_openclaw_runtime_config_ensure_schema($conn);
     $result = $conn->query("
         SELECT orc.*,
                creator.username AS created_by_name,
@@ -248,7 +248,7 @@ function bugcatcher_openclaw_fetch_runtime_config(mysqli $conn): ?array
     return $row ?: null;
 }
 
-function bugcatcher_openclaw_validate_provider_input(
+function webtest_openclaw_validate_provider_input(
     mysqli $conn,
     int $providerId,
     string $providerKey,
@@ -290,7 +290,7 @@ function bugcatcher_openclaw_validate_provider_input(
     }
 }
 
-function bugcatcher_openclaw_save_runtime_config(
+function webtest_openclaw_save_runtime_config(
     mysqli $conn,
     int $actorUserId,
     bool $isEnabled,
@@ -303,8 +303,8 @@ function bugcatcher_openclaw_save_runtime_config(
     string $aiChatAssistantName = '',
     string $aiChatSystemPrompt = ''
 ): void {
-    bugcatcher_openclaw_runtime_config_ensure_schema($conn);
-    $existing = bugcatcher_openclaw_fetch_runtime_config($conn);
+    webtest_openclaw_runtime_config_ensure_schema($conn);
+    $existing = webtest_openclaw_fetch_runtime_config($conn);
 
     if ($existing) {
         $stmt = $conn->prepare("
@@ -322,7 +322,7 @@ function bugcatcher_openclaw_save_runtime_config(
         $stmt->bind_param('iiisii', $enabled, $defaultProviderId, $defaultModelId, $notes, $actorUserId, $runtimeId);
         $stmt->execute();
         $stmt->close();
-        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_saved');
+        webtest_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_saved');
         return;
     }
 
@@ -343,10 +343,10 @@ function bugcatcher_openclaw_save_runtime_config(
     $stmt->bind_param('iiisii', $enabled, $defaultProviderId, $defaultModelId, $notes, $actorUserId, $actorUserId);
     $stmt->execute();
     $stmt->close();
-    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_created');
+    webtest_openclaw_mark_config_changed($conn, $actorUserId, 'runtime_config_created');
 }
 
-function bugcatcher_openclaw_fetch_providers(mysqli $conn): array
+function webtest_openclaw_fetch_providers(mysqli $conn): array
 {
     $result = $conn->query("
         SELECT apc.*,
@@ -360,7 +360,7 @@ function bugcatcher_openclaw_fetch_providers(mysqli $conn): array
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function bugcatcher_openclaw_save_provider(
+function webtest_openclaw_save_provider(
     mysqli $conn,
     int $actorUserId,
     int $providerId,
@@ -372,7 +372,7 @@ function bugcatcher_openclaw_save_provider(
     bool $isEnabled,
     bool $supportsModelSync
 ): void {
-    bugcatcher_openclaw_validate_provider_input($conn, $providerId, $providerKey, $displayName, $providerType, $baseUrl);
+    webtest_openclaw_validate_provider_input($conn, $providerId, $providerKey, $displayName, $providerType, $baseUrl);
 
     $existing = null;
     if ($providerId > 0) {
@@ -385,7 +385,7 @@ function bugcatcher_openclaw_save_provider(
 
     $encryptedKey = $existing['encrypted_api_key'] ?? null;
     if ($apiKey !== '') {
-        $encryptedKey = bugcatcher_openclaw_encrypt_secret($apiKey);
+        $encryptedKey = webtest_openclaw_encrypt_secret($apiKey);
     }
 
     if ($existing) {
@@ -407,7 +407,7 @@ function bugcatcher_openclaw_save_provider(
         $stmt->bind_param('sssssiiii', $providerKey, $displayName, $providerType, $baseUrl, $encryptedKey, $enabled, $sync, $actorUserId, $providerId);
         $stmt->execute();
         $stmt->close();
-        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_saved');
+        webtest_openclaw_mark_config_changed($conn, $actorUserId, 'provider_saved');
         return;
     }
 
@@ -421,19 +421,19 @@ function bugcatcher_openclaw_save_provider(
     $stmt->bind_param('sssssiiii', $providerKey, $displayName, $providerType, $baseUrl, $encryptedKey, $enabled, $sync, $actorUserId, $actorUserId);
     $stmt->execute();
     $stmt->close();
-    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_created');
+    webtest_openclaw_mark_config_changed($conn, $actorUserId, 'provider_created');
 }
 
-function bugcatcher_openclaw_delete_provider(mysqli $conn, int $providerId, ?int $actorUserId = null): void
+function webtest_openclaw_delete_provider(mysqli $conn, int $providerId, ?int $actorUserId = null): void
 {
     $stmt = $conn->prepare("DELETE FROM ai_provider_configs WHERE id = ?");
     $stmt->bind_param('i', $providerId);
     $stmt->execute();
     $stmt->close();
-    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'provider_deleted');
+    webtest_openclaw_mark_config_changed($conn, $actorUserId, 'provider_deleted');
 }
 
-function bugcatcher_openclaw_fetch_models(mysqli $conn): array
+function webtest_openclaw_fetch_models(mysqli $conn): array
 {
     $result = $conn->query("
         SELECT am.*, apc.display_name AS provider_name
@@ -444,7 +444,7 @@ function bugcatcher_openclaw_fetch_models(mysqli $conn): array
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 }
 
-function bugcatcher_openclaw_save_model(
+function webtest_openclaw_save_model(
     mysqli $conn,
     int $providerConfigId,
     int $modelId,
@@ -489,7 +489,7 @@ function bugcatcher_openclaw_save_model(
         $stmt->bind_param('ssiiiii', $remoteModelId, $displayName, $vision, $json, $enabled, $default, $modelId);
         $stmt->execute();
         $stmt->close();
-        bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_saved');
+        webtest_openclaw_mark_config_changed($conn, $actorUserId, 'model_saved');
         return;
     }
 
@@ -505,19 +505,19 @@ function bugcatcher_openclaw_save_model(
     $stmt->bind_param('issiiii', $providerConfigId, $remoteModelId, $displayName, $vision, $json, $enabled, $default);
     $stmt->execute();
     $stmt->close();
-    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_created');
+    webtest_openclaw_mark_config_changed($conn, $actorUserId, 'model_created');
 }
 
-function bugcatcher_openclaw_delete_model(mysqli $conn, int $modelId, ?int $actorUserId = null): void
+function webtest_openclaw_delete_model(mysqli $conn, int $modelId, ?int $actorUserId = null): void
 {
     $stmt = $conn->prepare("DELETE FROM ai_models WHERE id = ?");
     $stmt->bind_param('i', $modelId);
     $stmt->execute();
     $stmt->close();
-    bugcatcher_openclaw_mark_config_changed($conn, $actorUserId, 'model_deleted');
+    webtest_openclaw_mark_config_changed($conn, $actorUserId, 'model_deleted');
 }
 
-function bugcatcher_openclaw_runtime_config_ensure_schema(mysqli $conn): void
+function webtest_openclaw_runtime_config_ensure_schema(mysqli $conn): void
 {
     static $done = false;
     if ($done) {
@@ -527,7 +527,7 @@ function bugcatcher_openclaw_runtime_config_ensure_schema(mysqli $conn): void
     $done = true;
 }
 
-function bugcatcher_openclaw_find_provider_by_key(mysqli $conn, string $providerKey): ?array
+function webtest_openclaw_find_provider_by_key(mysqli $conn, string $providerKey): ?array
 {
     $stmt = $conn->prepare("SELECT * FROM ai_provider_configs WHERE provider_key = ? LIMIT 1");
     $stmt->bind_param('s', $providerKey);
@@ -537,7 +537,7 @@ function bugcatcher_openclaw_find_provider_by_key(mysqli $conn, string $provider
     return $row ?: null;
 }
 
-function bugcatcher_openclaw_find_model_by_provider_and_remote_id(mysqli $conn, int $providerId, string $remoteModelId): ?array
+function webtest_openclaw_find_model_by_provider_and_remote_id(mysqli $conn, int $providerId, string $remoteModelId): ?array
 {
     $stmt = $conn->prepare("SELECT * FROM ai_models WHERE provider_config_id = ? AND model_id = ? LIMIT 1");
     $stmt->bind_param('is', $providerId, $remoteModelId);
@@ -547,7 +547,7 @@ function bugcatcher_openclaw_find_model_by_provider_and_remote_id(mysqli $conn, 
     return $row ?: null;
 }
 
-function bugcatcher_openclaw_fetch_batch_attachments(mysqli $conn, int $batchId): array
+function webtest_openclaw_fetch_batch_attachments(mysqli $conn, int $batchId): array
 {
     $stmt = $conn->prepare("
         SELECT cba.*, u.username AS uploaded_by_name
@@ -563,7 +563,7 @@ function bugcatcher_openclaw_fetch_batch_attachments(mysqli $conn, int $batchId)
     return $rows ?: [];
 }
 
-function bugcatcher_openclaw_store_batch_attachment(
+function webtest_openclaw_store_batch_attachment(
     mysqli $conn,
     int $batchId,
     string $tmpPath,
@@ -572,8 +572,8 @@ function bugcatcher_openclaw_store_batch_attachment(
     ?int $uploadedBy,
     string $sourceType = 'bot'
 ): bool {
-    bugcatcher_file_storage_ensure_schema($conn);
-    $allowed = bugcatcher_checklist_allowed_mime_map();
+    webtest_file_storage_ensure_schema($conn);
+    $allowed = webtest_checklist_allowed_mime_map();
     if ($size <= 0 || !is_file($tmpPath)) {
         return false;
     }
@@ -594,7 +594,7 @@ function bugcatcher_openclaw_store_batch_attachment(
 
     $safeOrig = preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
     try {
-        $stored = bugcatcher_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'openclaw-batch');
+        $stored = webtest_file_storage_upload_file($tmpPath, $safeOrig, $mime, $size, 'openclaw-batch');
     } catch (Throwable $e) {
         return false;
     }
@@ -617,7 +617,7 @@ function bugcatcher_openclaw_store_batch_attachment(
     return true;
 }
 
-function bugcatcher_openclaw_parse_source_reference(?string $value): array
+function webtest_openclaw_parse_source_reference(?string $value): array
 {
     if (!is_string($value) || trim($value) === '') {
         return [];
@@ -631,7 +631,7 @@ function bugcatcher_openclaw_parse_source_reference(?string $value): array
     return ['raw' => $value];
 }
 
-function bugcatcher_openclaw_normalize_duplicate_key(string $moduleName, string $submoduleName, string $title): string
+function webtest_openclaw_normalize_duplicate_key(string $moduleName, string $submoduleName, string $title): string
 {
     $parts = [
         strtolower(trim($moduleName)),
@@ -646,7 +646,7 @@ function bugcatcher_openclaw_normalize_duplicate_key(string $moduleName, string 
     return implode('|', $parts);
 }
 
-function bugcatcher_openclaw_find_duplicates(mysqli $conn, int $projectId, array $candidateItems): array
+function webtest_openclaw_find_duplicates(mysqli $conn, int $projectId, array $candidateItems): array
 {
     $stmt = $conn->prepare("
         SELECT id, title, module_name, submodule_name, full_title, description
@@ -661,7 +661,7 @@ function bugcatcher_openclaw_find_duplicates(mysqli $conn, int $projectId, array
 
     $indexed = [];
     foreach ($existingRows as $row) {
-        $key = bugcatcher_openclaw_normalize_duplicate_key(
+        $key = webtest_openclaw_normalize_duplicate_key(
             (string) ($row['module_name'] ?? ''),
             (string) ($row['submodule_name'] ?? ''),
             (string) ($row['title'] ?? '')
@@ -675,7 +675,7 @@ function bugcatcher_openclaw_find_duplicates(mysqli $conn, int $projectId, array
         $submoduleName = trim((string) ($item['submodule_name'] ?? ''));
         $title = trim((string) ($item['title'] ?? ''));
         $description = trim((string) ($item['description'] ?? ''));
-        $key = bugcatcher_openclaw_normalize_duplicate_key($moduleName, $submoduleName, $title);
+        $key = webtest_openclaw_normalize_duplicate_key($moduleName, $submoduleName, $title);
         $matches = $indexed[$key] ?? [];
         $status = 'unique';
 
@@ -716,7 +716,7 @@ function bugcatcher_openclaw_find_duplicates(mysqli $conn, int $projectId, array
     return $results;
 }
 
-function bugcatcher_openclaw_create_batch_from_payload(mysqli $conn, array $payload): array
+function webtest_openclaw_create_batch_from_payload(mysqli $conn, array $payload): array
 {
     $orgId = ctype_digit((string) ($payload['org_id'] ?? '')) ? (int) $payload['org_id'] : 0;
     $projectId = ctype_digit((string) ($payload['project_id'] ?? '')) ? (int) $payload['project_id'] : 0;
@@ -736,11 +736,11 @@ function bugcatcher_openclaw_create_batch_from_payload(mysqli $conn, array $payl
         throw new RuntimeException('At least one image attachment is required.');
     }
 
-    $project = bugcatcher_checklist_fetch_project($conn, $orgId, $projectId);
+    $project = webtest_checklist_fetch_project($conn, $orgId, $projectId);
     if (!$project) {
         throw new RuntimeException('Project not found in the provided organization.');
     }
-    if (bugcatcher_checklist_fetch_member_role($conn, $orgId, $requestedByUserId) === null) {
+    if (webtest_checklist_fetch_member_role($conn, $orgId, $requestedByUserId) === null) {
         throw new RuntimeException('Requested user is not a member of the selected organization.');
     }
 
@@ -757,7 +757,7 @@ function bugcatcher_openclaw_create_batch_from_payload(mysqli $conn, array $payl
     if ($title === '' || $moduleName === '') {
         throw new RuntimeException('Batch title and module_name are required.');
     }
-    if ($assignedQaLeadId > 0 && !bugcatcher_checklist_member_has_role($conn, $orgId, $assignedQaLeadId, ['QA Lead'])) {
+    if ($assignedQaLeadId > 0 && !webtest_checklist_member_has_role($conn, $orgId, $assignedQaLeadId, ['QA Lead'])) {
         throw new RuntimeException('assigned_qa_lead_id must belong to a QA Lead in this organization.');
     }
 
@@ -803,18 +803,18 @@ function bugcatcher_openclaw_create_batch_from_payload(mysqli $conn, array $payl
             $itemModuleName = trim((string) ($itemPayload['module_name'] ?? $moduleName));
             $itemSubmodule = trim((string) ($itemPayload['submodule_name'] ?? $submoduleName));
             $description = trim((string) ($itemPayload['description'] ?? ''));
-            $requiredRole = bugcatcher_checklist_normalize_enum((string) ($itemPayload['required_role'] ?? 'QA Tester'), BUGCATCHER_CHECKLIST_ALLOWED_REQUIRED_ROLES, 'QA Tester');
-            $priority = bugcatcher_checklist_normalize_enum((string) ($itemPayload['priority'] ?? 'medium'), BUGCATCHER_CHECKLIST_PRIORITIES, 'medium');
+            $requiredRole = webtest_checklist_normalize_enum((string) ($itemPayload['required_role'] ?? 'QA Tester'), WEBTEST_CHECKLIST_ALLOWED_REQUIRED_ROLES, 'QA Tester');
+            $priority = webtest_checklist_normalize_enum((string) ($itemPayload['priority'] ?? 'medium'), WEBTEST_CHECKLIST_PRIORITIES, 'medium');
             $assignedToUserId = ctype_digit((string) ($itemPayload['assigned_to_user_id'] ?? '')) ? (int) $itemPayload['assigned_to_user_id'] : 0;
 
             if ($itemTitle === '' || $itemModuleName === '') {
                 throw new RuntimeException('Each item requires title and module_name.');
             }
-            if ($assignedToUserId > 0 && bugcatcher_checklist_fetch_member_role($conn, $orgId, $assignedToUserId) === null) {
+            if ($assignedToUserId > 0 && webtest_checklist_fetch_member_role($conn, $orgId, $assignedToUserId) === null) {
                 throw new RuntimeException("assigned_to_user_id {$assignedToUserId} is not a member of org {$orgId}.");
             }
 
-            $fullTitle = bugcatcher_checklist_full_title($itemModuleName, $itemSubmodule, $itemTitle);
+            $fullTitle = webtest_checklist_full_title($itemModuleName, $itemSubmodule, $itemTitle);
             $stmt = $conn->prepare("
                 INSERT INTO checklist_items
                     (batch_id, org_id, project_id, sequence_no, title, module_name, submodule_name, full_title, description,
@@ -853,12 +853,12 @@ function bugcatcher_openclaw_create_batch_from_payload(mysqli $conn, array $payl
             }
             $token = trim((string) ($attachment['temp_file_token'] ?? ''));
             $originalName = trim((string) ($attachment['original_name'] ?? 'attachment'));
-            $path = bugcatcher_openclaw_resolve_temp_file($token);
+            $path = webtest_openclaw_resolve_temp_file($token);
             if (!$path) {
                 throw new RuntimeException("Attachment token {$token} was not found on the server.");
             }
             $size = (int) filesize($path);
-            if (!bugcatcher_openclaw_store_batch_attachment($conn, $batchId, $path, $originalName, $size, $requestedByUserId, 'bot')) {
+            if (!webtest_openclaw_store_batch_attachment($conn, $batchId, $path, $originalName, $size, $requestedByUserId, 'bot')) {
                 throw new RuntimeException("Attachment {$originalName} could not be stored.");
             }
         }

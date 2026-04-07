@@ -5,54 +5,54 @@ require_once __DIR__ . '/notification_lib.php';
 require_once __DIR__ . '/ui/theme.php';
 require_once __DIR__ . '/ui/primitives.php';
 
-function bugcatcher_sidebar_definitions(): array
+function webtest_sidebar_definitions(): array
 {
     return [
         [
             'key' => 'dashboard',
             'label' => 'Dashboard',
-            'href' => bugcatcher_path('zen/dashboard.php?page=dashboard'),
+            'href' => webtest_path('zen/dashboard.php?page=dashboard'),
             'roles' => null,
         ],
         [
             'key' => 'issues',
             'label' => 'Issues',
-            'href' => bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all'),
+            'href' => webtest_path('zen/dashboard.php?page=issues&view=kanban&status=all'),
             'roles' => null,
         ],
         [
             'key' => 'organization',
             'label' => 'Organization',
-            'href' => bugcatcher_path('zen/organization.php'),
+            'href' => webtest_path('zen/organization.php'),
             'roles' => null,
         ],
         [
             'key' => 'projects',
             'label' => 'Projects',
-            'href' => bugcatcher_path('melvin/project_list.php'),
+            'href' => webtest_path('melvin/project_list.php'),
             'roles' => null,
         ],
         [
             'key' => 'checklist',
             'label' => 'Checklist',
-            'href' => bugcatcher_path('melvin/checklist_list.php'),
+            'href' => webtest_path('melvin/checklist_list.php'),
             'roles' => null,
         ],
         [
             'key' => 'super_admin',
             'label' => 'AI Admin',
-            'href' => bugcatcher_path('super-admin/ai.php'),
+            'href' => webtest_path('super-admin/ai.php'),
             'roles' => ['super_admin'],
         ],
     ];
 }
 
-function bugcatcher_sidebar_items(string $currentRole): array
+function webtest_sidebar_items(string $currentRole): array
 {
-    $normalizedRole = bugcatcher_normalize_system_role($currentRole);
+    $normalizedRole = webtest_normalize_system_role($currentRole);
 
     return array_values(array_filter(
-        bugcatcher_sidebar_definitions(),
+        webtest_sidebar_definitions(),
         static function (array $item) use ($normalizedRole): bool {
             $roles = $item['roles'] ?? null;
             return $roles === null || in_array($normalizedRole, $roles, true);
@@ -60,18 +60,18 @@ function bugcatcher_sidebar_items(string $currentRole): array
     ));
 }
 
-function bugcatcher_sidebar_href(string $activePage): string
+function webtest_sidebar_href(string $activePage): string
 {
-    foreach (bugcatcher_sidebar_definitions() as $item) {
+    foreach (webtest_sidebar_definitions() as $item) {
         if (($item['key'] ?? '') === $activePage) {
-            return (string) ($item['href'] ?? bugcatcher_path('zen/dashboard.php?page=dashboard'));
+            return (string) ($item['href'] ?? webtest_path('zen/dashboard.php?page=dashboard'));
         }
     }
 
-    return bugcatcher_path('zen/dashboard.php?page=dashboard');
+    return webtest_path('zen/dashboard.php?page=dashboard');
 }
 
-function bugcatcher_display_role_label(string $currentRole, ?string $orgRole = null): string
+function webtest_display_role_label(string $currentRole, ?string $orgRole = null): string
 {
     $orgRole = trim((string) $orgRole);
     if ($orgRole !== '') {
@@ -81,7 +81,7 @@ function bugcatcher_display_role_label(string $currentRole, ?string $orgRole = n
     return $currentRole;
 }
 
-function bugcatcher_user_initials(string $username): string
+function webtest_user_initials(string $username): string
 {
     $username = trim($username);
     if ($username === '') {
@@ -108,7 +108,7 @@ function bugcatcher_user_initials(string $username): string
     return strtoupper(substr($username, 0, 2));
 }
 
-function bugcatcher_json_attr(array $payload): string
+function webtest_json_attr(array $payload): string
 {
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if (!is_string($json) || $json === '') {
@@ -118,7 +118,7 @@ function bugcatcher_json_attr(array $payload): string
     return htmlspecialchars($json, ENT_QUOTES, 'UTF-8');
 }
 
-function bugcatcher_notification_header_bootstrap(): array
+function webtest_notification_header_bootstrap(): array
 {
     static $bootstrap = null;
     if ($bootstrap !== null) {
@@ -130,11 +130,11 @@ function bugcatcher_notification_header_bootstrap(): array
         'unread_count' => 0,
         'total_count' => 0,
         'limit' => 10,
-        'page_path' => bugcatcher_path('app/notifications.php'),
-        'notifications_endpoint' => bugcatcher_path('api/v1/notifications'),
-        'read_endpoint_template' => bugcatcher_path('api/v1/notifications/__ID__/read'),
-        'read_all_endpoint' => bugcatcher_path('api/v1/notifications/read-all'),
-        'socket_token_endpoint' => bugcatcher_path('api/v1/realtime/socket-token'),
+        'page_path' => webtest_path('app/notifications.php'),
+        'notifications_endpoint' => webtest_path('api/v1/notifications'),
+        'read_endpoint_template' => webtest_path('api/v1/notifications/__ID__/read'),
+        'read_all_endpoint' => webtest_path('api/v1/notifications/read-all'),
+        'socket_token_endpoint' => webtest_path('api/v1/realtime/socket-token'),
     ];
 
     $conn = $GLOBALS['conn'] ?? null;
@@ -143,7 +143,7 @@ function bugcatcher_notification_header_bootstrap(): array
         return $bootstrap;
     }
 
-    $data = bugcatcher_notifications_bootstrap($conn, $userId, 10, 'all');
+    $data = webtest_notifications_bootstrap($conn, $userId, 10, 'all');
     $bootstrap['items'] = $data['items'];
     $bootstrap['unread_count'] = (int) ($data['unread_count'] ?? 0);
     $bootstrap['total_count'] = (int) ($data['total_count'] ?? 0);
@@ -151,7 +151,7 @@ function bugcatcher_notification_header_bootstrap(): array
     return $bootstrap;
 }
 
-function bugcatcher_notification_count_label(int $count): string
+function webtest_notification_count_label(int $count): string
 {
     if ($count <= 0) {
         return '0';
@@ -164,7 +164,7 @@ function bugcatcher_notification_count_label(int $count): string
     return (string) $count;
 }
 
-function bugcatcher_notification_severity_label(string $severity): string
+function webtest_notification_severity_label(string $severity): string
 {
     if ($severity === 'alert') {
         return 'Priority';
@@ -177,7 +177,7 @@ function bugcatcher_notification_severity_label(string $severity): string
     return 'Info';
 }
 
-function bugcatcher_notification_time_label(string $createdAt): string
+function webtest_notification_time_label(string $createdAt): string
 {
     $timestamp = strtotime($createdAt);
     if ($timestamp === false) {
@@ -187,7 +187,7 @@ function bugcatcher_notification_time_label(string $createdAt): string
     return date('M j, Y g:i A', $timestamp);
 }
 
-function bugcatcher_render_notification_items(array $items): void
+function webtest_render_notification_items(array $items): void
 {
     if (!$items) {
         ?>
@@ -200,7 +200,7 @@ function bugcatcher_render_notification_items(array $items): void
 
     foreach ($items as $item):
         $notificationId = (int) ($item['id'] ?? 0);
-        $destination = trim((string) ($item['legacy_path'] ?? bugcatcher_notification_legacy_fallback_path()));
+        $destination = trim((string) ($item['legacy_path'] ?? webtest_notification_legacy_fallback_path()));
         $isUnread = empty($item['read_at']);
         $severity = (string) ($item['severity'] ?? 'default');
         ?>
@@ -219,10 +219,10 @@ function bugcatcher_render_notification_items(array $items): void
             </div>
             <div class="bc-notification-meta">
                 <span class="bc-notification-tag severity-<?= htmlspecialchars($severity) ?>">
-                    <?= htmlspecialchars(bugcatcher_notification_severity_label($severity)) ?>
+                    <?= htmlspecialchars(webtest_notification_severity_label($severity)) ?>
                 </span>
                 <span class="bc-notification-time" data-notification-created-at="<?= htmlspecialchars((string) ($item['created_at'] ?? '')) ?>">
-                    <?= htmlspecialchars(bugcatcher_notification_time_label((string) ($item['created_at'] ?? ''))) ?>
+                    <?= htmlspecialchars(webtest_notification_time_label((string) ($item['created_at'] ?? ''))) ?>
                 </span>
             </div>
         </a>
@@ -230,7 +230,7 @@ function bugcatcher_render_notification_items(array $items): void
     endforeach;
 }
 
-function bugcatcher_render_page_header(
+function webtest_render_page_header(
     string $title,
     string $currentUsername,
     string $currentRole,
@@ -240,13 +240,13 @@ function bugcatcher_render_page_header(
 ): void {
     static $menuCounter = 0;
     $menuCounter++;
-    $displayRole = bugcatcher_display_role_label($currentRole, $orgRole);
-    $avatarInitials = bugcatcher_user_initials($currentUsername);
+    $displayRole = webtest_display_role_label($currentRole, $orgRole);
+    $avatarInitials = webtest_user_initials($currentUsername);
     $menuId = 'bc-user-menu-' . $menuCounter;
     $notificationsId = 'bc-notifications-menu-' . $menuCounter;
     $subtitle = trim((string) $subtitle);
     $actions = $actions ?? [];
-    $notificationBootstrap = bugcatcher_notification_header_bootstrap();
+    $notificationBootstrap = webtest_notification_header_bootstrap();
     $unreadCount = (int) ($notificationBootstrap['unread_count'] ?? 0);
     ?>
     <header class="bc-page-header">
@@ -263,16 +263,16 @@ function bugcatcher_render_page_header(
                     <span data-session-username><?= htmlspecialchars($currentUsername) ?></span>
                     (<span data-session-role><?= htmlspecialchars($displayRole) ?></span>)
                 </span>
-                <?php bugcatcher_render_theme_toggle(); ?>
+                <?php webtest_render_theme_toggle(); ?>
                 <div
                     class="bc-notifications-menu"
                     data-notifications-root
-                    data-notifications-page-url="<?= htmlspecialchars((string) ($notificationBootstrap['page_path'] ?? bugcatcher_path('app/notifications.php'))) ?>"
-                    data-notifications-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['notifications_endpoint'] ?? bugcatcher_path('api/v1/notifications'))) ?>"
-                    data-notification-read-template="<?= htmlspecialchars((string) ($notificationBootstrap['read_endpoint_template'] ?? bugcatcher_path('api/v1/notifications/__ID__/read'))) ?>"
-                    data-notification-read-all-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['read_all_endpoint'] ?? bugcatcher_path('api/v1/notifications/read-all'))) ?>"
-                    data-notification-socket-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['socket_token_endpoint'] ?? bugcatcher_path('api/v1/realtime/socket-token'))) ?>"
-                    data-notifications-initial="<?= bugcatcher_json_attr($notificationBootstrap) ?>"
+                    data-notifications-page-url="<?= htmlspecialchars((string) ($notificationBootstrap['page_path'] ?? webtest_path('app/notifications.php'))) ?>"
+                    data-notifications-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['notifications_endpoint'] ?? webtest_path('api/v1/notifications'))) ?>"
+                    data-notification-read-template="<?= htmlspecialchars((string) ($notificationBootstrap['read_endpoint_template'] ?? webtest_path('api/v1/notifications/__ID__/read'))) ?>"
+                    data-notification-read-all-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['read_all_endpoint'] ?? webtest_path('api/v1/notifications/read-all'))) ?>"
+                    data-notification-socket-endpoint="<?= htmlspecialchars((string) ($notificationBootstrap['socket_token_endpoint'] ?? webtest_path('api/v1/realtime/socket-token'))) ?>"
+                    data-notifications-initial="<?= webtest_json_attr($notificationBootstrap) ?>"
                 >
                     <button
                         type="button"
@@ -285,7 +285,7 @@ function bugcatcher_render_page_header(
                     >
                         <span class="bc-notifications-trigger-label">Notifications</span>
                         <span class="bc-notifications-badge<?= $unreadCount > 0 ? '' : ' is-empty' ?>" data-notification-count>
-                            <?= htmlspecialchars(bugcatcher_notification_count_label($unreadCount)) ?>
+                            <?= htmlspecialchars(webtest_notification_count_label($unreadCount)) ?>
                         </span>
                     </button>
                     <div
@@ -305,10 +305,10 @@ function bugcatcher_render_page_header(
                             </button>
                         </div>
                         <div class="bc-notifications-list" data-notification-list>
-                            <?php bugcatcher_render_notification_items((array) ($notificationBootstrap['items'] ?? [])); ?>
+                            <?php webtest_render_notification_items((array) ($notificationBootstrap['items'] ?? [])); ?>
                         </div>
                         <div class="bc-notifications-panel-foot">
-                            <a href="<?= htmlspecialchars((string) ($notificationBootstrap['page_path'] ?? bugcatcher_path('app/notifications.php'))) ?>" class="bc-notifications-link" data-notification-show-more>
+                            <a href="<?= htmlspecialchars((string) ($notificationBootstrap['page_path'] ?? webtest_path('app/notifications.php'))) ?>" class="bc-notifications-link" data-notification-show-more>
                                 Show more
                             </a>
                         </div>
@@ -333,10 +333,10 @@ function bugcatcher_render_page_header(
                         role="menu"
                         hidden
                     >
-                        <a href="<?= htmlspecialchars(bugcatcher_path('app/profile.php')) ?>" class="bc-user-menu-item" role="menuitem">
+                        <a href="<?= htmlspecialchars(webtest_path('app/profile.php')) ?>" class="bc-user-menu-item" role="menuitem">
                             Profile
                         </a>
-                        <a href="<?= htmlspecialchars(bugcatcher_path('rainier/logout.php')) ?>" class="bc-user-menu-item danger" role="menuitem">
+                        <a href="<?= htmlspecialchars(webtest_path('rainier/logout.php')) ?>" class="bc-user-menu-item danger" role="menuitem">
                             Logout
                         </a>
                     </div>
@@ -346,7 +346,7 @@ function bugcatcher_render_page_header(
         <?php if (!empty($actions)): ?>
             <div class="bc-subheader">
                 <div class="bc-subheader-actions">
-                    <?php bugcatcher_render_header_actions($actions); ?>
+                    <?php webtest_render_header_actions($actions); ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -354,7 +354,7 @@ function bugcatcher_render_page_header(
     <?php
 }
 
-function bugcatcher_render_sidebar(
+function webtest_render_sidebar(
     string $activePage,
     string $currentUsername,
     string $currentRole,
@@ -362,7 +362,7 @@ function bugcatcher_render_sidebar(
     ?string $orgName = null
 ): void {
     $sidebarId = 'bc-sidebar';
-    $nav = bugcatcher_sidebar_items($currentRole);
+    $nav = webtest_sidebar_items($currentRole);
     ?>
     <button
         type="button"

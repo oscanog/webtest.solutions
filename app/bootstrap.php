@@ -2,12 +2,12 @@
 
 require_once __DIR__ . '/issues_workflow.php';
 
-const BUGCATCHER_SHARED_CONFIG_PATH = '/var/www/bugcatcher/shared/config.php';
-const BUGCATCHER_INFRA_LOCAL_CONFIG_PATH = __DIR__ . '/../infra/config/local.php';
-const BUGCATCHER_LEGACY_LOCAL_CONFIG_PATH = __DIR__ . '/../config/local.php';
-const BUGCATCHER_KNOWN_USER_COOKIE = 'bugcatcher_known_user';
+const WEBTEST_SHARED_CONFIG_PATH = '/var/www/webtest/shared/config.php';
+const WEBTEST_INFRA_LOCAL_CONFIG_PATH = __DIR__ . '/../infra/config/local.php';
+const WEBTEST_LEGACY_LOCAL_CONFIG_PATH = __DIR__ . '/../config/local.php';
+const WEBTEST_KNOWN_USER_COOKIE = 'webtest_known_user';
 
-function bugcatcher_default_config(): array
+function webtest_default_config(): array
 {
     return [
         'APP_ENV' => 'development',
@@ -15,7 +15,7 @@ function bugcatcher_default_config(): array
         'APP_BASE_URL' => 'http://localhost',
         'DB_HOST' => '127.0.0.1',
         'DB_PORT' => 3306,
-        'DB_NAME' => 'bug_catcher',
+        'DB_NAME' => 'web_test',
         'DB_USER' => 'root',
         'DB_PASS' => '',
         'UPLOADS_DIR' => dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'issues',
@@ -31,7 +31,7 @@ function bugcatcher_default_config(): array
         'CLOUDINARY_CLOUD_NAME' => '',
         'CLOUDINARY_API_KEY' => '',
         'CLOUDINARY_API_SECRET' => '',
-        'CLOUDINARY_BASE_FOLDER' => 'bugcatcher',
+        'CLOUDINARY_BASE_FOLDER' => 'webtest',
         'AI_CHAT_DEMO_PROVIDER_KEY' => 'deepseek',
         'AI_CHAT_DEMO_PROVIDER_NAME' => 'DeepSeek',
         'AI_CHAT_DEMO_PROVIDER_TYPE' => 'openai-compatible',
@@ -65,22 +65,22 @@ function bugcatcher_default_config(): array
     ];
 }
 
-function bugcatcher_candidate_config_paths(): array
+function webtest_candidate_config_paths(): array
 {
     $paths = [];
-    $envPath = getenv('BUGCATCHER_CONFIG_PATH');
+    $envPath = getenv('WEBTEST_CONFIG_PATH');
     if (is_string($envPath) && $envPath !== '') {
         $paths[] = $envPath;
     }
 
-    $paths[] = BUGCATCHER_SHARED_CONFIG_PATH;
-    $paths[] = BUGCATCHER_LEGACY_LOCAL_CONFIG_PATH;
-    $paths[] = BUGCATCHER_INFRA_LOCAL_CONFIG_PATH;
+    $paths[] = WEBTEST_SHARED_CONFIG_PATH;
+    $paths[] = WEBTEST_LEGACY_LOCAL_CONFIG_PATH;
+    $paths[] = WEBTEST_INFRA_LOCAL_CONFIG_PATH;
 
     return array_values(array_unique($paths));
 }
 
-function bugcatcher_load_config(): array
+function webtest_load_config(): array
 {
     static $config = null;
 
@@ -88,9 +88,9 @@ function bugcatcher_load_config(): array
         return $config;
     }
 
-    $config = bugcatcher_default_config();
+    $config = webtest_default_config();
 
-    foreach (bugcatcher_candidate_config_paths() as $path) {
+    foreach (webtest_candidate_config_paths() as $path) {
         if (!is_file($path)) {
             continue;
         }
@@ -129,9 +129,9 @@ function bugcatcher_load_config(): array
     $config['CLOUDINARY_CLOUD_NAME'] = trim((string) ($config['CLOUDINARY_CLOUD_NAME'] ?? ''));
     $config['CLOUDINARY_API_KEY'] = trim((string) ($config['CLOUDINARY_API_KEY'] ?? ''));
     $config['CLOUDINARY_API_SECRET'] = trim((string) ($config['CLOUDINARY_API_SECRET'] ?? ''));
-    $config['CLOUDINARY_BASE_FOLDER'] = trim(str_replace('\\', '/', (string) ($config['CLOUDINARY_BASE_FOLDER'] ?? 'bugcatcher')), '/');
+    $config['CLOUDINARY_BASE_FOLDER'] = trim(str_replace('\\', '/', (string) ($config['CLOUDINARY_BASE_FOLDER'] ?? 'webtest')), '/');
     if ($config['CLOUDINARY_BASE_FOLDER'] === '') {
-        $config['CLOUDINARY_BASE_FOLDER'] = 'bugcatcher';
+        $config['CLOUDINARY_BASE_FOLDER'] = 'webtest';
     }
     $config['AI_CHAT_DEMO_PROVIDER_KEY'] = trim((string) ($config['AI_CHAT_DEMO_PROVIDER_KEY'] ?? 'deepseek'));
     $config['AI_CHAT_DEMO_PROVIDER_NAME'] = trim((string) ($config['AI_CHAT_DEMO_PROVIDER_NAME'] ?? 'DeepSeek'));
@@ -194,9 +194,9 @@ function bugcatcher_load_config(): array
     return $config;
 }
 
-function bugcatcher_config(?string $key = null, $default = null)
+function webtest_config(?string $key = null, $default = null)
 {
-    $config = bugcatcher_load_config();
+    $config = webtest_load_config();
     if ($key === null) {
         return $config;
     }
@@ -204,33 +204,33 @@ function bugcatcher_config(?string $key = null, $default = null)
     return $config[$key] ?? $default;
 }
 
-function bugcatcher_timezone_name(): string
+function webtest_timezone_name(): string
 {
-    return (string) bugcatcher_config('APP_TIMEZONE', 'Asia/Singapore');
+    return (string) webtest_config('APP_TIMEZONE', 'Asia/Singapore');
 }
 
-function bugcatcher_timezone(): DateTimeZone
+function webtest_timezone(): DateTimeZone
 {
     static $timezone = null;
 
     if (!$timezone instanceof DateTimeZone) {
-        $timezone = new DateTimeZone(bugcatcher_timezone_name());
+        $timezone = new DateTimeZone(webtest_timezone_name());
     }
 
     return $timezone;
 }
 
-function bugcatcher_timezone_offset_string(?int $timestamp = null): string
+function webtest_timezone_offset_string(?int $timestamp = null): string
 {
     $unixTimestamp = $timestamp ?? time();
     $date = new DateTimeImmutable('@' . $unixTimestamp);
-    return $date->setTimezone(bugcatcher_timezone())->format('P');
+    return $date->setTimezone(webtest_timezone())->format('P');
 }
 
-function bugcatcher_parse_datetime_value($value): ?DateTimeImmutable
+function webtest_parse_datetime_value($value): ?DateTimeImmutable
 {
     if ($value instanceof DateTimeInterface) {
-        return DateTimeImmutable::createFromInterface($value)->setTimezone(bugcatcher_timezone());
+        return DateTimeImmutable::createFromInterface($value)->setTimezone(webtest_timezone());
     }
 
     if ($value === null) {
@@ -242,7 +242,7 @@ function bugcatcher_parse_datetime_value($value): ?DateTimeImmutable
         return null;
     }
 
-    $timezone = bugcatcher_timezone();
+    $timezone = webtest_timezone();
     if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $text)) {
         $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $text, $timezone);
         if ($date instanceof DateTimeImmutable) {
@@ -264,22 +264,22 @@ function bugcatcher_parse_datetime_value($value): ?DateTimeImmutable
     }
 }
 
-function bugcatcher_datetime_iso8601($value): ?string
+function webtest_datetime_iso8601($value): ?string
 {
-    $date = bugcatcher_parse_datetime_value($value);
+    $date = webtest_parse_datetime_value($value);
     if (!$date instanceof DateTimeImmutable) {
         return null;
     }
 
-    return $date->setTimezone(bugcatcher_timezone())->format(DateTimeInterface::ATOM);
+    return $date->setTimezone(webtest_timezone())->format(DateTimeInterface::ATOM);
 }
 
-function bugcatcher_augment_datetime_iso_fields(array $value): array
+function webtest_augment_datetime_iso_fields(array $value): array
 {
     $result = [];
 
     foreach ($value as $key => $item) {
-        $normalizedItem = is_array($item) ? bugcatcher_augment_datetime_iso_fields($item) : $item;
+        $normalizedItem = is_array($item) ? webtest_augment_datetime_iso_fields($item) : $item;
         $result[$key] = $normalizedItem;
 
         if (!is_string($key) || !str_ends_with($key, '_at') || str_ends_with($key, '_at_iso')) {
@@ -289,25 +289,25 @@ function bugcatcher_augment_datetime_iso_fields(array $value): array
         $isoKey = $key . '_iso';
         if (array_key_exists($isoKey, $value)) {
             $result[$isoKey] = is_array($value[$isoKey])
-                ? bugcatcher_augment_datetime_iso_fields($value[$isoKey])
+                ? webtest_augment_datetime_iso_fields($value[$isoKey])
                 : $value[$isoKey];
             continue;
         }
 
-        $result[$isoKey] = bugcatcher_datetime_iso8601($item);
+        $result[$isoKey] = webtest_datetime_iso8601($item);
     }
 
     return $result;
 }
 
-function bugcatcher_base_url(): string
+function webtest_base_url(): string
 {
-    return rtrim((string) bugcatcher_config('APP_BASE_URL', ''), '/');
+    return rtrim((string) webtest_config('APP_BASE_URL', ''), '/');
 }
 
-function bugcatcher_base_path(): string
+function webtest_base_path(): string
 {
-    $path = parse_url(bugcatcher_base_url(), PHP_URL_PATH);
+    $path = parse_url(webtest_base_url(), PHP_URL_PATH);
     if (!is_string($path)) {
         return '';
     }
@@ -316,9 +316,9 @@ function bugcatcher_base_path(): string
     return ($path === '') ? '' : '/' . $path;
 }
 
-function bugcatcher_path(string $path = ''): string
+function webtest_path(string $path = ''): string
 {
-    $basePath = bugcatcher_base_path();
+    $basePath = webtest_base_path();
     $normalized = ltrim($path, '/');
 
     if ($normalized === '') {
@@ -328,10 +328,10 @@ function bugcatcher_path(string $path = ''): string
     return ($basePath !== '' ? $basePath : '') . '/' . $normalized;
 }
 
-function bugcatcher_href(string $href): string
+function webtest_href(string $href): string
 {
     if ($href === '') {
-        return bugcatcher_path();
+        return webtest_path();
     }
 
     if (preg_match('#^(?:[a-z][a-z0-9+.-]*:)?//#i', $href)) {
@@ -343,17 +343,17 @@ function bugcatcher_href(string $href): string
     }
 
     if (str_starts_with($href, '/')) {
-        return bugcatcher_path(ltrim($href, '/'));
+        return webtest_path(ltrim($href, '/'));
     }
 
     return $href;
 }
 
-function bugcatcher_asset_path(string $path): string
+function webtest_asset_path(string $path): string
 {
     $parts = parse_url($path);
     if ($parts === false) {
-        return bugcatcher_path($path);
+        return webtest_path($path);
     }
 
     $assetPath = ltrim((string) ($parts['path'] ?? $path), '/');
@@ -367,7 +367,7 @@ function bugcatcher_asset_path(string $path): string
         $query['v'] = (string) filemtime($absolutePath);
     }
 
-    $href = bugcatcher_path($assetPath);
+    $href = webtest_path($assetPath);
     if ($query) {
         $href .= '?' . http_build_query($query);
     }
@@ -379,7 +379,7 @@ function bugcatcher_asset_path(string $path): string
     return $href;
 }
 
-function bugcatcher_is_https(): bool
+function webtest_is_https(): bool
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
         return true;
@@ -389,61 +389,61 @@ function bugcatcher_is_https(): bool
         return true;
     }
 
-    $baseUrl = bugcatcher_base_url();
+    $baseUrl = webtest_base_url();
     return stripos($baseUrl, 'https://') === 0;
 }
 
-function bugcatcher_cookie_options(int $expires = 0): array
+function webtest_cookie_options(int $expires = 0): array
 {
     return [
         'expires' => $expires,
         'path' => '/',
         'domain' => '',
-        'secure' => bugcatcher_is_https(),
+        'secure' => webtest_is_https(),
         'httponly' => true,
         'samesite' => 'Lax',
     ];
 }
 
-function bugcatcher_mark_known_user_browser(): void
+function webtest_mark_known_user_browser(): void
 {
-    setcookie(BUGCATCHER_KNOWN_USER_COOKIE, '1', bugcatcher_cookie_options(time() + (60 * 60 * 24 * 30)));
-    $_COOKIE[BUGCATCHER_KNOWN_USER_COOKIE] = '1';
+    setcookie(WEBTEST_KNOWN_USER_COOKIE, '1', webtest_cookie_options(time() + (60 * 60 * 24 * 30)));
+    $_COOKIE[WEBTEST_KNOWN_USER_COOKIE] = '1';
 }
 
-function bugcatcher_clear_known_user_browser(): void
+function webtest_clear_known_user_browser(): void
 {
-    setcookie(BUGCATCHER_KNOWN_USER_COOKIE, '', bugcatcher_cookie_options(time() - 3600));
-    unset($_COOKIE[BUGCATCHER_KNOWN_USER_COOKIE]);
+    setcookie(WEBTEST_KNOWN_USER_COOKIE, '', webtest_cookie_options(time() - 3600));
+    unset($_COOKIE[WEBTEST_KNOWN_USER_COOKIE]);
 }
 
-function bugcatcher_is_known_user_browser(): bool
+function webtest_is_known_user_browser(): bool
 {
-    return ($_COOKIE[BUGCATCHER_KNOWN_USER_COOKIE] ?? '') === '1';
+    return ($_COOKIE[WEBTEST_KNOWN_USER_COOKIE] ?? '') === '1';
 }
 
-function bugcatcher_normalize_system_role(?string $role): string
+function webtest_normalize_system_role(?string $role): string
 {
     return in_array($role, ['super_admin', 'admin', 'user'], true) ? (string) $role : 'user';
 }
 
-function bugcatcher_is_super_admin_role(?string $role): bool
+function webtest_is_super_admin_role(?string $role): bool
 {
-    return bugcatcher_normalize_system_role($role) === 'super_admin';
+    return webtest_normalize_system_role($role) === 'super_admin';
 }
 
-function bugcatcher_is_system_admin_role(?string $role): bool
+function webtest_is_system_admin_role(?string $role): bool
 {
-    return in_array(bugcatcher_normalize_system_role($role), ['super_admin', 'admin'], true);
+    return in_array(webtest_normalize_system_role($role), ['super_admin', 'admin'], true);
 }
 
-function bugcatcher_start_session(): void
+function webtest_start_session(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
 
-    $cookieParams = bugcatcher_cookie_options();
+    $cookieParams = webtest_cookie_options();
     $cookieParams['lifetime'] = 0;
     unset($cookieParams['expires']);
     session_set_cookie_params($cookieParams);
@@ -451,18 +451,18 @@ function bugcatcher_start_session(): void
     session_start();
 }
 
-function bugcatcher_db_connection(): mysqli
+function webtest_db_connection(): mysqli
 {
     $conn = new mysqli(
-        (string) bugcatcher_config('DB_HOST'),
-        (string) bugcatcher_config('DB_USER'),
-        (string) bugcatcher_config('DB_PASS'),
-        (string) bugcatcher_config('DB_NAME'),
-        (int) bugcatcher_config('DB_PORT')
+        (string) webtest_config('DB_HOST'),
+        (string) webtest_config('DB_USER'),
+        (string) webtest_config('DB_PASS'),
+        (string) webtest_config('DB_NAME'),
+        (int) webtest_config('DB_PORT')
     );
 
     if ($conn->connect_error) {
-        $isProduction = bugcatcher_config('APP_ENV') === 'production';
+        $isProduction = webtest_config('APP_ENV') === 'production';
         $message = $isProduction
             ? 'Database connection failed.'
             : 'Database connection failed: ' . $conn->connect_error;
@@ -470,42 +470,42 @@ function bugcatcher_db_connection(): mysqli
     }
 
     $conn->set_charset('utf8mb4');
-    $timezoneOffset = $conn->real_escape_string(bugcatcher_timezone_offset_string());
+    $timezoneOffset = $conn->real_escape_string(webtest_timezone_offset_string());
     if (!$conn->query("SET time_zone = '{$timezoneOffset}'")) {
         throw new RuntimeException('Unable to set database session timezone.');
     }
     return $conn;
 }
 
-function bugcatcher_uploads_dir(): string
+function webtest_uploads_dir(): string
 {
-    return (string) bugcatcher_config('UPLOADS_DIR');
+    return (string) webtest_config('UPLOADS_DIR');
 }
 
-function bugcatcher_uploads_url(): string
+function webtest_uploads_url(): string
 {
-    return (string) bugcatcher_config('UPLOADS_URL', 'uploads/issues');
+    return (string) webtest_config('UPLOADS_URL', 'uploads/issues');
 }
 
-function bugcatcher_upload_path_prefix(): string
+function webtest_upload_path_prefix(): string
 {
-    return bugcatcher_uploads_url() . '/';
+    return webtest_uploads_url() . '/';
 }
 
-function bugcatcher_upload_relative_path(string $fileName): string
+function webtest_upload_relative_path(string $fileName): string
 {
-    return bugcatcher_upload_path_prefix() . ltrim(str_replace('\\', '/', $fileName), '/');
+    return webtest_upload_path_prefix() . ltrim(str_replace('\\', '/', $fileName), '/');
 }
 
-function bugcatcher_upload_absolute_path(string $storedPath): ?string
+function webtest_upload_absolute_path(string $storedPath): ?string
 {
-    $baseDir = realpath(bugcatcher_uploads_dir());
+    $baseDir = realpath(webtest_uploads_dir());
     if ($baseDir === false) {
         return null;
     }
 
     $normalized = str_replace('\\', '/', $storedPath);
-    $prefix = bugcatcher_upload_path_prefix();
+    $prefix = webtest_upload_path_prefix();
     if (strpos($normalized, $prefix) === 0) {
         $normalized = substr($normalized, strlen($prefix));
     }
@@ -522,35 +522,35 @@ function bugcatcher_upload_absolute_path(string $storedPath): ?string
     return $candidate;
 }
 
-function bugcatcher_checklist_uploads_dir(): string
+function webtest_checklist_uploads_dir(): string
 {
-    return (string) bugcatcher_config('CHECKLIST_UPLOADS_DIR');
+    return (string) webtest_config('CHECKLIST_UPLOADS_DIR');
 }
 
-function bugcatcher_checklist_uploads_url(): string
+function webtest_checklist_uploads_url(): string
 {
-    return (string) bugcatcher_config('CHECKLIST_UPLOADS_URL', 'uploads/checklists');
+    return (string) webtest_config('CHECKLIST_UPLOADS_URL', 'uploads/checklists');
 }
 
-function bugcatcher_checklist_upload_path_prefix(): string
+function webtest_checklist_upload_path_prefix(): string
 {
-    return bugcatcher_checklist_uploads_url() . '/';
+    return webtest_checklist_uploads_url() . '/';
 }
 
-function bugcatcher_checklist_upload_relative_path(string $fileName): string
+function webtest_checklist_upload_relative_path(string $fileName): string
 {
-    return bugcatcher_checklist_upload_path_prefix() . ltrim(str_replace('\\', '/', $fileName), '/');
+    return webtest_checklist_upload_path_prefix() . ltrim(str_replace('\\', '/', $fileName), '/');
 }
 
-function bugcatcher_checklist_upload_absolute_path(string $storedPath): ?string
+function webtest_checklist_upload_absolute_path(string $storedPath): ?string
 {
-    $baseDir = realpath(bugcatcher_checklist_uploads_dir());
+    $baseDir = realpath(webtest_checklist_uploads_dir());
     if ($baseDir === false) {
         return null;
     }
 
     $normalized = str_replace('\\', '/', $storedPath);
-    $prefix = bugcatcher_checklist_upload_path_prefix();
+    $prefix = webtest_checklist_upload_path_prefix();
     if (strpos($normalized, $prefix) === 0) {
         $normalized = substr($normalized, strlen($prefix));
     }
@@ -567,9 +567,9 @@ function bugcatcher_checklist_upload_absolute_path(string $storedPath): ?string
     return $candidate;
 }
 
-function bugcatcher_openclaw_temp_dir(): string
+function webtest_openclaw_temp_dir(): string
 {
-    return (string) bugcatcher_config('OPENCLAW_TEMP_UPLOAD_DIR');
+    return (string) webtest_config('OPENCLAW_TEMP_UPLOAD_DIR');
 }
 
 require_once __DIR__ . '/file_storage_lib.php';

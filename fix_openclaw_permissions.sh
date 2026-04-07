@@ -1,6 +1,6 @@
 #!/bin/bash
 
-UPLOAD_DIR="/tmp/openclaw-bugcatcher-uploads"
+UPLOAD_DIR="/tmp/openclaw-webtest-uploads"
 
 echo "Fixing permissions for $UPLOAD_DIR"
 

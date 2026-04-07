@@ -23,7 +23,7 @@ const BC_V1_ORG_ROLES = [
 function bc_v1_json_success(array $data, int $statusCode = 200): void
 {
     http_response_code($statusCode);
-    echo json_encode(['ok' => true, 'data' => bugcatcher_augment_datetime_iso_fields($data)]);
+    echo json_encode(['ok' => true, 'data' => webtest_augment_datetime_iso_fields($data)]);
     exit;
 }
 
@@ -165,30 +165,30 @@ function bc_v1_derive_secret(string $namespace, string $seed): string
 
 function bc_v1_token_secret(): string
 {
-    $secret = (string) bugcatcher_config('OPENCLAW_ENCRYPTION_KEY', '');
+    $secret = (string) webtest_config('OPENCLAW_ENCRYPTION_KEY', '');
     if ($secret === '' || $secret === 'replace-with-32-byte-secret') {
-        $secret = (string) bugcatcher_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
+        $secret = (string) webtest_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
     }
     if ($secret === '' || $secret === 'replace-me-too') {
-        $secret = 'bugcatcher-v1-dev-secret';
+        $secret = 'webtest-v1-dev-secret';
     }
-    return bc_v1_derive_secret('bugcatcher-v1', $secret);
+    return bc_v1_derive_secret('webtest-v1', $secret);
 }
 
 function bc_v1_socket_token_secret(): string
 {
-    $secret = trim((string) bugcatcher_config('REALTIME_NOTIFICATIONS_SOCKET_SECRET', ''));
+    $secret = trim((string) webtest_config('REALTIME_NOTIFICATIONS_SOCKET_SECRET', ''));
     if ($secret === '') {
-        $secret = (string) bugcatcher_config('OPENCLAW_ENCRYPTION_KEY', '');
+        $secret = (string) webtest_config('OPENCLAW_ENCRYPTION_KEY', '');
     }
     if ($secret === '' || $secret === 'replace-with-32-byte-secret') {
-        $secret = (string) bugcatcher_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
+        $secret = (string) webtest_config('OPENCLAW_INTERNAL_SHARED_SECRET', '');
     }
     if ($secret === '' || $secret === 'replace-me-too') {
-        $secret = 'bugcatcher-realtime-dev-secret';
+        $secret = 'webtest-realtime-dev-secret';
     }
 
-    return bc_v1_derive_secret('bugcatcher-realtime', $secret);
+    return bc_v1_derive_secret('webtest-realtime', $secret);
 }
 
 function bc_v1_sign_token(array $payload): string
@@ -239,9 +239,9 @@ function bc_v1_sign_socket_token(array $payload): string
 function bc_v1_issue_socket_token(array $user, int $activeOrgId, string $activeScope = 'org'): array
 {
     $now = time();
-    $path = (string) bugcatcher_config('REALTIME_NOTIFICATIONS_PATH', '/ws/notifications');
+    $path = (string) webtest_config('REALTIME_NOTIFICATIONS_PATH', '/ws/notifications');
     $token = bc_v1_sign_socket_token([
-        'iss' => 'bugcatcher',
+        'iss' => 'webtest',
         'aud' => 'notifications',
         'type' => 'socket',
         'sub' => (int) $user['id'],
@@ -271,7 +271,7 @@ function bc_v1_fetch_user_by_id(mysqli $conn, int $userId): ?array
         return null;
     }
     $row['id'] = (int) $row['id'];
-    $row['role'] = bugcatcher_normalize_system_role((string) ($row['role'] ?? 'user'));
+    $row['role'] = webtest_normalize_system_role((string) ($row['role'] ?? 'user'));
     $row['last_active_org_id'] = (int) ($row['last_active_org_id'] ?? 0);
     return $row;
 }
@@ -298,7 +298,7 @@ function bc_v1_first_org_id(mysqli $conn, int $userId): int
 
 function bc_v1_actor_is_admin(array $actor): bool
 {
-    return bugcatcher_is_system_admin_role((string) ($actor['user']['role'] ?? 'user'));
+    return webtest_is_system_admin_role((string) ($actor['user']['role'] ?? 'user'));
 }
 
 function bc_v1_actor_is_all_scope(array $actor): bool
@@ -323,7 +323,7 @@ function bc_v1_user_org_ids(mysqli $conn, int $userId): array
 
 function bc_v1_can_use_all_scope(array $user): bool
 {
-    return bugcatcher_is_system_admin_role((string) ($user['role'] ?? 'user'));
+    return webtest_is_system_admin_role((string) ($user['role'] ?? 'user'));
 }
 
 function bc_v1_normalize_active_scope(?string $scope, bool $canUseAllScope, int $activeOrgId = 0): string
@@ -387,7 +387,7 @@ function bc_v1_issue_token_pair(array $user, int $activeOrgId, string $activeSco
 {
     $now = time();
     $base = [
-        'iss' => 'bugcatcher',
+        'iss' => 'webtest',
         'sub' => (int) $user['id'],
         'username' => (string) $user['username'],
         'role' => (string) $user['role'],
@@ -549,7 +549,7 @@ function bc_v1_org_context(mysqli $conn, array $actor, int $orgId = 0): array
         'user_id' => $userId,
         'current_user_id' => $userId,
         'current_username' => (string) ($actor['user']['username'] ?? 'User'),
-        'current_role' => bugcatcher_normalize_system_role((string) ($actor['user']['role'] ?? 'user')),
+        'current_role' => webtest_normalize_system_role((string) ($actor['user']['role'] ?? 'user')),
         'system_role' => (string) ($actor['user']['role'] ?? 'user'),
         'active_scope' => 'org',
     ];
@@ -557,14 +557,14 @@ function bc_v1_org_context(mysqli $conn, array $actor, int $orgId = 0): array
 
 function bc_v1_require_super_admin(array $actor): void
 {
-    if (!bugcatcher_is_super_admin_role((string) ($actor['user']['role'] ?? 'user'))) {
+    if (!webtest_is_super_admin_role((string) ($actor['user']['role'] ?? 'user'))) {
         bc_v1_json_error(403, 'forbidden', 'Only super admins can access this endpoint.');
     }
 }
 
 function bc_v1_require_manager_role(array $orgContext): void
 {
-    if (!bugcatcher_checklist_is_manager_role((string) $orgContext['org_role'])) {
+    if (!webtest_checklist_is_manager_role((string) $orgContext['org_role'])) {
         bc_v1_json_error(403, 'forbidden', 'Only checklist managers can perform this action.');
     }
 }

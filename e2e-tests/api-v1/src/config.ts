@@ -1,4 +1,4 @@
-﻿import fs from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { z } from "zod";
@@ -21,7 +21,7 @@ function normalizeApiBasePath(value: string): string {
 
 const localFallbacks = {
   E2E_BASE_URL: "http://localhost",
-  E2E_API_BASE_PATH: "/bugcatcher/api/v1",
+  E2E_API_BASE_PATH: "/webtest/api/v1",
   E2E_ORG_ID: "1",
   E2E_PROJECT_ID: "1",
   E2E_LABEL_ID: "1",

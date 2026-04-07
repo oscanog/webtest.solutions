@@ -63,7 +63,7 @@ function bc_v1_orgs_members_get(mysqli $conn, array $params): void
             'user_id' => (int) $row['user_id'],
             'username' => (string) $row['username'],
             'email' => (string) $row['email'],
-            'system_role' => bugcatcher_normalize_system_role((string) $row['system_role']),
+            'system_role' => webtest_normalize_system_role((string) $row['system_role']),
             'org_role' => (string) $row['role'],
             'is_owner' => (bool) ((int) $row['is_owner']),
             'joined_at' => (string) $row['joined_at'],
@@ -263,7 +263,7 @@ function bc_v1_orgs_post(mysqli $conn, array $params): void
     }
 
     bc_v1_set_active_org($conn, $userId, $orgId);
-    bugcatcher_notifications_send($conn, [$userId], [
+    webtest_notifications_send($conn, [$userId], [
         'type' => 'org',
         'event_key' => 'org_created',
         'title' => 'Organization created',
@@ -308,7 +308,7 @@ function bc_v1_orgs_join_post(mysqli $conn, array $params): void
     }
 
     bc_v1_set_active_org($conn, $userId, $orgId);
-    bugcatcher_notifications_send($conn, array_merge([$userId], bugcatcher_notification_org_owner_ids($conn, $orgId)), [
+    webtest_notifications_send($conn, array_merge([$userId], webtest_notification_org_owner_ids($conn, $orgId)), [
         'type' => 'org',
         'event_key' => 'org_joined',
         'title' => 'Member joined organization',
@@ -353,7 +353,7 @@ function bc_v1_orgs_leave_post(mysqli $conn, array $params): void
 
     $nextOrgId = bc_v1_first_org_id($conn, $userId);
     bc_v1_set_active_org($conn, $userId, $nextOrgId);
-    bugcatcher_notifications_send($conn, bugcatcher_notification_org_owner_ids($conn, $orgId), [
+    webtest_notifications_send($conn, webtest_notification_org_owner_ids($conn, $orgId), [
         'type' => 'org',
         'event_key' => 'org_left',
         'title' => 'Member left organization',
@@ -411,7 +411,7 @@ function bc_v1_orgs_transfer_owner_post(mysqli $conn, array $params): void
         bc_v1_json_error(500, 'transfer_failed', 'Failed to transfer ownership.', $e->getMessage());
     }
 
-    bugcatcher_notifications_send($conn, [$newOwnerId, $currentUserId], [
+    webtest_notifications_send($conn, [$newOwnerId, $currentUserId], [
         'type' => 'org',
         'event_key' => 'org_transfer_owner',
         'title' => 'Organization ownership transferred',
@@ -451,7 +451,7 @@ function bc_v1_orgs_delete(mysqli $conn, array $params): void
 
     $nextOrgId = bc_v1_first_org_id($conn, $userId);
     bc_v1_set_active_org($conn, $userId, $nextOrgId);
-    bugcatcher_notifications_send($conn, [$userId], [
+    webtest_notifications_send($conn, [$userId], [
         'type' => 'org',
         'event_key' => 'org_deleted',
         'title' => 'Organization deleted',
@@ -498,7 +498,7 @@ function bc_v1_orgs_member_role_patch(mysqli $conn, array $params): void
     $stmt->execute();
     $stmt->close();
 
-    bugcatcher_notifications_send($conn, [$targetUserId, $userId], [
+    webtest_notifications_send($conn, [$targetUserId, $userId], [
         'type' => 'org',
         'event_key' => 'org_role_changed',
         'title' => 'Organization role updated',
@@ -541,7 +541,7 @@ function bc_v1_orgs_member_delete(mysqli $conn, array $params): void
     $stmt->execute();
     $stmt->close();
 
-    bugcatcher_notifications_send($conn, [$targetUserId, $userId], [
+    webtest_notifications_send($conn, [$targetUserId, $userId], [
         'type' => 'org',
         'event_key' => 'org_member_kicked',
         'title' => 'Member removed from organization',

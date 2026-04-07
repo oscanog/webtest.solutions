@@ -1,8 +1,8 @@
 <?php
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-bugcatcher_start_session();
-bugcatcher_clear_known_user_browser();
+webtest_start_session();
+webtest_clear_known_user_browser();
 $_SESSION = [];
 
 if (ini_get('session.use_cookies')) {
@@ -11,5 +11,5 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
-header("Location: " . bugcatcher_path('rainier/login.php'));
+header("Location: " . webtest_path('rainier/login.php'));
 exit();

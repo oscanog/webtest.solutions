@@ -343,9 +343,9 @@ The following repository tests directly support the implemented claims in this m
 - `e2e-tests/api-v1/tests/notifications.spec.ts` for notification actions and deep links.
 - `e2e-tests/api-v1/tests/admin-ai.spec.ts` for AI admin APIs and remaining OpenClaw aliases.
 - `e2e-tests/checklist/tests/checklist-crud.spec.ts` for checklist CRUD and attachment operations.
-- `e2e-tests/bugcatcher-mobileweb/tests/notifications.realtime.spec.js` for realtime delivery and sync.
-- `e2e-tests/bugcatcher-mobileweb/tests/checklist-item-status.spec.js` for checklist-item updates and linked issue access.
-- `e2e-tests/bugcatcher-mobileweb/tests/dashboard-qa-lead.spec.js` for project-based checklist workload summaries.
+- `e2e-tests/webtest-mobileweb/tests/notifications.realtime.spec.js` for realtime delivery and sync.
+- `e2e-tests/webtest-mobileweb/tests/checklist-item-status.spec.js` for checklist-item updates and linked issue access.
+- `e2e-tests/webtest-mobileweb/tests/dashboard-qa-lead.spec.js` for project-based checklist workload summaries.
 
 ## 4.7 Deployment and Integration Readiness
 
@@ -416,7 +416,7 @@ WebTest demonstrates that a student development team can build an integrated and
 
 The ERD included with this capstone package is a consolidated current-system diagram. It combines the core bootstrap tables from local development SQL, project-scoped issue relationships used by the current backend schema and migrations, and supporting notes about runtime-created AI chat extension tables.
 
-:::image BugCatcher_Full_ERD.png|Figure A-1. Consolidated WebTest full ERD|7.0
+:::image WebTest_Full_ERD.svg|Figure A-1. Consolidated WebTest full ERD|7.0
 
 # Appendix B. Schema Reconciliation Notes
 

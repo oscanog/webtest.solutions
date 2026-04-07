@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-function bugcatcher_file_storage_attachment_targets(): array
+function webtest_file_storage_attachment_targets(): array
 {
     return [
         ['table' => 'issue_attachments', 'id_column' => 'id'],
@@ -13,63 +13,63 @@ function bugcatcher_file_storage_attachment_targets(): array
     ];
 }
 
-function bugcatcher_file_storage_active_provider(): string
+function webtest_file_storage_active_provider(): string
 {
-    if (bugcatcher_file_storage_is_cloudinary_enabled()) {
+    if (webtest_file_storage_is_cloudinary_enabled()) {
         return 'cloudinary';
     }
 
     return '';
 }
 
-function bugcatcher_file_storage_is_remote_enabled(): bool
+function webtest_file_storage_is_remote_enabled(): bool
 {
-    return bugcatcher_file_storage_active_provider() !== '';
+    return webtest_file_storage_active_provider() !== '';
 }
 
-function bugcatcher_file_storage_is_cloudinary_enabled(): bool
+function webtest_file_storage_is_cloudinary_enabled(): bool
 {
-    return bugcatcher_file_storage_cloudinary_cloud_name() !== ''
-        && bugcatcher_file_storage_cloudinary_api_key() !== ''
-        && bugcatcher_file_storage_cloudinary_api_secret() !== '';
+    return webtest_file_storage_cloudinary_cloud_name() !== ''
+        && webtest_file_storage_cloudinary_api_key() !== ''
+        && webtest_file_storage_cloudinary_api_secret() !== '';
 }
 
-function bugcatcher_file_storage_cloudinary_cloud_name(): string
+function webtest_file_storage_cloudinary_cloud_name(): string
 {
-    return trim((string) bugcatcher_config('CLOUDINARY_CLOUD_NAME', ''));
+    return trim((string) webtest_config('CLOUDINARY_CLOUD_NAME', ''));
 }
 
-function bugcatcher_file_storage_cloudinary_api_key(): string
+function webtest_file_storage_cloudinary_api_key(): string
 {
-    return trim((string) bugcatcher_config('CLOUDINARY_API_KEY', ''));
+    return trim((string) webtest_config('CLOUDINARY_API_KEY', ''));
 }
 
-function bugcatcher_file_storage_cloudinary_api_secret(): string
+function webtest_file_storage_cloudinary_api_secret(): string
 {
-    return trim((string) bugcatcher_config('CLOUDINARY_API_SECRET', ''));
+    return trim((string) webtest_config('CLOUDINARY_API_SECRET', ''));
 }
 
-function bugcatcher_file_storage_cloudinary_base_folder(): string
+function webtest_file_storage_cloudinary_base_folder(): string
 {
-    $folder = trim(str_replace('\\', '/', (string) bugcatcher_config('CLOUDINARY_BASE_FOLDER', 'bugcatcher')), " /");
-    return $folder !== '' ? $folder : 'bugcatcher';
+    $folder = trim(str_replace('\\', '/', (string) webtest_config('CLOUDINARY_BASE_FOLDER', 'webtest')), " /");
+    return $folder !== '' ? $folder : 'webtest';
 }
 
-function bugcatcher_file_storage_cloudinary_api_url(string $resourceType, string $action): string
+function webtest_file_storage_cloudinary_api_url(string $resourceType, string $action): string
 {
     $resourceType = in_array($resourceType, ['image', 'video', 'raw', 'auto'], true) ? $resourceType : 'auto';
     return 'https://api.cloudinary.com/v1_1/'
-        . rawurlencode(bugcatcher_file_storage_cloudinary_cloud_name())
+        . rawurlencode(webtest_file_storage_cloudinary_cloud_name())
         . '/'
         . $resourceType
         . '/'
         . ltrim($action, '/');
 }
 
-function bugcatcher_file_storage_cloudinary_auth_headers(): array
+function webtest_file_storage_cloudinary_auth_headers(): array
 {
     $token = base64_encode(
-        bugcatcher_file_storage_cloudinary_api_key() . ':' . bugcatcher_file_storage_cloudinary_api_secret()
+        webtest_file_storage_cloudinary_api_key() . ':' . webtest_file_storage_cloudinary_api_secret()
     );
 
     return [
@@ -78,14 +78,14 @@ function bugcatcher_file_storage_cloudinary_auth_headers(): array
     ];
 }
 
-function bugcatcher_file_storage_uploadthing_token(): string
+function webtest_file_storage_uploadthing_token(): string
 {
-    return trim((string) bugcatcher_config('UPLOADTHING_TOKEN', ''));
+    return trim((string) webtest_config('UPLOADTHING_TOKEN', ''));
 }
 
-function bugcatcher_file_storage_uploadthing_api_key(): string
+function webtest_file_storage_uploadthing_api_key(): string
 {
-    $token = bugcatcher_file_storage_uploadthing_token();
+    $token = webtest_file_storage_uploadthing_token();
     if ($token === '') {
         return '';
     }
@@ -103,7 +103,7 @@ function bugcatcher_file_storage_uploadthing_api_key(): string
     return trim((string) ($payload['apiKey'] ?? ''));
 }
 
-function bugcatcher_file_storage_http_request(
+function webtest_file_storage_http_request(
     string $method,
     string $url,
     array $headers = [],
@@ -148,7 +148,7 @@ function bugcatcher_file_storage_http_request(
     return $statusCode;
 }
 
-function bugcatcher_file_storage_parse_json_response(int $statusCode, string $responseBody, string $fallback): array
+function webtest_file_storage_parse_json_response(int $statusCode, string $responseBody, string $fallback): array
 {
     $trimmed = trim($responseBody);
     if ($trimmed === '') {
@@ -172,7 +172,7 @@ function bugcatcher_file_storage_parse_json_response(int $statusCode, string $re
     return $decoded;
 }
 
-function bugcatcher_file_storage_normalize_provider(?string $storageProvider): string
+function webtest_file_storage_normalize_provider(?string $storageProvider): string
 {
     $provider = strtolower(trim((string) $storageProvider));
     if (in_array($provider, ['cloudinary', 'uploadthing'], true)) {
@@ -182,12 +182,12 @@ function bugcatcher_file_storage_normalize_provider(?string $storageProvider): s
     return '';
 }
 
-function bugcatcher_file_storage_detect_provider(
+function webtest_file_storage_detect_provider(
     ?string $storageProvider,
     ?string $storageKey,
     ?string $filePath
 ): string {
-    $normalized = bugcatcher_file_storage_normalize_provider($storageProvider);
+    $normalized = webtest_file_storage_normalize_provider($storageProvider);
     if ($normalized !== '') {
         return $normalized;
     }
@@ -211,19 +211,19 @@ function bugcatcher_file_storage_detect_provider(
         }
     }
 
-    return $path === '' ? bugcatcher_file_storage_active_provider() : '';
+    return $path === '' ? webtest_file_storage_active_provider() : '';
 }
 
-function bugcatcher_file_storage_provider_from_row(array $row): string
+function webtest_file_storage_provider_from_row(array $row): string
 {
-    return bugcatcher_file_storage_detect_provider(
+    return webtest_file_storage_detect_provider(
         (string) ($row['storage_provider'] ?? ''),
         (string) ($row['storage_key'] ?? ''),
         (string) ($row['file_path'] ?? '')
     );
 }
 
-function bugcatcher_file_storage_normalize_scope(string $scope): string
+function webtest_file_storage_normalize_scope(string $scope): string
 {
     $scope = strtolower(trim($scope));
     if ($scope === '') {
@@ -235,7 +235,7 @@ function bugcatcher_file_storage_normalize_scope(string $scope): string
     return $scope !== '' ? substr($scope, 0, 60) : 'misc';
 }
 
-function bugcatcher_file_storage_generate_public_id(string $originalName): string
+function webtest_file_storage_generate_public_id(string $originalName): string
 {
     $baseName = pathinfo($originalName, PATHINFO_FILENAME);
     $baseName = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $baseName);
@@ -248,23 +248,23 @@ function bugcatcher_file_storage_generate_public_id(string $originalName): strin
     return $baseName . '-' . bin2hex(random_bytes(6));
 }
 
-function bugcatcher_file_storage_local_root(string $scope): array
+function webtest_file_storage_local_root(string $scope): array
 {
-    $normalizedScope = bugcatcher_file_storage_normalize_scope($scope);
+    $normalizedScope = webtest_file_storage_normalize_scope($scope);
     if (strpos($normalizedScope, 'checklist') === 0) {
         return [
-            'dir' => bugcatcher_checklist_uploads_dir(),
-            'url_prefix' => bugcatcher_checklist_upload_path_prefix(),
+            'dir' => webtest_checklist_uploads_dir(),
+            'url_prefix' => webtest_checklist_upload_path_prefix(),
         ];
     }
 
     return [
-        'dir' => bugcatcher_uploads_dir(),
-        'url_prefix' => bugcatcher_upload_path_prefix(),
+        'dir' => webtest_uploads_dir(),
+        'url_prefix' => webtest_upload_path_prefix(),
     ];
 }
 
-function bugcatcher_file_storage_local_move_file(string $sourcePath, string $destinationPath): bool
+function webtest_file_storage_local_move_file(string $sourcePath, string $destinationPath): bool
 {
     if (is_uploaded_file($sourcePath) && @move_uploaded_file($sourcePath, $destinationPath)) {
         @chmod($destinationPath, 0664);
@@ -289,21 +289,21 @@ function bugcatcher_file_storage_local_move_file(string $sourcePath, string $des
     return true;
 }
 
-function bugcatcher_file_storage_local_upload_file(
+function webtest_file_storage_local_upload_file(
     string $tmpPath,
     string $originalName,
     string $mimeType,
     int $size,
     string $scope
 ): array {
-    $root = bugcatcher_file_storage_local_root($scope);
+    $root = webtest_file_storage_local_root($scope);
     $baseDir = rtrim((string) ($root['dir'] ?? ''), "\\/");
     $urlPrefix = trim((string) ($root['url_prefix'] ?? ''), '/');
     if ($baseDir === '' || $urlPrefix === '') {
         throw new RuntimeException('Local file storage path is not configured.');
     }
 
-    $scopeDirName = bugcatcher_file_storage_normalize_scope($scope);
+    $scopeDirName = webtest_file_storage_normalize_scope($scope);
     $targetDir = $baseDir . DIRECTORY_SEPARATOR . $scopeDirName;
     if (!is_dir($targetDir) && !@mkdir($targetDir, 02775, true) && !is_dir($targetDir)) {
         throw new RuntimeException('Unable to create local upload directory.');
@@ -315,10 +315,10 @@ function bugcatcher_file_storage_local_upload_file(
         $extension = $guessedExtension !== '' ? $guessedExtension : 'bin';
     }
 
-    $generatedName = bugcatcher_file_storage_generate_public_id($originalName);
+    $generatedName = webtest_file_storage_generate_public_id($originalName);
     $targetName = $generatedName . ($extension !== '' ? '.' . $extension : '');
     $targetPath = $targetDir . DIRECTORY_SEPARATOR . $targetName;
-    if (!bugcatcher_file_storage_local_move_file($tmpPath, $targetPath)) {
+    if (!webtest_file_storage_local_move_file($tmpPath, $targetPath)) {
         throw new RuntimeException('Unable to store uploaded file locally.');
     }
 
@@ -332,27 +332,27 @@ function bugcatcher_file_storage_local_upload_file(
     ];
 }
 
-function bugcatcher_file_storage_cloudinary_upload_file(
+function webtest_file_storage_cloudinary_upload_file(
     string $tmpPath,
     string $originalName,
     string $mimeType,
     int $size,
     string $scope
 ): array {
-    if (!bugcatcher_file_storage_is_cloudinary_enabled()) {
+    if (!webtest_file_storage_is_cloudinary_enabled()) {
         throw new RuntimeException('Cloudinary storage is not configured.');
     }
 
-    $folder = bugcatcher_file_storage_cloudinary_base_folder() . '/' . bugcatcher_file_storage_normalize_scope($scope);
+    $folder = webtest_file_storage_cloudinary_base_folder() . '/' . webtest_file_storage_normalize_scope($scope);
     $responseBody = '';
-    $statusCode = bugcatcher_file_storage_http_request(
+    $statusCode = webtest_file_storage_http_request(
         'POST',
-        bugcatcher_file_storage_cloudinary_api_url('auto', 'upload'),
-        bugcatcher_file_storage_cloudinary_auth_headers(),
+        webtest_file_storage_cloudinary_api_url('auto', 'upload'),
+        webtest_file_storage_cloudinary_auth_headers(),
         [
             'file' => curl_file_create($tmpPath, $mimeType, $originalName),
             'folder' => $folder,
-            'public_id' => bugcatcher_file_storage_generate_public_id($originalName),
+            'public_id' => webtest_file_storage_generate_public_id($originalName),
             'overwrite' => 'false',
             'unique_filename' => 'false',
             'use_filename' => 'false',
@@ -360,7 +360,7 @@ function bugcatcher_file_storage_cloudinary_upload_file(
         $responseBody
     );
 
-    $data = bugcatcher_file_storage_parse_json_response($statusCode, $responseBody, 'Cloudinary upload failed.');
+    $data = webtest_file_storage_parse_json_response($statusCode, $responseBody, 'Cloudinary upload failed.');
     $filePath = trim((string) ($data['secure_url'] ?? $data['url'] ?? ''));
     $storageKey = trim((string) ($data['public_id'] ?? ''));
     if ($filePath === '' || $storageKey === '') {
@@ -379,7 +379,7 @@ function bugcatcher_file_storage_cloudinary_upload_file(
     ];
 }
 
-function bugcatcher_file_storage_cloudinary_detect_resource_type(?string $filePath, ?string $mimeType = null): string
+function webtest_file_storage_cloudinary_detect_resource_type(?string $filePath, ?string $mimeType = null): string
 {
     $path = strtolower(trim((string) $filePath));
     if (strpos($path, '/image/upload/') !== false) {
@@ -403,36 +403,36 @@ function bugcatcher_file_storage_cloudinary_detect_resource_type(?string $filePa
     return 'raw';
 }
 
-function bugcatcher_file_storage_cloudinary_candidate_resource_types(?string $filePath, ?string $mimeType = null): array
+function webtest_file_storage_cloudinary_candidate_resource_types(?string $filePath, ?string $mimeType = null): array
 {
-    $detected = bugcatcher_file_storage_cloudinary_detect_resource_type($filePath, $mimeType);
+    $detected = webtest_file_storage_cloudinary_detect_resource_type($filePath, $mimeType);
     return array_values(array_unique(array_filter([$detected, 'image', 'video', 'raw'])));
 }
 
-function bugcatcher_file_storage_cloudinary_delete(
+function webtest_file_storage_cloudinary_delete(
     string $storageKey,
     ?string $filePath = null,
     ?string $mimeType = null
 ): void {
-    if (!bugcatcher_file_storage_is_cloudinary_enabled()) {
+    if (!webtest_file_storage_is_cloudinary_enabled()) {
         return;
     }
 
     $lastError = null;
-    foreach (bugcatcher_file_storage_cloudinary_candidate_resource_types($filePath, $mimeType) as $resourceType) {
+    foreach (webtest_file_storage_cloudinary_candidate_resource_types($filePath, $mimeType) as $resourceType) {
         $responseBody = '';
         try {
-            $statusCode = bugcatcher_file_storage_http_request(
+            $statusCode = webtest_file_storage_http_request(
                 'POST',
-                bugcatcher_file_storage_cloudinary_api_url($resourceType, 'destroy'),
-                bugcatcher_file_storage_cloudinary_auth_headers(),
+                webtest_file_storage_cloudinary_api_url($resourceType, 'destroy'),
+                webtest_file_storage_cloudinary_auth_headers(),
                 [
                     'public_id' => $storageKey,
                     'invalidate' => 'true',
                 ],
                 $responseBody
             );
-            $data = bugcatcher_file_storage_parse_json_response($statusCode, $responseBody, 'Cloudinary delete failed.');
+            $data = webtest_file_storage_parse_json_response($statusCode, $responseBody, 'Cloudinary delete failed.');
             $result = strtolower(trim((string) ($data['result'] ?? '')));
             if ($result === 'ok') {
                 return;
@@ -453,9 +453,9 @@ function bugcatcher_file_storage_cloudinary_delete(
     }
 }
 
-function bugcatcher_file_storage_uploadthing_delete(string $storageKey): void
+function webtest_file_storage_uploadthing_delete(string $storageKey): void
 {
-    $apiKey = bugcatcher_file_storage_uploadthing_api_key();
+    $apiKey = webtest_file_storage_uploadthing_api_key();
     if ($apiKey === '') {
         return;
     }
@@ -468,7 +468,7 @@ function bugcatcher_file_storage_uploadthing_delete(string $storageKey): void
     }
 
     $responseBody = '';
-    $statusCode = bugcatcher_file_storage_http_request(
+    $statusCode = webtest_file_storage_http_request(
         'POST',
         'https://api.uploadthing.com/v6/deleteFiles',
         [
@@ -491,7 +491,7 @@ function bugcatcher_file_storage_uploadthing_delete(string $storageKey): void
     throw new RuntimeException($message !== '' ? $message : 'UploadThing delete failed.');
 }
 
-function bugcatcher_file_storage_upload_file(
+function webtest_file_storage_upload_file(
     string $tmpPath,
     string $originalName,
     string $mimeType,
@@ -502,14 +502,14 @@ function bugcatcher_file_storage_upload_file(
         throw new RuntimeException('Upload source file was not found.');
     }
 
-    if (!bugcatcher_file_storage_is_remote_enabled()) {
-        return bugcatcher_file_storage_local_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);
+    if (!webtest_file_storage_is_remote_enabled()) {
+        return webtest_file_storage_local_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);
     }
 
-    return bugcatcher_file_storage_cloudinary_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);
+    return webtest_file_storage_cloudinary_upload_file($tmpPath, $originalName, $mimeType, $size, $scope);
 }
 
-function bugcatcher_file_storage_delete(
+function webtest_file_storage_delete(
     ?string $storageKey,
     ?string $filePath = null,
     ?string $storageProvider = null,
@@ -520,17 +520,17 @@ function bugcatcher_file_storage_delete(
         return;
     }
 
-    $provider = bugcatcher_file_storage_detect_provider($storageProvider, $storageKey, $filePath);
+    $provider = webtest_file_storage_detect_provider($storageProvider, $storageKey, $filePath);
     if ($provider === 'cloudinary') {
-        bugcatcher_file_storage_cloudinary_delete($storageKey, $filePath, $mimeType);
+        webtest_file_storage_cloudinary_delete($storageKey, $filePath, $mimeType);
         return;
     }
     if ($provider === 'uploadthing') {
-        bugcatcher_file_storage_uploadthing_delete($storageKey);
+        webtest_file_storage_uploadthing_delete($storageKey);
     }
 }
 
-function bugcatcher_file_storage_stmt_bind_params(mysqli_stmt $stmt, string $types, array $params): void
+function webtest_file_storage_stmt_bind_params(mysqli_stmt $stmt, string $types, array $params): void
 {
     $refs = [];
     foreach ($params as $key => $value) {
@@ -541,7 +541,7 @@ function bugcatcher_file_storage_stmt_bind_params(mysqli_stmt $stmt, string $typ
     call_user_func_array([$stmt, 'bind_param'], $refs);
 }
 
-function bugcatcher_file_storage_has_reference(
+function webtest_file_storage_has_reference(
     mysqli $conn,
     string $storageKey,
     ?string $ignoreTable = null,
@@ -553,17 +553,17 @@ function bugcatcher_file_storage_has_reference(
         return false;
     }
 
-    $normalizedProvider = bugcatcher_file_storage_normalize_provider($storageProvider);
-    foreach (bugcatcher_file_storage_attachment_targets() as $target) {
-        if (!bugcatcher_db_has_table($conn, $target['table'])) {
+    $normalizedProvider = webtest_file_storage_normalize_provider($storageProvider);
+    foreach (webtest_file_storage_attachment_targets() as $target) {
+        if (!webtest_db_has_table($conn, $target['table'])) {
             continue;
         }
 
-        if (!bugcatcher_db_has_column($conn, $target['table'], 'storage_key')) {
+        if (!webtest_db_has_column($conn, $target['table'], 'storage_key')) {
             continue;
         }
 
-        $hasProviderColumn = bugcatcher_db_has_column($conn, $target['table'], 'storage_provider');
+        $hasProviderColumn = webtest_db_has_column($conn, $target['table'], 'storage_provider');
         $sql = "
             SELECT 1
             FROM {$target['table']}
@@ -586,7 +586,7 @@ function bugcatcher_file_storage_has_reference(
 
         $sql .= " LIMIT 1";
         $stmt = $conn->prepare($sql);
-        bugcatcher_file_storage_stmt_bind_params($stmt, $types, $params);
+        webtest_file_storage_stmt_bind_params($stmt, $types, $params);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -598,7 +598,7 @@ function bugcatcher_file_storage_has_reference(
     return false;
 }
 
-function bugcatcher_file_storage_delete_if_unreferenced(
+function webtest_file_storage_delete_if_unreferenced(
     mysqli $conn,
     ?string $storageKey,
     ?string $ignoreTable = null,
@@ -612,26 +612,26 @@ function bugcatcher_file_storage_delete_if_unreferenced(
         return;
     }
 
-    $provider = bugcatcher_file_storage_detect_provider($storageProvider, $storageKey, $filePath);
+    $provider = webtest_file_storage_detect_provider($storageProvider, $storageKey, $filePath);
     if ($provider === '') {
         return;
     }
 
-    if (bugcatcher_file_storage_has_reference($conn, $storageKey, $ignoreTable, $ignoreId, $provider)) {
+    if (webtest_file_storage_has_reference($conn, $storageKey, $ignoreTable, $ignoreId, $provider)) {
         return;
     }
 
-    bugcatcher_file_storage_delete($storageKey, $filePath, $provider, $mimeType);
+    webtest_file_storage_delete($storageKey, $filePath, $provider, $mimeType);
 }
 
-function bugcatcher_file_storage_delete_legacy_local(?string $absolutePath): void
+function webtest_file_storage_delete_legacy_local(?string $absolutePath): void
 {
     if ($absolutePath !== null && is_file($absolutePath)) {
         @unlink($absolutePath);
     }
 }
 
-function bugcatcher_db_has_column(mysqli $conn, string $table, string $column): bool
+function webtest_db_has_column(mysqli $conn, string $table, string $column): bool
 {
     $sql = "
         SELECT 1
@@ -649,7 +649,7 @@ function bugcatcher_db_has_column(mysqli $conn, string $table, string $column): 
     return (bool) $row;
 }
 
-function bugcatcher_db_has_table(mysqli $conn, string $table): bool
+function webtest_db_has_table(mysqli $conn, string $table): bool
 {
     $sql = "
         SELECT 1
@@ -666,22 +666,22 @@ function bugcatcher_db_has_table(mysqli $conn, string $table): bool
     return (bool) $row;
 }
 
-function bugcatcher_file_storage_ensure_schema(mysqli $conn): void
+function webtest_file_storage_ensure_schema(mysqli $conn): void
 {
     static $done = false;
     if ($done) {
         return;
     }
 
-    foreach (bugcatcher_file_storage_attachment_targets() as $target) {
+    foreach (webtest_file_storage_attachment_targets() as $target) {
         $table = $target['table'];
-        if (!bugcatcher_db_has_table($conn, $table)) {
+        if (!webtest_db_has_table($conn, $table)) {
             continue;
         }
-        if (!bugcatcher_db_has_column($conn, $table, 'storage_key')) {
+        if (!webtest_db_has_column($conn, $table, 'storage_key')) {
             $conn->query("ALTER TABLE {$table} ADD COLUMN storage_key VARCHAR(255) DEFAULT NULL AFTER file_path");
         }
-        if (!bugcatcher_db_has_column($conn, $table, 'storage_provider')) {
+        if (!webtest_db_has_column($conn, $table, 'storage_provider')) {
             $conn->query("ALTER TABLE {$table} ADD COLUMN storage_provider VARCHAR(32) DEFAULT NULL AFTER storage_key");
         }
     }

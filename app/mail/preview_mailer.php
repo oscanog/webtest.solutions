@@ -1,31 +1,31 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-function bugcatcher_mail_preview_messages(): array
+function webtest_mail_preview_messages(): array
 {
-    bugcatcher_start_session();
-    $messages = $_SESSION[BUGCATCHER_MAIL_PREVIEW_SESSION_KEY] ?? [];
+    webtest_start_session();
+    $messages = $_SESSION[WEBTEST_MAIL_PREVIEW_SESSION_KEY] ?? [];
     return is_array($messages) ? $messages : [];
 }
 
-function bugcatcher_mail_preview_store(array $message): void
+function webtest_mail_preview_store(array $message): void
 {
-    bugcatcher_start_session();
+    webtest_start_session();
 
-    $messages = bugcatcher_mail_preview_messages();
+    $messages = webtest_mail_preview_messages();
     $messages[] = $message + ['sent_at' => gmdate('c')];
 
     if (count($messages) > 20) {
         $messages = array_slice($messages, -20);
     }
 
-    $_SESSION[BUGCATCHER_MAIL_PREVIEW_SESSION_KEY] = array_values($messages);
+    $_SESSION[WEBTEST_MAIL_PREVIEW_SESSION_KEY] = array_values($messages);
 }
 
-function bugcatcher_mail_preview_clear(string $tag = '', string $recipientEmail = ''): void
+function webtest_mail_preview_clear(string $tag = '', string $recipientEmail = ''): void
 {
-    bugcatcher_start_session();
-    $messages = bugcatcher_mail_preview_messages();
+    webtest_start_session();
+    $messages = webtest_mail_preview_messages();
     if ($messages === []) {
         return;
     }
@@ -47,16 +47,16 @@ function bugcatcher_mail_preview_clear(string $tag = '', string $recipientEmail 
     }));
 
     if ($filtered === []) {
-        unset($_SESSION[BUGCATCHER_MAIL_PREVIEW_SESSION_KEY]);
+        unset($_SESSION[WEBTEST_MAIL_PREVIEW_SESSION_KEY]);
         return;
     }
 
-    $_SESSION[BUGCATCHER_MAIL_PREVIEW_SESSION_KEY] = $filtered;
+    $_SESSION[WEBTEST_MAIL_PREVIEW_SESSION_KEY] = $filtered;
 }
 
-function bugcatcher_mail_preview_latest_message(string $tag = '', string $recipientEmail = ''): ?array
+function webtest_mail_preview_latest_message(string $tag = '', string $recipientEmail = ''): ?array
 {
-    $messages = array_reverse(bugcatcher_mail_preview_messages());
+    $messages = array_reverse(webtest_mail_preview_messages());
     $normalizedRecipient = strtolower(trim($recipientEmail));
 
     foreach ($messages as $message) {

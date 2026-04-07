@@ -1,12 +1,12 @@
 -- -----------------------------------------------------------------------------
--- BugCatcher Local Development Bootstrap (MySQL)
+-- WebTest Local Development Bootstrap (MySQL)
 -- One-shot import for local development.
 --
 -- Usage:
 --   mysql -u root -p < local_dev_full.sql
 --
 -- Default login users are seeded under organization: GJC_team
--- Shared password for all seeded users: BugCatcherProd!20260323
+-- Shared password for all seeded users: WebTestProd!20260323
 -- Note: org_members allows only one role per user per organization, so
 -- 52310851@gendejesus.edu.ph is seeded as Project Manager only.
 -- -----------------------------------------------------------------------------
@@ -14,12 +14,12 @@
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
-DROP DATABASE IF EXISTS bug_catcher;
-CREATE DATABASE IF NOT EXISTS bug_catcher
+DROP DATABASE IF EXISTS web_test;
+CREATE DATABASE IF NOT EXISTS web_test
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_general_ci;
 
-USE bug_catcher;
+USE web_test;
 
 CREATE TABLE IF NOT EXISTS users (
   id INT(11) NOT NULL AUTO_INCREMENT,
@@ -731,7 +731,7 @@ CREATE TABLE IF NOT EXISTS contact (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-USE bug_catcher;
+USE web_test;
 
 INSERT INTO labels (id, name, description, color) VALUES
   (1, 'bug', 'Something is not working', '#d73a4a'),
@@ -744,7 +744,7 @@ INSERT INTO labels (id, name, description, color) VALUES
   (8, 'question', 'Further information is requested', '#d876e3'),
   (9, 'wontfix', 'This will not be worked on', '#000000');
 
--- bcrypt hash for: BugCatcherProd!20260323
+-- bcrypt hash for: WebTestProd!20260323
 INSERT INTO users (id, username, email, password, role, last_active_org_id) VALUES
   (1, 'm.viner001', 'm.viner001@gmail.com', '$2y$10$dSBKjvwGygMql4uX6I5MS.my.ABsX2C3KZ25C9Fmuli3YHNYmw.li', 'super_admin', 1),
   (2, 'mackrafanan9247', 'mackrafanan9247@gmail.com', '$2y$10$dSBKjvwGygMql4uX6I5MS.my.ABsX2C3KZ25C9Fmuli3YHNYmw.li', 'admin', 1),
@@ -914,7 +914,7 @@ INSERT INTO ai_runtime_config (
   id, is_enabled, default_provider_config_id, default_model_id, assistant_name, system_prompt, created_by, updated_by
 ) VALUES (
   1, 1, NULL, NULL,
-  'BugCatcher AI', 'You are BugCatcher AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',
+  'WebTest AI', 'You are WebTest AI. Help the team discuss bugs, tests, checklists, and project delivery clearly and practically.',
   1, 1
 );
 
@@ -928,7 +928,7 @@ INSERT INTO ai_runtime_personas (
     1,
     NULL,
     NULL,
-    'BugCatcher AI',
+    'WebTest AI',
     'You draft practical QA checklist items from the provided product context.',
     1,
     1
@@ -940,7 +940,7 @@ INSERT INTO ai_runtime_personas (
     1,
     NULL,
     NULL,
-    'BugCatcher AI Reviewer',
+    'WebTest AI Reviewer',
     'You review AI-generated checklist drafts, remove duplication, fix weak coverage, and improve clarity for manual QA execution.',
     1,
     1
@@ -1006,7 +1006,7 @@ INSERT INTO notifications (
     6, 1, 1, 1, NULL, NULL, NULL, NULL,
     'system', 'system_welcome',
     'Mobile inbox ready',
-    'Your in-app notifications are enabled for BugCatcher mobile web.',
+    'Your in-app notifications are enabled for WebTest mobile web.',
     '/app/notifications', 'success',
     JSON_OBJECT('org_id', 1), NULL, '2026-03-22 08:00:00'
   );

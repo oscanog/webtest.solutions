@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 
                 $conn->commit();
 
-                header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
+                header("Location: " . webtest_path('zen/organization.php?org_id=' . $orgId));
                 exit;
             } catch (mysqli_sql_exception $e) {
                 $conn->rollback();
@@ -228,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'join'
                 $mem->execute();
                 $mem->close();
 
-                header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
+                header("Location: " . webtest_path('zen/organization.php?org_id=' . $orgId));
                 exit;
             } catch (mysqli_sql_exception $e) {
                 if ((int) $e->getCode() === 1062) {
@@ -266,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'leave
 
                     if ($del->execute()) {
                         $del->close();
-                        header("Location: " . bugcatcher_path('zen/organization.php'));
+                        header("Location: " . webtest_path('zen/organization.php'));
                         exit;
                     } else {
                         $error = "Failed to delete organization: " . h($del->error);
@@ -279,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'leave
 
                 if ($del->execute()) {
                     $del->close();
-                    header("Location: " . bugcatcher_path('zen/organization.php'));
+                    header("Location: " . webtest_path('zen/organization.php'));
                     exit;
                 } else {
                     $error = "Failed to leave organization: " . h($del->error);
@@ -341,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'trans
 
                     $conn->commit();
 
-                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
+                    header("Location: " . webtest_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } catch (Exception $e) {
                     $conn->rollback();
@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 
             if ($del->execute()) {
                 $del->close();
-                header("Location: " . bugcatcher_path('zen/organization.php'));
+                header("Location: " . webtest_path('zen/organization.php'));
                 exit;
             } else {
                 $error = "Failed to delete organization: " . h($del->error);
@@ -421,7 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'kick_
 
                 if ($del->execute()) {
                     $del->close();
-                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
+                    header("Location: " . webtest_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } else {
                     $error = "Failed to kick member: " . h($del->error);
@@ -474,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'chang
 
                 if ($upd->execute()) {
                     $upd->close();
-                    header("Location: " . bugcatcher_path('zen/organization.php?org_id=' . $orgId));
+                    header("Location: " . webtest_path('zen/organization.php?org_id=' . $orgId));
                     exit;
                 } else {
                     $error = "Failed to change role: " . h($upd->error);
@@ -573,17 +573,17 @@ if ($activeOrg) {
     <meta charset="UTF-8">
     <title>WebTest - Organization</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
-    <?php bugcatcher_render_theme_bootstrap(); ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('zen/organization.css')) ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
+    <?php webtest_render_theme_bootstrap(); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_theme.css')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('zen/organization.css')) ?>">
 </head>
 
 <body>
-    <?php bugcatcher_render_sidebar('organization', $current_username, $current_role, (string) ($activeOrg['my_role'] ?? ''), (string) ($activeOrg['name'] ?? '')); ?>
+    <?php webtest_render_sidebar('organization', $current_username, $current_role, (string) ($activeOrg['my_role'] ?? ''), (string) ($activeOrg['name'] ?? '')); ?>
 
     <main class="main">
-        <?php bugcatcher_render_page_header(
+        <?php webtest_render_page_header(
             'Organization',
             $current_username,
             $current_role,
@@ -688,7 +688,7 @@ if ($activeOrg) {
                     <div class="orgs-links">
                         <?php foreach ($userOrgs as $o): ?>
                             <a class="btn bc-btn bc-btn--secondary <?= ((int) $activeOrg['id'] === (int) $o['id']) ? 'org-link-active' : '' ?>"
-                                href="<?= htmlspecialchars(bugcatcher_path('zen/organization.php?org_id=' . (int) $o['id'])) ?>">
+                                href="<?= htmlspecialchars(webtest_path('zen/organization.php?org_id=' . (int) $o['id'])) ?>">
                                 <?= h($o['name']) ?>
                             </a>
                         <?php endforeach; ?>
@@ -847,7 +847,7 @@ if ($activeOrg) {
 
     </main>
 
-    <?php bugcatcher_render_legacy_ui_script(); ?>
+    <?php webtest_render_legacy_ui_script(); ?>
     <script>
         (function setupDeleteConfirm() {
             const deleteInput = document.getElementById("deleteConfirmInput");
@@ -891,8 +891,8 @@ if ($activeOrg) {
             });
         })();
     </script>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/mobile_nav.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/notifications_ui.js')) ?>"></script>
 </body>
 
 </html>

@@ -2,7 +2,7 @@ param(
     [int[]]$Ports = @(587),
     [string]$ApachePath = 'C:\xampp\apache\bin\httpd.exe',
     [string]$PhpPath = 'C:\xampp\php\php.exe',
-    [string]$RulePrefix = 'BugCatcher SMTP Outbound'
+    [string]$RulePrefix = 'WebTest SMTP Outbound'
 )
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())

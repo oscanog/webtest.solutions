@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="${APP_NAME:-bugcatcher}"
+APP_NAME="${APP_NAME:-webtest}"
 APP_ROOT="${APP_ROOT:-/var/www/${APP_NAME}}"
 RELEASES_DIR="${RELEASES_DIR:-${APP_ROOT}/releases}"
 CURRENT_LINK="${CURRENT_LINK:-${APP_ROOT}/current}"
-APP_USER="${APP_USER:-bugcatcher}"
+APP_USER="${APP_USER:-webtest}"
 APP_GROUP="${APP_GROUP:-www-data}"
 TARGET="${1:-}"
 PHP_FPM_SERVICE="${PHP_FPM_SERVICE:-}"

@@ -1,11 +1,11 @@
 <?php
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-bugcatcher_start_session();
+webtest_start_session();
 include "connection.php";
 
 if (isset($_SESSION['id'])) {
-  header("Location: " . bugcatcher_path('zen/organization.php'));
+  header("Location: " . webtest_path('zen/organization.php'));
   exit();
 }
 
@@ -34,12 +34,12 @@ if (isset($_POST['login'])) {
       $row = $res->fetch_assoc();
 
       if (password_verify($pass, $row['password'])) {
-        $role = bugcatcher_normalize_system_role($row['role'] ?? 'user');
+        $role = webtest_normalize_system_role($row['role'] ?? 'user');
 
         $_SESSION['id'] = (int) $row['id'];
         $_SESSION['username'] = $row['username'];
         $_SESSION['role'] = $role;
-        bugcatcher_mark_known_user_browser();
+        webtest_mark_known_user_browser();
 
         // Restore last active org into session (survives logout)
         $lastOrgId = (int) ($row['last_active_org_id'] ?? 0);
@@ -79,7 +79,7 @@ if (isset($_POST['login'])) {
           }
         }
 
-        header("Location: " . bugcatcher_path('zen/organization.php'));
+        header("Location: " . webtest_path('zen/organization.php'));
         exit();
       }
     }
@@ -95,7 +95,7 @@ if (isset($_POST['login'])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login</title>
-  <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
+  <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
   <link rel="stylesheet" href="css/style1.css?v=3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>

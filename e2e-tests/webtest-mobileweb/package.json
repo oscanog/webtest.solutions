@@ -1,5 +1,5 @@
 {
-  "name": "bugcatcher-mobileweb-e2e",
+  "name": "webtest-mobileweb-e2e",
   "version": "1.0.0",
   "private": true,
   "description": "Dedicated Playwright E2E suite for WebTest mobile web role, guard, and notification flows",

@@ -11,11 +11,11 @@ function post_int($key): int
 
 $orgId = (int) ($_SESSION['active_org_id'] ?? 0);
 if ($orgId <= 0) {
-    header("Location: " . bugcatcher_path('zen/organization.php'));
+    header("Location: " . webtest_path('zen/organization.php'));
     exit;
 }
 
-$mem = bugcatcher_issue_find_membership($conn, $orgId, $current_user_id);
+$mem = webtest_issue_find_membership($conn, $orgId, $current_user_id);
 if (!$mem) {
     die("You are not a member of the active organization.");
 }
@@ -27,16 +27,16 @@ $selectedProjectId = post_int('project_id');
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     try {
-        bugcatcher_issue_create_from_form($conn, $orgId, $authorId, $_POST, $_FILES);
-        header("Location: " . bugcatcher_path('zen/dashboard.php?page=issues&view=kanban&status=all'));
+        webtest_issue_create_from_form($conn, $orgId, $authorId, $_POST, $_FILES);
+        header("Location: " . webtest_path('zen/dashboard.php?page=issues&view=kanban&status=all'));
         exit();
     } catch (Throwable $e) {
         $error = $e->getMessage();
     }
 }
 
-$labels = bugcatcher_issue_label_catalog($conn);
-$projects = bugcatcher_issue_project_catalog($conn, $orgId);
+$labels = webtest_issue_label_catalog($conn);
+$projects = webtest_issue_project_catalog($conn, $orgId);
 if ($selectedProjectId <= 0 && $projects) {
     $selectedProjectId = (int) ($projects[0]['id'] ?? 0);
 }
@@ -48,18 +48,18 @@ if ($selectedProjectId <= 0 && $projects) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(bugcatcher_path('favicon.svg')) ?>">
+    <link rel="icon" type="image/svg+xml" href="<?= htmlspecialchars(webtest_path('favicon.svg')) ?>">
     <title>New Issue · WebTest</title>
-    <?php bugcatcher_render_theme_bootstrap(); ?>
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_theme.css')) ?>">
-    <link rel="stylesheet" href="<?= htmlspecialchars(bugcatcher_asset_path('app/legacy_issues.css')) ?>">
+    <?php webtest_render_theme_bootstrap(); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_theme.css')) ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(webtest_asset_path('app/legacy_issues.css')) ?>">
 </head>
 
 <body>
-    <?php bugcatcher_render_sidebar('issues', $current_username, $current_role, (string) ($mem['role'] ?? ''), null); ?>
+    <?php webtest_render_sidebar('issues', $current_username, $current_role, (string) ($mem['role'] ?? ''), null); ?>
 
     <main class="main">
-        <?php bugcatcher_render_page_header(
+        <?php webtest_render_page_header(
             'New Issue',
             $current_username,
             $current_role,
@@ -211,9 +211,9 @@ if ($selectedProjectId <= 0 && $projects) {
         updateSubmitState();
     </script>
 
-    <?php bugcatcher_render_legacy_ui_script(); ?>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/mobile_nav.js')) ?>"></script>
-    <script src="<?= htmlspecialchars(bugcatcher_asset_path('app/notifications_ui.js')) ?>"></script>
+    <?php webtest_render_legacy_ui_script(); ?>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/mobile_nav.js')) ?>"></script>
+    <script src="<?= htmlspecialchars(webtest_asset_path('app/notifications_ui.js')) ?>"></script>
     <script>
         const imagesInput = document.getElementById("imagesInput");
         const imgPreview = document.getElementById("imgPreview");

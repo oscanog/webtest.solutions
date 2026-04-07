@@ -9,19 +9,19 @@ if (PHP_SAPI !== 'cli') {
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-$root = getenv('BUGCATCHER_ROOT') ?: dirname(__DIR__);
+$root = getenv('WEBTEST_ROOT') ?: dirname(__DIR__);
 $root = str_replace('\\', '/', $root);
-$configPath = getenv('BUGCATCHER_CONFIG_PATH') ?: '';
-$sharedPassword = (string) getenv('BUGCATCHER_VALIDATION_SHARED_PASSWORD');
-$allowReset = getenv('BUGCATCHER_ALLOW_DESTRUCTIVE_RESET') === '1';
+$configPath = getenv('WEBTEST_CONFIG_PATH') ?: '';
+$sharedPassword = (string) getenv('WEBTEST_VALIDATION_SHARED_PASSWORD');
+$allowReset = getenv('WEBTEST_ALLOW_DESTRUCTIVE_RESET') === '1';
 
 if (!$allowReset) {
-    fwrite(STDERR, "BUGCATCHER_ALLOW_DESTRUCTIVE_RESET=1 is required.\n");
+    fwrite(STDERR, "WEBTEST_ALLOW_DESTRUCTIVE_RESET=1 is required.\n");
     exit(1);
 }
 
 if ($sharedPassword === '') {
-    fwrite(STDERR, "BUGCATCHER_VALIDATION_SHARED_PASSWORD is required.\n");
+    fwrite(STDERR, "WEBTEST_VALIDATION_SHARED_PASSWORD is required.\n");
     exit(1);
 }
 
@@ -44,7 +44,7 @@ if ($appEnv !== 'production') {
 
 $dbHost = (string) ($config['DB_HOST'] ?? '127.0.0.1');
 $dbPort = (int) ($config['DB_PORT'] ?? 3306);
-$dbName = (string) ($config['DB_NAME'] ?? 'bug_catcher');
+$dbName = (string) ($config['DB_NAME'] ?? 'web_test');
 $dbUser = (string) ($config['DB_USER'] ?? 'root');
 $dbPass = (string) ($config['DB_PASS'] ?? '');
 
@@ -55,10 +55,10 @@ if (!is_file($schemaPath) || !is_file($referenceSeedPath)) {
     exit(1);
 }
 
-$backupRoot = trim((string) getenv('BUGCATCHER_BACKUP_DIR'));
+$backupRoot = trim((string) getenv('WEBTEST_BACKUP_DIR'));
 if ($backupRoot === '') {
     $home = trim((string) getenv('HOME'));
-    $backupRoot = $home !== '' ? $home . '/bugcatcher-db-backups' : ($root . '/.db-backups');
+    $backupRoot = $home !== '' ? $home . '/webtest-db-backups' : ($root . '/.db-backups');
 }
 
 if (!is_dir($backupRoot) && !mkdir($backupRoot, 0775, true) && !is_dir($backupRoot)) {
@@ -67,7 +67,7 @@ if (!is_dir($backupRoot) && !mkdir($backupRoot, 0775, true) && !is_dir($backupRo
 }
 
 $timestamp = gmdate('Ymd-His');
-$backupPath = rtrim(str_replace('\\', '/', $backupRoot), '/') . "/bug_catcher-production-{$timestamp}.sql.gz";
+$backupPath = rtrim(str_replace('\\', '/', $backupRoot), '/') . "/web_test-production-{$timestamp}.sql.gz";
 
 $accounts = [
     [

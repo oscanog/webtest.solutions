@@ -1,4 +1,4 @@
-USE bug_catcher;
+USE web_test;
 
 CREATE TABLE IF NOT EXISTS password_reset_requests (
   id INT(11) NOT NULL AUTO_INCREMENT,
